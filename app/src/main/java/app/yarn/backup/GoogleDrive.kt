@@ -44,11 +44,7 @@ class GoogleDrive(private val context: Context) {
             Identity.getAuthorizationClient(context).authorize(request).await()
         } catch (e: com.google.android.gms.common.api.ApiException) {
             throw IOException(
-                when (e.statusCode) {
-                    com.google.android.gms.common.api.CommonStatusCodes.DEVELOPER_ERROR -> "Google sign-in isn't set up for this version of Yarn yet."
-                    com.google.android.gms.common.api.CommonStatusCodes.NETWORK_ERROR -> "No internet connection."
-                    else -> "Google sign-in failed (${e.statusCode})."
-                },
+                explain(e.statusCode),
             )
         }
         if (result.hasResolution()) throw NeedsConsentException(requireNotNull(result.pendingIntent))
@@ -56,8 +52,23 @@ class GoogleDrive(private val context: Context) {
     }
 
     fun tokenFrom(data: Intent?): String {
-        val result: AuthorizationResult = Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(data)
+        val result: AuthorizationResult = try {
+            Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(data)
+        } catch (e: com.google.android.gms.common.api.ApiException) {
+            throw IOException(explain(e.statusCode), e)
+        }
         return result.accessToken ?: throw IOException("Google didn't return access")
+    }
+
+    /** Plain-language reason for a failed Google sign-in, with the code for troubleshooting. */
+    fun explain(statusCode: Int): String = when (statusCode) {
+        com.google.android.gms.common.api.CommonStatusCodes.DEVELOPER_ERROR ->
+            "Google doesn't recognise this copy of Yarn (code 10). In Google Cloud → Clients, add an Android client for " +
+                "package ${context.packageName} with SHA-1 ${signingSha1() ?: "(unknown)"}"
+        com.google.android.gms.common.api.CommonStatusCodes.CANCELED, 12501 -> "Sign-in was cancelled."
+        com.google.android.gms.common.api.CommonStatusCodes.NETWORK_ERROR -> "No internet connection."
+        com.google.android.gms.common.api.CommonStatusCodes.SIGN_IN_REQUIRED -> "Please choose a Google account."
+        else -> "Google sign-in failed (code $statusCode)."
     }
 
     suspend fun accountEmail(token: String): String = withContext(Dispatchers.IO) {
@@ -179,6 +190,14 @@ class GoogleDrive(private val context: Context) {
             )
         }
     }
+
+    /** SHA-1 of the certificate this installed copy is signed with (Play's app signing key for Play installs). */
+    fun signingSha1(): String? = runCatching {
+        val pm = context.packageManager
+        val info = pm.getPackageInfo(context.packageName, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES)
+        val cert = info.signingInfo?.apkContentsSigners?.firstOrNull() ?: return null
+        java.security.MessageDigest.getInstance("SHA-1").digest(cert.toByteArray()).joinToString(":") { "%02X".format(it) }
+    }.getOrNull()
 
     companion object {
         private const val API = "https://www.googleapis.com/drive/v3"

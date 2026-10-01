@@ -174,9 +174,12 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         val action = pending
         pending = null
-        if (result.resultCode != android.app.Activity.RESULT_OK || action == null) { checking = false; return@rememberLauncherForActivityResult }
+        if (action == null) { checking = false; return@rememberLauncherForActivityResult }
         scope.launch {
-            runCatching { action(c.drive.tokenFrom(result.data)) }.onFailure { error = it.message }
+            // Even a "cancelled" result usually carries Google's real reason; show it instead of failing silently.
+            runCatching { action(c.drive.tokenFrom(result.data)) }.onFailure { e ->
+                error = if (result.resultCode == android.app.Activity.RESULT_OK || result.data != null) e.message ?: "Google sign-in failed." else "Sign-in was cancelled."
+            }
             checking = false
         }
     }
@@ -355,7 +358,9 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.backupItems(
     }
     error?.let { e ->
         item {
-            Text(e, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp))
+            androidx.compose.foundation.text.selection.SelectionContainer {
+                Text(e, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp))
+            }
         }
     }
     item {
