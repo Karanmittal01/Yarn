@@ -66,4 +66,5 @@ jobs:
           packageName: app.yarn.messages
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
           track: internal
+          whatsNewDirectory: distribution/whatsnew
           status: completed
