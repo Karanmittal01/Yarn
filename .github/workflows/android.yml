@@ -3,6 +3,9 @@ name: Android
 on:
   push:
     branches: [main]
+    # Website pages (privacy policy, home page) don't need an app build or release.
+    paths-ignore:
+      - 'docs/**'
   pull_request:
   workflow_dispatch:
 
