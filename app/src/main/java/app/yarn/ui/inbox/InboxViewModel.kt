@@ -135,6 +135,18 @@ class InboxViewModel(private val c: AppContainer, initial: InboxFilter) : ViewMo
     fun markRead(ids: Set<Long> = selected()) = act(ids) { c.conversations.markRead(it) }
     fun markUnread(ids: Set<Long> = selected()) = act(ids) { c.conversations.markUnread(it) }
 
+    fun markAllRead() {
+        viewModelScope.launch {
+            val ids = c.db.messages().unreadConversationIds()
+            if (ids.isEmpty()) {
+                _events.tryEmit(UndoEvent("You're all caught up", null))
+                return@launch
+            }
+            c.conversations.markRead(ids)
+            _events.tryEmit(UndoEvent("${ids.size} conversation${if (ids.size > 1) "s" else ""} marked as read") { c.conversations.markUnread(ids) })
+        }
+    }
+
     fun pin(pinned: Boolean, ids: Set<Long> = selected()) = act(ids) { c.conversations.setPinned(it, pinned) }
     fun star(starred: Boolean, ids: Set<Long> = selected()) = act(ids) { c.conversations.setStarred(it, starred) }
     fun mute(muted: Boolean, ids: Set<Long> = selected()) = act(ids) { c.conversations.setMuted(it, muted) }

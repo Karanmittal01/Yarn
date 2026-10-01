@@ -26,7 +26,7 @@ object CategoryRules {
 
         r(Category.DELIVERY, 2.8f, "Mentions a shipment", "shipped", "out for delivery", "delivered", "dispatched", "in transit", "tracking", "track your", "awb", "courier", "parcel", "package", "shipment", "delivery (?:partner|agent|executive|attempt|scheduled)", "arriving (?:today|tomorrow)"),
 
-        r(Category.SHOPPING, 2.2f, "Mentions an order", "order (?:placed|confirmed|#|id|no)", "your order", "order has been", "cart", "invoice", "return (?:request|pickup)", "refund (?:initiated|processed)", "purchase"),
+        r(Category.SHOPPING, 2.2f, "Mentions an order", "order (?:placed|confirmed|#|id|no)", "your order", "order has been", "thank you for (?:ordering|shopping|your order)", "gift card", "e-?gift", "cart", "invoice", "return (?:request|pickup)", "refund (?:initiated|processed)", "purchase"),
 
         r(Category.TRAVEL, 2.8f, "Mentions travel", "flight", "boarding", "pnr", "check-?in", "gate", "departure", "arrival", "train", "coach", "berth", "hotel", "reservation", "itinerary", "cab", "ride", "your driver", "uber", "ola", "lyft", "airport", "terminal", "e-ticket", "ticket booked"),
 
@@ -86,6 +86,9 @@ object CategoryRules {
                 raw[Category.WORK] = (raw[Category.WORK] ?: 0f) * 0.5f
             }
             SenderKind.EMAIL -> Unit
+        }
+        SenderNames.brandCategory(sender.address)?.let { c ->
+            add(c, 2.2f, "Sent by ${SenderNames.pretty(sender.address)}")
         }
         when (sender.commercialSuffix) {
             CommercialSuffix.PROMOTIONAL -> add(Category.PROMOTIONS, 3f, "Sender header is marked promotional (-P)")

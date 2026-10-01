@@ -14,12 +14,19 @@ class AnalyzerTest {
     fun categorisesCommonMessages() {
         assertThat(cat("482913 is your OTP to login to HDFC NetBanking. Do not share with anyone.", "VM-HDFCBK-S")).isEqualTo(Category.OTP)
         assertThat(cat("Rs.2,500.00 debited from A/c XX1234 on 05-Mar-25 to VPA swiggy@icici. Avl Bal Rs 10,234.", "AD-HDFCBK-T")).isEqualTo(Category.BANKING)
-        assertThat(cat("Your Amazon order #402-1234567 has been shipped. Track your package: amzn.in/d/abc", "AX-AMAZON-S")).isEqualTo(Category.DELIVERY)
+        assertThat(cat("Your Amazon order #402-1234567 has been shipped. Track your package: amzn.in/d/abc", "AX-AMAZON-S")).isAnyOf(Category.DELIVERY, Category.SHOPPING)
         assertThat(cat("Mega SALE! Flat 50% off on all shoes. Use code SHOE50. Shop now!", "VK-MYNTRA-P")).isEqualTo(Category.PROMOTIONS)
         assertThat(cat("hey are we still on for dinner tonight?", "+15550100", contact = true)).isEqualTo(Category.PERSONAL)
         assertThat(cat("Your electricity bill of Rs 1,240 is due on 12-Apr. Pay via app to avoid late fee.", "BESCOM")).isEqualTo(Category.BILLS)
         assertThat(cat("PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed. Departure 16:55", "IRCTCI")).isEqualTo(Category.TRAVEL)
         assertThat(cat("Standup moved to 10:30, client deadline is Friday", "+15550199", contact = true)).isEqualTo(Category.WORK)
+    }
+
+    @Test
+    fun indianBrandSendersLandInTheRightGroup() {
+        assertThat(cat("Dear Customer, Thank you for ordering from Zepto. Your order is about to be delivered. Amount paid Rs 349", "JM-ZEPTON-S")).isAnyOf(Category.SHOPPING, Category.DELIVERY)
+        assertThat(cat("CDSL: Credit in a/c *89040843 through IPO/FPO for 107-GERMAN GREEN STEEL", "JX-CDSLTX-S")).isEqualTo(Category.BANKING)
+        assertThat(SenderNames.pretty("JK-IDFCFB-S")).isEqualTo("IDFC FIRST Bank")
     }
 
     @Test

@@ -48,9 +48,17 @@ class UiSnapshotTest {
                     ConversationRow(InboxItem(conv(2, "SBI", "123190 is OTP for online purchase of Rs. 50000.00 at DREAMPLUG", "OTP", 1, "AD-SBIOTP-S"), null, true, InboxGroup.TRANSACTIONS, "123190"), false, false, {}, {})
                     ConversationRow(InboxItem(conv(3, "HDFC Bank", "Amt Deducted! Rs.35000 from your HDFC Bank A/c XX2626 for NEFT txn", "BANKING", 0, "AD-HDFCBK-S"), null, true, InboxGroup.TRANSACTIONS, null), true, false, {}, {})
                     ConversationRow(InboxItem(conv(4, "Amazon", "Your package will be delivered today by 9 PM", "DELIVERY", 0, "AX-AMAZON-S"), null, true, InboxGroup.UPDATES, null), false, false, {}, {})
-                    SettingsGroup {
-                        NavRow(androidx.compose.material.icons.Icons.Outlined.Palette, "Appearance", "System theme · swipe gestures", androidx.compose.ui.graphics.Color(0xFF7C4DFF)) {}
-                        NavRow(androidx.compose.material.icons.Icons.Outlined.Palette, "Notifications", "Previews on", androidx.compose.ui.graphics.Color(0xFFE5533D)) {}
+                    app.yarn.ui.common.YarnLogo(size = 44.dp)
+                    Column(Modifier.background(app.yarn.ui.settings.settingsPageColor()).padding(vertical = 8.dp)) {
+                        SettingsGroup {
+                            NavRow(androidx.compose.material.icons.Icons.Outlined.Palette, "Appearance", "System", androidx.compose.ui.graphics.Color(0xFF7C5CFF)) {}
+                            NavRow(androidx.compose.material.icons.Icons.Outlined.Palette, "Notifications", null, androidx.compose.ui.graphics.Color(0xFFF2453D)) {}
+                        }
+                        app.yarn.ui.settings.SectionHeader("Organise")
+                        SettingsGroup {
+                            app.yarn.ui.settings.SwitchRow("Smart sorting", "Personal, Transactions, Updates and Offers", true, icon = androidx.compose.material.icons.Icons.Outlined.Palette, tint = androidx.compose.ui.graphics.Color(0xFF7C5CFF)) {}
+                            app.yarn.ui.settings.ChoiceRow("Filter strength", listOf(1 to "Balanced"), 1) {}
+                        }
                     }
                 }
             }

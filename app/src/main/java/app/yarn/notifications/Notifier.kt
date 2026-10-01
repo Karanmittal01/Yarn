@@ -172,31 +172,50 @@ class Notifier(
             )
             .setDeleteIntent(actionIntent(NotificationActionReceiver.ACTION_DISMISSED, conversationId))
 
-        if (latest.body.isNotBlank() && !conversation.spam && conversation.addresses.all { PhoneNumbers.isDialable(it) || PhoneNumbers.isEmail(it) }) {
-            val remoteInput = RemoteInput.Builder(NotificationActionReceiver.KEY_REPLY).setLabel("Reply").build()
-            builder.addAction(
-                NotificationCompat.Action.Builder(R.drawable.ic_reply, "Reply", actionIntent(NotificationActionReceiver.ACTION_REPLY, conversationId, mutable = true))
-                    .addRemoteInput(remoteInput)
-                    .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
-                    .setShowsUserInterface(false)
-                    .build(),
-            )
-        }
         val otp = db.messages().entities(latest.id).firstOrNull { it.type == "OTP" }
+        val markRead = NotificationCompat.Action.Builder(R.drawable.ic_done, "Mark read", actionIntent(NotificationActionReceiver.ACTION_MARK_READ, conversationId))
+            .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ)
+            .setShowsUserInterface(false)
+            .build()
         if (otp != null && s.otpCopyAction) {
+            // Codes: copy, copy & delete, mark read. (Android shows at most three actions.)
             builder.addAction(
                 NotificationCompat.Action.Builder(
                     R.drawable.ic_copy, "Copy ${otp.value}",
                     actionIntent(NotificationActionReceiver.ACTION_COPY_OTP, conversationId, { putExtra(NotificationActionReceiver.EXTRA_TEXT, otp.value) }),
                 ).setShowsUserInterface(false).build(),
             )
+            builder.addAction(
+                NotificationCompat.Action.Builder(
+                    R.drawable.ic_delete, "Copy & delete",
+                    actionIntent(NotificationActionReceiver.ACTION_COPY_DELETE_OTP, conversationId, {
+                        putExtra(NotificationActionReceiver.EXTRA_TEXT, otp.value)
+                        putExtra(NotificationActionReceiver.EXTRA_MESSAGE_ID, latest.id)
+                    }),
+                ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_DELETE).setShowsUserInterface(false).build(),
+            )
+            builder.addAction(markRead)
+        } else {
+            if (latest.body.isNotBlank() && !conversation.spam && conversation.addresses.all { PhoneNumbers.isDialable(it) || PhoneNumbers.isEmail(it) }) {
+                val remoteInput = RemoteInput.Builder(NotificationActionReceiver.KEY_REPLY).setLabel("Reply").build()
+                builder.addAction(
+                    NotificationCompat.Action.Builder(R.drawable.ic_reply, "Reply", actionIntent(NotificationActionReceiver.ACTION_REPLY, conversationId, mutable = true))
+                        .addRemoteInput(remoteInput)
+                        .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+                        .setShowsUserInterface(false)
+                        .build(),
+                )
+            }
+            builder.addAction(markRead)
+            builder.addAction(
+                NotificationCompat.Action.Builder(
+                    R.drawable.ic_delete, "Delete",
+                    actionIntent(NotificationActionReceiver.ACTION_DELETE, conversationId, {
+                        putExtra(NotificationActionReceiver.EXTRA_MESSAGE_IDS, unread.map { it.id }.toLongArray())
+                    }),
+                ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_DELETE).setShowsUserInterface(false).build(),
+            )
         }
-        builder.addAction(
-            NotificationCompat.Action.Builder(R.drawable.ic_done, "Mark as read", actionIntent(NotificationActionReceiver.ACTION_MARK_READ, conversationId))
-                .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ)
-                .setShowsUserInterface(false)
-                .build(),
-        )
         post(conversationId.toInt(), builder.build())
     }
 

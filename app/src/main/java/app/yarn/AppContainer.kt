@@ -1,5 +1,6 @@
 package app.yarn
 
+import app.yarn.ai.SmartSorter
 import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -67,7 +68,8 @@ class AppContainer(val app: Application) {
     val language by lazy { LanguageService() }
     val translation by lazy { TranslationService(language) }
     val mlEntities by lazy { MlEntityService() }
-    val incoming by lazy { IncomingProcessor(app, db, store, sims, settings, engine, mlEntities, conversations, sender, notifier, providerLock, scope) }
+    val smartSorter by lazy { SmartSorter(db, nano, settings) }
+    val incoming by lazy { IncomingProcessor(app, db, store, sims, settings, engine, mlEntities, smartSorter, conversations, sender, notifier, providerLock, scope) }
     val sync by lazy { TelephonySync(app, db, store, conversations, providerLock) }
     val nano by lazy { GeminiNanoService(app) }
     val localLlm by lazy { LocalLlmService(app) }
@@ -88,6 +90,14 @@ class AppContainer(val app: Application) {
         notifier.createChannels()
         refreshPlatformState()
         MaintenanceWorker.schedule(app)
+        // Prepare the free on-device models in the background (no-ops when unsupported).
+        scope.launch {
+            delay(5_000)
+            if (settings.current().aiEnabled) {
+                runCatching { nano.ensureDownloaded() }
+                runCatching { mlEntities.ensureModel(allowMobileData = false) }
+            }
+        }
         // Refresh cached names once per launch (contact edits, better sender-name mapping in updates).
         scope.launch { runCatching { conversations.refreshDisplayNames() } }
         scope.launch {

@@ -6,6 +6,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -44,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -74,13 +76,13 @@ fun SettingsScaffold(title: String, onBack: () -> Unit, content: androidx.compos
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     Scaffold(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = settingsPageColor(),
         topBar = {
             LargeTopAppBar(
                 title = { Text(title) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                 scrollBehavior = scroll,
-                colors = TopAppBarDefaults.largeTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface, scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer),
+                colors = TopAppBarDefaults.largeTopAppBarColors(containerColor = settingsPageColor(), scrolledContainerColor = settingsPageColor()),
             )
         },
     ) { padding ->
@@ -97,52 +99,56 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, onOpen: (SettingsP
 
     SettingsScaffold("Settings", onBack) {
         item {
-            Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(settingsCardColor())
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    YarnLogo(size = 56.dp)
-                    Spacer(Modifier.width(16.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Yarn", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Text(
-                            if (isDefault) "Your default messaging app" else "Not your default SMS app yet",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
-                        )
-                    }
-                    if (!isDefault) FilledTonalButton(onClick = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } }) { Text("Set") }
+                YarnLogo(size = 44.dp)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Yarn", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (isDefault) "Default messaging app" else "Not your default SMS app",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
+                if (!isDefault) FilledTonalButton(onClick = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } }) { Text("Set") }
             }
         }
-        item { Spacer(Modifier.height(8.dp)) }
+        item { Spacer(Modifier.height(10.dp)) }
         item {
             SettingsGroup {
-                NavRow(Icons.Outlined.Palette, "Appearance", themeLabel(s.theme) + " · swipe gestures", Color(0xFF7C4DFF)) { onOpen(SettingsPage.APPEARANCE) }
-                NavRow(Icons.Outlined.Notifications, "Notifications", if (s.showNotificationPreviews) "Previews on" else "Previews hidden", Color(0xFFE5533D)) { onOpen(SettingsPage.NOTIFICATIONS) }
-                NavRow(Icons.Outlined.Sms, "Messaging", "Delivery reports, group MMS, undo send", Color(0xFF1466F0)) { onOpen(SettingsPage.MESSAGING) }
+                NavRow(Icons.Outlined.Palette, "Appearance", themeLabel(s.theme), Color(0xFF7C5CFF)) { onOpen(SettingsPage.APPEARANCE) }
+                NavRow(Icons.Outlined.Notifications, "Notifications", null, Color(0xFFF2453D)) { onOpen(SettingsPage.NOTIFICATIONS) }
+                NavRow(Icons.Outlined.Sms, "Messaging", null, Color(0xFF34C759)) { onOpen(SettingsPage.MESSAGING) }
             }
         }
+        item { Spacer(Modifier.height(10.dp)) }
         item {
             SettingsGroup {
-                NavRow(Icons.Outlined.AutoAwesome, "Smart features", if (s.aiEnabled) "On-device AI, spam protection, learning" else "Off", Color(0xFF0B8FCB)) { onOpen(SettingsPage.AI) }
-                NavRow(Icons.Outlined.Lock, "Privacy & security", if (s.appLock) "App lock on" else "App lock, auto-delete", Color(0xFF1E9E6A)) { onOpen(SettingsPage.PRIVACY) }
-                NavRow(Icons.Outlined.Block, "Blocked & filters", null, Color(0xFF5B6476)) { onOpen(SettingsPage.BLOCKED) }
+                NavRow(Icons.Outlined.AutoAwesome, "Smart features", if (s.aiEnabled) "On" else "Off", Color(0xFF1466F0)) { onOpen(SettingsPage.AI) }
+                NavRow(Icons.Outlined.Lock, "Privacy & security", null, Color(0xFF0FA3B1)) { onOpen(SettingsPage.PRIVACY) }
+                NavRow(Icons.Outlined.Block, "Blocked", null, Color(0xFF8E8E93)) { onOpen(SettingsPage.BLOCKED) }
             }
         }
+        item { Spacer(Modifier.height(10.dp)) }
         item {
             SettingsGroup {
-                NavRow(Icons.Outlined.Backup, "Backup & restore", "Encrypted, stored where you choose", Color(0xFFE08A1E)) { onOpen(SettingsPage.BACKUP) }
-                NavRow(Icons.Outlined.Info, "About", "Version ${BuildConfig.VERSION_NAME}", Color(0xFF5B6476)) { onOpen(SettingsPage.ABOUT) }
+                NavRow(Icons.Outlined.Backup, "Backup & restore", null, Color(0xFFFF9500)) { onOpen(SettingsPage.BACKUP) }
+                NavRow(Icons.Outlined.Info, "About", BuildConfig.VERSION_NAME, Color(0xFF636366)) { onOpen(SettingsPage.ABOUT) }
             }
         }
     }
 }
 
 private fun themeLabel(t: ThemeMode) = when (t) {
-    ThemeMode.SYSTEM -> "System theme"
+    ThemeMode.SYSTEM -> "System"
     ThemeMode.LIGHT -> "Light"
     ThemeMode.DARK -> "Dark"
 }
@@ -236,11 +242,7 @@ fun MessagingScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             item {
                 SettingsGroup {
                     sims.forEach { sim ->
-                        ListItem(
-                            headlineContent = { Text(sim.label) },
-                            supportingContent = sim.number?.let { { Text(it) } },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        )
+                        InfoRow(sim.label, sim.number)
                     }
                 }
             }
@@ -285,7 +287,7 @@ fun AboutScreen(onBack: () -> Unit) {
     SettingsScaffold("About", onBack) {
         item {
             Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                YarnLogo(size = 88.dp)
+                YarnLogo(size = 72.dp)
                 Spacer(Modifier.height(4.dp))
                 Text("Yarn", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                 Text("Version ${BuildConfig.VERSION_NAME}", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -293,16 +295,8 @@ fun AboutScreen(onBack: () -> Unit) {
         }
         item {
             SettingsGroup {
-                ListItem(
-                    headlineContent = { Text("Private by design") },
-                    supportingContent = { Text("Messages and AI stay on your phone. Core messaging never uses the internet.") },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                )
-                ListItem(
-                    headlineContent = { Text("SMS & MMS") },
-                    supportingContent = { Text("Android doesn't offer RCS to third-party apps, so Yarn uses SMS and MMS.") },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                )
+                InfoRow("Private by design", "Messages and AI stay on your phone. Core messaging never uses the internet.")
+                InfoRow("SMS & MMS", "Android doesn't offer RCS to third-party apps, so Yarn uses SMS and MMS.")
             }
         }
     }

@@ -28,7 +28,29 @@ class NotificationActionReceiver : BroadcastReceiver() {
             ACTION_COPY_OTP -> {
                 val code = intent.getStringExtra(EXTRA_TEXT) ?: return
                 copySensitive(context, code)
+                confirmCopy(context)
                 async(context) { conversations.markRead(listOf(conversationId)) }
+            }
+            ACTION_COPY_DELETE_OTP -> {
+                val code = intent.getStringExtra(EXTRA_TEXT) ?: return
+                val messageId = intent.getLongExtra(EXTRA_MESSAGE_ID, -1)
+                copySensitive(context, code)
+                confirmCopy(context)
+                async(context) {
+                    conversations.markRead(listOf(conversationId))
+                    if (messageId > 0) conversations.deleteMessages(listOf(messageId))
+                    db.conversations().deleteIfEmpty(conversationId)
+                    notifier.cancel(conversationId)
+                }
+            }
+            ACTION_DELETE -> {
+                val ids = intent.getLongArrayExtra(EXTRA_MESSAGE_IDS)?.toList().orEmpty()
+                async(context) {
+                    conversations.markRead(listOf(conversationId))
+                    if (ids.isNotEmpty()) conversations.deleteMessages(ids)
+                    db.conversations().deleteIfEmpty(conversationId)
+                    notifier.cancel(conversationId)
+                }
             }
             ACTION_RETRY -> {
                 val id = intent.getLongExtra(EXTRA_MESSAGE_ID, -1)
@@ -49,10 +71,20 @@ class NotificationActionReceiver : BroadcastReceiver() {
         const val ACTION_RETRY = "app.yarn.action.RETRY"
         const val ACTION_DOWNLOAD_MMS = "app.yarn.action.DOWNLOAD_MMS"
         const val ACTION_DISMISSED = "app.yarn.action.DISMISSED"
+        const val ACTION_COPY_DELETE_OTP = "app.yarn.action.COPY_DELETE_OTP"
+        const val ACTION_DELETE = "app.yarn.action.DELETE"
+        const val EXTRA_MESSAGE_IDS = "message_ids"
         const val EXTRA_CONVERSATION_ID = "conversation_id"
         const val EXTRA_MESSAGE_ID = "message_id"
         const val EXTRA_TEXT = "text"
         const val KEY_REPLY = "reply"
+
+        /** Android 13+ shows its own clipboard confirmation; older versions get a toast. */
+        private fun confirmCopy(context: Context) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                android.widget.Toast.makeText(context, "Code copied", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
 
         /** Copies a code and flags it sensitive so it is hidden from clipboard previews (Android 13+). */
         fun copySensitive(context: Context, text: String) {

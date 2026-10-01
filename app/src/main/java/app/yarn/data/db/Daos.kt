@@ -287,6 +287,15 @@ abstract class MessageDao {
     @Query("SELECT m.id FROM messages m JOIN conversations c ON c.id = m.conversationId WHERE c.spam = 1 AND m.starred = 0 AND m.date < :before")
     abstract suspend fun spamOlderThan(before: Long): List<Long>
 
+    @Query(
+        "SELECT * FROM messages WHERE outgoing = 0 AND analyzed = 1 AND categorySource = 'RULES' AND categoryConfidence < :threshold " +
+            "AND date > :since AND body != '' AND spamVerdict NOT IN ('SPAM', 'SCAM') ORDER BY date DESC LIMIT :limit",
+    )
+    abstract suspend fun uncertain(threshold: Float, since: Long, limit: Int): List<MessageEntity>
+
+    @Query("SELECT id FROM conversations WHERE unreadCount > 0 AND blocked = 0 AND spam = 0")
+    abstract suspend fun unreadConversationIds(): List<Long>
+
     @Query("SELECT * FROM messages WHERE analyzed = 0 ORDER BY date DESC LIMIT :limit")
     abstract suspend fun unanalyzed(limit: Int): List<MessageEntity>
 

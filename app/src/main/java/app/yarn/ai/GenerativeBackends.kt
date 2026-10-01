@@ -4,19 +4,11 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
-import com.google.mlkit.genai.common.DownloadCallback
 import com.google.mlkit.genai.common.FeatureStatus
-import com.google.mlkit.genai.common.GenAiException
-import com.google.mlkit.genai.rewriting.Rewriter
-import com.google.mlkit.genai.rewriting.RewriterOptions
-import com.google.mlkit.genai.rewriting.Rewriting
-import com.google.mlkit.genai.rewriting.RewritingRequest
-import com.google.mlkit.genai.summarization.Summarization
-import com.google.mlkit.genai.summarization.SummarizationRequest
-import com.google.mlkit.genai.summarization.Summarizer
-import com.google.mlkit.genai.summarization.SummarizerOptions
+import com.google.mlkit.genai.prompt.Generation
+import com.google.mlkit.genai.prompt.TextPart
+import com.google.mlkit.genai.prompt.generateContentRequest
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -37,50 +29,14 @@ enum class RewriteStyle { SHORTEN, ELABORATE, FRIENDLY, PROFESSIONAL, REPHRASE, 
 enum class EngineState { AVAILABLE, DOWNLOADABLE, DOWNLOADING, UNAVAILABLE, NOT_CONFIGURED }
 
 /**
- * Gemini Nano through ML Kit GenAI (AICore). Runs entirely on-device on supported phones
- * (e.g. recent Pixel and Galaxy flagships); on other devices every call reports UNAVAILABLE
- * and the app falls back to other engines. Free, no API key, no network at inference time.
+ * Gemini Nano through the ML Kit GenAI Prompt API (AICore). Runs entirely on-device on supported
+ * phones (recent Pixel and Galaxy flagships); elsewhere every call reports UNAVAILABLE and the app
+ * falls back to its built-in engines. Free, no API key, no network at inference time.
  */
-class GeminiNanoService(private val context: Context) {
-    private var summarizer: Summarizer? = null
-    private val rewriters = HashMap<RewriteStyle, Rewriter>()
+class GeminiNanoService(@Suppress("unused") private val context: Context) {
+    private val model by lazy { Generation.getClient() }
     private val lock = Mutex()
-
-    private fun summarizerClient(): Summarizer = summarizer ?: Summarization.getClient(
-        SummarizerOptions.builder(context)
-            .setInputType(SummarizerOptions.InputType.CONVERSATION)
-            .setOutputType(SummarizerOptions.OutputType.THREE_BULLETS)
-            .setLanguage(SummarizerOptions.Language.ENGLISH)
-            .setLongInputAutoTruncationEnabled(true)
-            .build(),
-    ).also { summarizer = it }
-
-    private fun rewriterClient(style: RewriteStyle, languageTag: String): Rewriter? {
-        val language = when (languageTag.substringBefore('-')) {
-            "en" -> RewriterOptions.Language.ENGLISH
-            "ja" -> RewriterOptions.Language.JAPANESE
-            "de" -> RewriterOptions.Language.GERMAN
-            "fr" -> RewriterOptions.Language.FRENCH
-            "it" -> RewriterOptions.Language.ITALIAN
-            "es" -> RewriterOptions.Language.SPANISH
-            "ko" -> RewriterOptions.Language.KOREAN
-            else -> return null
-        }
-        val type = when (style) {
-            RewriteStyle.SHORTEN -> RewriterOptions.OutputType.SHORTEN
-            RewriteStyle.ELABORATE -> RewriterOptions.OutputType.ELABORATE
-            RewriteStyle.FRIENDLY -> RewriterOptions.OutputType.FRIENDLY
-            RewriteStyle.PROFESSIONAL -> RewriterOptions.OutputType.PROFESSIONAL
-            RewriteStyle.REPHRASE -> RewriterOptions.OutputType.REPHRASE
-            RewriteStyle.EMOJIFY -> RewriterOptions.OutputType.EMOJIFY
-        }
-        if (language != RewriterOptions.Language.ENGLISH) {
-            return Rewriting.getClient(RewriterOptions.builder(context).setOutputType(type).setLanguage(language).build())
-        }
-        return rewriters.getOrPut(style) {
-            Rewriting.getClient(RewriterOptions.builder(context).setOutputType(type).setLanguage(language).build())
-        }
-    }
+    @Volatile private var cachedState: EngineState? = null
 
     private fun Int.toState() = when (this) {
         FeatureStatus.AVAILABLE -> EngineState.AVAILABLE
@@ -89,42 +45,76 @@ class GeminiNanoService(private val context: Context) {
         else -> EngineState.UNAVAILABLE
     }
 
-    suspend fun summarizerState(): EngineState = runCatching {
-        lock.withLock { summarizerClient() }.checkFeatureStatus().await().toState()
-    }.getOrDefault(EngineState.UNAVAILABLE)
+    suspend fun state(): EngineState = runCatching { model.checkStatus().toState() }
+        .getOrDefault(EngineState.UNAVAILABLE).also { cachedState = it }
 
-    suspend fun rewriterState(): EngineState = runCatching {
-        lock.withLock { rewriterClient(RewriteStyle.REPHRASE, "en")!! }.checkFeatureStatus().await().toState()
-    }.getOrDefault(EngineState.UNAVAILABLE)
+    suspend fun summarizerState(): EngineState = state()
+    suspend fun rewriterState(): EngineState = state()
 
-    /** Asks AICore to download the on-device model; progress arrives via [onProgress] in bytes. */
-    suspend fun download(onProgress: (Long, Long) -> Unit): Boolean = runCatching {
-        var total = 0L
-        val cb = object : DownloadCallback {
-            override fun onDownloadStarted(bytesToDownload: Long) { total = bytesToDownload; onProgress(0, total) }
-            override fun onDownloadProgress(totalBytesDownloaded: Long) = onProgress(totalBytesDownloaded, total)
-            override fun onDownloadCompleted() = onProgress(total, total)
-            override fun onDownloadFailed(e: GenAiException) { Log.w(TAG, "Gemini Nano download failed", e) }
-        }
-        lock.withLock { summarizerClient() }.downloadFeature(cb).await()
-        runCatching { lock.withLock { rewriterClient(RewriteStyle.REPHRASE, "en")!! }.downloadFeature(cb).await() }
-        true
-    }.getOrDefault(false)
-
-    suspend fun summarize(conversationText: String): String? {
-        if (summarizerState() != EngineState.AVAILABLE) return null
-        return runCatching {
-            val client = lock.withLock { summarizerClient() }
-            client.runInference(SummarizationRequest.builder(conversationText).build()).await().summary
-        }.onFailure { Log.w(TAG, "Nano summarization failed", it) }.getOrNull()
+    /** Downloads the model through AICore if the phone supports it. Silent no-op otherwise. */
+    suspend fun ensureDownloaded() {
+        if (state() != EngineState.DOWNLOADABLE) return
+        runCatching { model.download().collect { } }.onFailure { Log.w(TAG, "Gemini Nano download failed", it) }
+        state()
     }
 
-    suspend fun rewrite(text: String, style: RewriteStyle, languageTag: String): List<String>? {
-        val client = lock.withLock { rewriterClient(style, languageTag) } ?: return null
-        return runCatching {
-            if (client.checkFeatureStatus().await() != FeatureStatus.AVAILABLE) return null
-            client.runInference(RewritingRequest.builder(text).build()).await().results.map { it.text }
-        }.onFailure { Log.w(TAG, "Nano rewrite failed", it) }.getOrNull()
+    suspend fun download(onProgress: (Long, Long) -> Unit): Boolean {
+        ensureDownloaded()
+        onProgress(1, 1)
+        return state() == EngineState.AVAILABLE
+    }
+
+    suspend fun generate(prompt: String, maxTokens: Int = 256, temperature: Float = 0.2f): String? {
+        if ((cachedState ?: state()) != EngineState.AVAILABLE) return null
+        return lock.withLock {
+            runCatching {
+                val request = generateContentRequest(TextPart(prompt)) {
+                    this.temperature = temperature
+                    this.maxOutputTokens = maxTokens
+                    this.topK = 16
+                }
+                model.generateContent(request).candidates.firstOrNull()?.text?.trim()?.takeIf { it.isNotEmpty() }
+            }.onFailure { Log.w(TAG, "Gemini Nano generation failed", it) }.getOrNull()
+        }
+    }
+
+    suspend fun summarize(conversationText: String): String? = generate(
+        "Summarize this text-message conversation in at most 3 short bullet points. " +
+            "Mention decisions, dates, amounts and anything the reader still needs to do. " +
+            "Use only facts from the conversation. Reply with the bullet points only.\n\n$conversationText",
+        maxTokens = 220,
+    )
+
+    suspend fun rewrite(text: String, style: RewriteStyle, @Suppress("UNUSED_PARAMETER") languageTag: String): List<String>? {
+        val instruction = when (style) {
+            RewriteStyle.SHORTEN -> "Make this message shorter while keeping its meaning."
+            RewriteStyle.ELABORATE -> "Expand this message with a little more detail, keeping the same intent."
+            RewriteStyle.FRIENDLY -> "Rewrite this message in a warm, friendly tone."
+            RewriteStyle.PROFESSIONAL -> "Rewrite this message in a polite, professional tone."
+            RewriteStyle.REPHRASE -> "Rephrase this message with the same meaning."
+            RewriteStyle.EMOJIFY -> "Add a few fitting emojis to this message without changing the words much."
+        }
+        return generate("$instruction Keep the same language. Reply with only the rewritten message.\n\nMessage: $text", maxTokens = 200, temperature = 0.5f)
+            ?.removeSurrounding("\"")?.let { listOf(it) }
+    }
+
+    /**
+     * Sorts an SMS into one of Yarn's four inbox groups. Used only for messages the built-in
+     * rules are unsure about. Returns null when the model is unavailable or answers unclearly.
+     */
+    suspend fun classify(sender: String, text: String): String? {
+        val prompt = """
+            Classify this SMS into exactly one group.
+            PERSONAL: written by a person (friends, family, colleagues).
+            TRANSACTIONS: OTPs, bank debits or credits, cards, UPI, payments, bills, investments.
+            UPDATES: orders, deliveries, bookings, travel, service or account notices.
+            OFFERS: promotions, sales, discounts, marketing.
+            Sender: $sender
+            Message: ${text.take(600)}
+            Answer with one word: PERSONAL, TRANSACTIONS, UPDATES or OFFERS.
+        """.trimIndent()
+        val answer = generate(prompt, maxTokens = 4, temperature = 0f)?.uppercase() ?: return null
+        return listOf("PERSONAL", "TRANSACTIONS", "UPDATES", "OFFERS").firstOrNull { answer.contains(it) }
     }
 
     companion object {

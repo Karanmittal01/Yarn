@@ -125,11 +125,13 @@ class IntelligenceEngine(
     fun annotate(m: MessageEntity, context: PriorityContext = PriorityContext()): Pair<MessageEntity, List<ExtractedEntity>> {
         val address = if (m.outgoing) m.address.substringBefore(',') else m.address
         val a = analyze(m.body, address, m.date, !m.outgoing, m.hasAttachments, context)
+        // Decisions made by the user or the on-device LLM survive re-analysis, unless it's now spam.
+        val keep = (m.categorySource == "USER" || m.categorySource == "LLM") && !a.spam.verdict.isFiltered
         val updated = m.copy(
-            category = if (m.outgoing) m.category else a.category.name,
-            categorySource = a.classification.source.name,
-            categoryConfidence = a.classification.confidence,
-            categoryReasons = a.classification.reasons.joinToString("\n"),
+            category = if (m.outgoing || keep) m.category else a.category.name,
+            categorySource = if (keep) m.categorySource else a.classification.source.name,
+            categoryConfidence = if (keep) m.categoryConfidence else a.classification.confidence,
+            categoryReasons = if (keep) m.categoryReasons else a.classification.reasons.joinToString("\n"),
             spamVerdict = a.spam.verdict.name,
             spamScore = a.spam.score,
             spamReasons = a.spam.reasons.joinToString("\n"),

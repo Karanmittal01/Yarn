@@ -1,5 +1,12 @@
 package app.yarn.ui.settings
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.FilterAlt
+import androidx.compose.material.icons.outlined.Block
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -74,34 +81,38 @@ private fun SimpleScaffold(title: String, onBack: () -> Unit, content: @Composab
 fun BlockedScreen(vm: SettingsViewModel, onBack: () -> Unit, onBlockedConversations: () -> Unit) {
     val rules by vm.c.db.blocks().observe().collectAsState(initial = emptyList())
     var add by remember { mutableStateOf<String?>(null) }
-    SimpleScaffold("Blocked numbers & filters", onBack) { modifier ->
-        LazyColumn(modifier) {
-            item {
-                Text(
-                    "Messages from blocked numbers are dropped. Messages containing a filtered word go to Spam without a notification. " +
-                        "When Yarn is your default SMS app, blocked numbers are also added to Android's system block list.",
-                    style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(16.dp),
-                )
+    SettingsScaffold("Blocked", onBack) {
+        item {
+            SettingsGroup {
+                ClickRow("Block a number", icon = Icons.Outlined.Block, tint = androidx.compose.ui.graphics.Color(0xFFF2453D)) { add = BlockRuleEntity.NUMBER }
+                ClickRow("Filter a word", icon = Icons.Outlined.FilterAlt, tint = androidx.compose.ui.graphics.Color(0xFFFF9500)) { add = BlockRuleEntity.KEYWORD }
+                ClickRow("Blocked conversations", icon = Icons.Outlined.Forum, tint = androidx.compose.ui.graphics.Color(0xFF8E8E93)) { onBlockedConversations() }
             }
+        }
+        if (rules.isNotEmpty()) {
+            item { SectionHeader("Your list") }
             item {
-                Row(Modifier.padding(horizontal = 16.dp)) {
-                    OutlinedButton(onClick = { add = BlockRuleEntity.NUMBER }) { Text("Block a number") }
-                    OutlinedButton(onClick = { add = BlockRuleEntity.KEYWORD }, modifier = Modifier.padding(start = 8.dp)) { Text("Add word filter") }
+                SettingsGroup {
+                    rules.forEach { r ->
+                        SettingsRow(
+                            r.value,
+                            summary = if (r.type == BlockRuleEntity.NUMBER) "Number" else "Word filter",
+                            trailing = {
+                                IconButton(onClick = {
+                                    vm.launch { if (r.type == BlockRuleEntity.NUMBER) conversations.unblockNumber(r.value) else conversations.removeRule(r.id) }
+                                }) { Icon(Icons.Outlined.Close, "Remove ${r.value}", Modifier.size(20.dp)) }
+                            },
+                        )
+                    }
                 }
             }
-            item { ClickRow("Blocked conversations", "View or unblock") { onBlockedConversations() } }
-            if (rules.isEmpty()) item { ListItem(headlineContent = { Text("No blocked numbers or filters") }) }
-            items(rules, key = { it.id }) { r ->
-                ListItem(
-                    headlineContent = { Text(r.value) },
-                    supportingContent = { Text(if (r.type == BlockRuleEntity.NUMBER) "Blocked number" else "Word filter") },
-                    trailingContent = {
-                        IconButton(onClick = {
-                            vm.launch { if (r.type == BlockRuleEntity.NUMBER) conversations.unblockNumber(r.value) else conversations.removeRule(r.id) }
-                        }) { Icon(Icons.Outlined.Delete, "Remove ${r.value}") }
-                    },
-                )
-            }
+        }
+        item {
+            Text(
+                "Blocked numbers are dropped silently. Messages with a filtered word go to Spam without notifying you.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp),
+            )
         }
     }
     add?.let { type ->
@@ -138,32 +149,38 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val openDoc = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { passFor = false to it } }
     val running = state is BackupState.Running
 
-    SimpleScaffold("Backup & restore", onBack) { modifier ->
-        Column(modifier.padding(16.dp)) {
-            Text(
-                "Backups are encrypted with a passphrase only you know (AES-256). Save them to your phone, an SD card or any cloud drive app — " +
-                    "then restore on a new phone to move your history. Yarn has no servers and cannot recover a lost passphrase.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp).clickable { includeMedia = !includeMedia }) {
-                Checkbox(includeMedia, { includeMedia = it })
-                Text("Include photos and attachments")
+    SettingsScaffold("Backup & restore", onBack) {
+        item {
+            SettingsGroup {
+                SwitchRow("Include photos & attachments", checked = includeMedia) { includeMedia = it }
             }
-            Button(
-                onClick = { createDoc.launch("yarn-backup-${SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())}.yarnbak") },
-                enabled = !running, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            ) { Text("Back up now") }
-            OutlinedButton(onClick = { openDoc.launch(arrayOf("*/*")) }, enabled = !running, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Restore from backup") }
-            when (val s = state) {
-                is BackupState.Running -> {
-                    Text("${s.label}… ${if (s.total > 0) "${s.done} / ${s.total}" else s.done.toString()}", modifier = Modifier.padding(top = 16.dp))
-                    if (s.total > 0) LinearProgressIndicator(progress = { s.done.toFloat() / s.total }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
-                    else LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
+        }
+        item { Spacer(Modifier.height(12.dp)) }
+        item {
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                Button(
+                    onClick = { createDoc.launch("yarn-backup-${SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())}.yarnbak") },
+                    enabled = !running, modifier = Modifier.fillMaxWidth().height(48.dp),
+                ) { Text("Back up now") }
+                OutlinedButton(onClick = { openDoc.launch(arrayOf("*/*")) }, enabled = !running, modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(48.dp)) { Text("Restore from backup") }
+                when (val st = state) {
+                    is BackupState.Running -> {
+                        Text("${st.label}… ${if (st.total > 0) "${st.done} / ${st.total}" else st.done.toString()}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 16.dp))
+                        if (st.total > 0) LinearProgressIndicator(progress = { st.done.toFloat() / st.total }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                        else LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
+                    }
+                    is BackupState.Done -> Text(st.message, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 16.dp))
+                    is BackupState.Failed -> Text(st.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 16.dp))
+                    BackupState.Idle -> Unit
                 }
-                is BackupState.Done -> Text(s.message, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 16.dp))
-                is BackupState.Failed -> Text(s.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 16.dp))
-                BackupState.Idle -> Unit
             }
+        }
+        item {
+            Text(
+                "Backups are encrypted with a passphrase only you know (AES-256). Save them anywhere — phone, SD card or a cloud drive — and restore on a new phone. Yarn can't recover a lost passphrase.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 32.dp, vertical = 14.dp),
+            )
         }
     }
 

@@ -43,6 +43,7 @@ class IncomingProcessor(
     private val settings: SettingsRepository,
     private val engine: IntelligenceEngine,
     private val mlEntities: MlEntityService,
+    private val smartSorter: app.yarn.ai.SmartSorter,
     private val conversations: ConversationRepository,
     private val sender: MessageSender,
     private val notifier: Notifier,
@@ -93,6 +94,8 @@ class IncomingProcessor(
         if (forceSpam) {
             db.messages().update(updated.copy(spamVerdict = "SPAM", spamReasons = "Matched one of your block filters"))
         }
+        // Let Gemini Nano sort messages the rules weren't sure about, before notifying.
+        kotlinx.coroutines.withTimeoutOrNull(3_000) { runCatching { smartSorter.sortOne(messageId) } }
         if (conversation != null && conversation.archived && !conversation.muted) {
             db.conversations().setArchived(listOf(conversationId), false)
         }

@@ -103,6 +103,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             touched.forEach { c.db.conversations().refresh(it) }
             processed += batch.size
         }
+        runCatching { c.smartSorter.sortRecent(limit = 60) }
         c.settings.update { it.copy(initialImportDone = true) }
         return Result.success()
     }

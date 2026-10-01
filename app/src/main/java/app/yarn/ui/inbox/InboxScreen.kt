@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -39,6 +41,9 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DoneAll
+import androidx.compose.material.icons.outlined.Report
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.Drafts
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -56,6 +61,7 @@ import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -76,6 +82,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,11 +97,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
+import dev.chrisbanes.haze.materials.HazeMaterials
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.yarn.data.db.MessageStatus
 import app.yarn.data.prefs.SwipeAction
@@ -117,6 +131,7 @@ sealed interface InboxDestination {
     data object Settings : InboxDestination
 }
 
+@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun InboxScreen(
     vm: InboxViewModel,
@@ -155,100 +170,114 @@ fun InboxScreen(
 
     val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
 
+    val hazeState = rememberHazeState()
+    val glass = HazeMaterials.thin(MaterialTheme.colorScheme.surface)
+    val scrolled by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 } }
+    val glassModifier = Modifier.hazeEffect(state = hazeState, style = glass)
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
-            when {
-                selecting -> SelectionTopBar(
-                    count = selection.size,
-                    items = items.orEmpty().filter { it.conversation.id in selection },
-                    view = filter.view,
-                    vm = vm,
-                    onDelete = { confirmDelete = selection },
-                    onCategory = { pickCategory = selection },
-                    onShare = {
-                        val ids = selection
-                        vm.clearSelection()
-                        scope.launch {
-                            val text = vm.transcript(ids)
-                            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), "Share conversation"))
-                        }
-                    },
-                )
-                onBack != null -> TopAppBar(
-                    title = { Text(title) },
-                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
-                )
-                else -> SearchHeader(
-                    onSearch = onSearch,
-                    spamUnread = spamUnread,
-                    onNavigate = onNavigate,
-                )
+            Box(if (scrolled) glassModifier else Modifier.background(MaterialTheme.colorScheme.surface)) {
+                when {
+                    selecting -> SelectionTopBar(
+                        count = selection.size,
+                        items = items.orEmpty().filter { it.conversation.id in selection },
+                        view = filter.view,
+                        vm = vm,
+                        onDelete = { confirmDelete = selection },
+                        onCategory = { pickCategory = selection },
+                        onShare = {
+                            val ids = selection
+                            vm.clearSelection()
+                            scope.launch {
+                                val text = vm.transcript(ids)
+                                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), "Share conversation"))
+                            }
+                        },
+                    )
+                    onBack != null -> TopAppBar(
+                        title = { Text(title, style = MaterialTheme.typography.titleLarge) },
+                        navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                    )
+                    else -> InboxHeader(
+                        title = title,
+                        onSearch = onSearch,
+                        spamUnread = spamUnread,
+                        hasUnread = items.orEmpty().any { it.conversation.unreadCount > 0 },
+                        onMarkAllRead = vm::markAllRead,
+                        onNavigate = onNavigate,
+                    )
+                }
             }
         },
         floatingActionButton = {
             if (onNewMessage != null && !selecting) {
                 ExtendedFloatingActionButton(
                     onClick = onNewMessage,
-                    icon = { Icon(Icons.Outlined.Edit, null) },
-                    text = { Text("Start chat") },
-                    expanded = listState.firstVisibleItemIndex == 0,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    shape = RoundedCornerShape(20.dp),
+                    icon = { Icon(Icons.Outlined.Edit, null, Modifier.size(20.dp)) },
+                    text = { Text("Start chat", style = MaterialTheme.typography.labelLarge) },
+                    expanded = !scrolled,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shape = RoundedCornerShape(18.dp),
+                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 4.dp),
                 )
             }
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
-            StatusBanners(status, onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } })
+        val list = items
+        // Content runs underneath the header so it can be seen through the frosted glass while scrolling.
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().hazeSource(hazeState),
+            contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 96.dp),
+        ) {
+            item(key = "banners", contentType = "banners") {
+                StatusBanners(status, onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } })
+            }
             if (showChips && chips.size > 1) {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(chips, key = { it.label }) { chip ->
-                        GroupChip(chip, selected = chip.filter == filter) { vm.setFilter(chip.filter) }
+                item(key = "chips", contentType = "chips") {
+                    LazyRow(
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        items(chips, key = { it.label }) { chip ->
+                            GroupChip(chip, selected = chip.filter == filter) { vm.setFilter(chip.filter) }
+                        }
                     }
                 }
             }
-            val list = items
             when {
-                list == null -> Box(Modifier.fillMaxSize())
-                list.isEmpty() -> EmptyInbox(filter.view, status.sync.running)
-                else -> LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 104.dp),
-                ) {
-                    items(list, key = { it.conversation.id }) { item ->
-                        val id = item.conversation.id
-                        SwipeableRow(
-                            enabled = !selecting && filter.view != InboxView.BLOCKED,
-                            start = settings.swipeStart,
-                            end = settings.swipeEnd,
-                            archived = item.conversation.archived,
-                            onAction = { action ->
-                                when (action) {
-                                    SwipeAction.ARCHIVE -> vm.archive(setOf(id), archived = !item.conversation.archived)
-                                    SwipeAction.DELETE -> confirmDelete = setOf(id)
-                                    SwipeAction.READ -> vm.toggleRead(id)
-                                    SwipeAction.PIN -> vm.togglePin(id)
-                                    SwipeAction.NONE -> Unit
-                                }
-                            },
-                        ) {
-                            ConversationRow(
-                                item = item,
-                                selected = id in selection,
-                                highlighted = id == selectedConversation,
-                                onClick = { if (selecting) vm.toggle(id) else onOpen(id) },
-                                onLongClick = { vm.toggle(id) },
-                                onCopyCode = vm::copyCode,
-                            )
-                        }
+                list == null -> Unit
+                list.isEmpty() -> item(key = "empty") { EmptyInbox(filter.view, status.sync.running) }
+                else -> items(list, key = { it.conversation.id }, contentType = { "row" }) { item ->
+                    val id = item.conversation.id
+                    SwipeableRow(
+                        enabled = !selecting && filter.view != InboxView.BLOCKED,
+                        start = settings.swipeStart,
+                        end = settings.swipeEnd,
+                        archived = item.conversation.archived,
+                        onAction = { action ->
+                            when (action) {
+                                SwipeAction.ARCHIVE -> vm.archive(setOf(id), archived = !item.conversation.archived)
+                                SwipeAction.DELETE -> confirmDelete = setOf(id)
+                                SwipeAction.READ -> vm.toggleRead(id)
+                                SwipeAction.PIN -> vm.togglePin(id)
+                                SwipeAction.NONE -> Unit
+                            }
+                        },
+                    ) {
+                        ConversationRow(
+                            item = item,
+                            selected = id in selection,
+                            highlighted = id == selectedConversation,
+                            onClick = { if (selecting) vm.toggle(id) else onOpen(id) },
+                            onLongClick = { vm.toggle(id) },
+                            onCopyCode = vm::copyCode,
+                        )
                     }
                 }
             }
@@ -275,42 +304,49 @@ fun InboxScreen(
 }
 
 @Composable
-private fun SearchHeader(onSearch: (() -> Unit)?, spamUnread: Int, onNavigate: (InboxDestination) -> Unit) {
+private fun InboxHeader(
+    title: String,
+    onSearch: (() -> Unit)?,
+    spamUnread: Int,
+    hasUnread: Boolean,
+    onMarkAllRead: () -> Unit,
+    onNavigate: (InboxDestination) -> Unit,
+) {
     var menu by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 8.dp)) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 6.dp, end = 4.dp)) {
-                Box(Modifier.padding(start = 6.dp)) { YarnLogo(size = 30.dp) }
-                Row(
-                    Modifier
-                        .weight(1f)
-                        .clip(CircleShape)
-                        .clickable(enabled = onSearch != null) { onSearch?.invoke() }
-                        .padding(horizontal = 14.dp, vertical = 14.dp)
-                        .semantics(mergeDescendants = true) { contentDescription = "Search messages" },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Search messages", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-                    Icon(Icons.Outlined.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Box {
-                    IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "More options") }
-                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, shape = RoundedCornerShape(16.dp)) {
-                        DropdownMenuItem(text = { Text("Starred") }, leadingIcon = { Icon(Icons.Outlined.Star, null) }, onClick = { menu = false; onNavigate(InboxDestination.Starred) })
-                        DropdownMenuItem(text = { Text("Archived") }, leadingIcon = { Icon(Icons.Outlined.Inventory2, null) }, onClick = { menu = false; onNavigate(InboxDestination.Archived) })
-                        DropdownMenuItem(
-                            text = { Text(if (spamUnread > 0) "Spam & blocked · $spamUnread" else "Spam & blocked") },
-                            leadingIcon = { Icon(Icons.Outlined.ErrorOutline, null) },
-                            onClick = { menu = false; onNavigate(InboxDestination.Spam) },
-                        )
-                        HorizontalDivider(Modifier.padding(vertical = 4.dp))
-                        DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(Icons.Outlined.Settings, null) }, onClick = { menu = false; onNavigate(InboxDestination.Settings) })
-                    }
-                }
+    Row(
+        Modifier.fillMaxWidth().statusBarsPadding().height(60.dp).padding(start = 18.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        YarnLogo(size = 26.dp)
+        Spacer(Modifier.width(12.dp))
+        Text(
+            title,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f).semantics { heading() },
+        )
+        if (onSearch != null) {
+            IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, "Search messages", Modifier.size(22.dp)) }
+        }
+        Box {
+            IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "More options", Modifier.size(22.dp)) }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, shape = RoundedCornerShape(18.dp)) {
+                DropdownMenuItem(
+                    text = { Text("Mark all as read") },
+                    leadingIcon = { Icon(Icons.Outlined.DoneAll, null) },
+                    enabled = hasUnread,
+                    onClick = { menu = false; onMarkAllRead() },
+                )
+                HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                DropdownMenuItem(text = { Text("Starred") }, leadingIcon = { Icon(Icons.Outlined.StarOutline, null) }, onClick = { menu = false; onNavigate(InboxDestination.Starred) })
+                DropdownMenuItem(text = { Text("Archived") }, leadingIcon = { Icon(Icons.Outlined.Archive, null) }, onClick = { menu = false; onNavigate(InboxDestination.Archived) })
+                DropdownMenuItem(
+                    text = { Text(if (spamUnread > 0) "Spam & blocked · $spamUnread" else "Spam & blocked") },
+                    leadingIcon = { Icon(Icons.Outlined.Report, null) },
+                    onClick = { menu = false; onNavigate(InboxDestination.Spam) },
+                )
+                HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(Icons.Outlined.Settings, null) }, onClick = { menu = false; onNavigate(InboxDestination.Settings) })
             }
         }
     }
@@ -319,28 +355,29 @@ private fun SearchHeader(onSearch: (() -> Unit)?, spamUnread: Int, onNavigate: (
 @Composable
 private fun GroupChip(chip: InboxChip, selected: Boolean, onClick: () -> Unit) {
     val bg by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh, label = "chipBg")
-    val fg by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, label = "chipFg")
-    Surface(
-        shape = CircleShape,
-        color = bg,
-        modifier = Modifier
+    val fg by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, label = "chipFg")
+    Row(
+        Modifier
+            .height(32.dp)
             .clip(CircleShape)
+            .background(bg)
             .clickable(onClick = onClick)
-            .semantics { stateDescription = if (selected) "Selected" else "Not selected" },
+            .padding(horizontal = 14.dp)
+            .semantics(mergeDescendants = true) {
+                stateDescription = if (selected) "Selected" else "Not selected"
+                if (chip.unread > 0) contentDescription = "${chip.label}, ${chip.unread} unread"
+            },
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(chip.label, style = MaterialTheme.typography.labelLarge, color = fg)
-            if (chip.unread > 0) {
-                Spacer(Modifier.width(6.dp))
-                Box(
-                    Modifier
-                        .clip(CircleShape)
-                        .background(if (selected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.22f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
-                        .padding(horizontal = 7.dp, vertical = 1.dp),
-                ) {
-                    Text(if (chip.unread > 99) "99+" else chip.unread.toString(), style = MaterialTheme.typography.labelSmall, color = if (selected) fg else MaterialTheme.colorScheme.primary)
-                }
-            }
+        Text(chip.label, style = MaterialTheme.typography.labelLarge, color = fg, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium)
+        if (chip.unread > 0) {
+            Spacer(Modifier.width(6.dp))
+            Text(
+                if (chip.unread > 99) "99+" else chip.unread.toString(),
+                style = MaterialTheme.typography.labelMedium,
+                color = if (selected) fg.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
     }
 }
@@ -415,7 +452,7 @@ fun ConversationRow(
     val unread = c.unreadCount > 0
     val bg by animateColorAsState(
         when {
-            selected -> MaterialTheme.colorScheme.primaryContainer
+            selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
             highlighted -> MaterialTheme.colorScheme.surfaceContainerHigh
             else -> MaterialTheme.colorScheme.surface
         },
@@ -434,25 +471,27 @@ fun ConversationRow(
         if (c.hasFailed) append(", has unsent messages")
         append(". $preview. $time")
     }
+    val strong = MaterialTheme.colorScheme.onSurface
+    val quiet = MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
-            .clip(RoundedCornerShape(22.dp))
+            .padding(horizontal = 8.dp)
+            .clip(RoundedCornerShape(18.dp))
             .background(bg)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = "Select")
-            .padding(horizontal = 12.dp, vertical = 12.dp)
+            .padding(horizontal = 10.dp, vertical = 9.dp)
             .semantics(mergeDescendants = true) { contentDescription = a11y; stateDescription = if (selected) "Selected" else "" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
             if (selected) {
-                Box(Modifier.size(52.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.onPrimary)
+                Box(Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Check, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onPrimary)
                 }
             } else {
                 Avatar(
-                    c.title, item.photoUri, size = 52.dp, isGroup = c.isGroup,
+                    c.title, item.photoUri, size = 44.dp, isGroup = c.isGroup,
                     icon = if (item.isBusiness) item.group?.let(CategoryUi::groupIcon) ?: CategoryUi.default else null,
                 )
             }
@@ -461,60 +500,59 @@ fun ConversationRow(
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        c.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = if (unread) FontWeight.Bold else FontWeight.Medium,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    if (c.pinned) Icon(Icons.Filled.PushPin, null, Modifier.padding(start = 6.dp).size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                    if (c.muted) Icon(Icons.Outlined.NotificationsOff, null, Modifier.padding(start = 6.dp).size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    c.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = strong,
+                    fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (c.pinned) Icon(Icons.Filled.PushPin, null, Modifier.padding(start = 5.dp).size(13.dp), tint = quiet)
+                if (c.muted) Icon(Icons.Outlined.NotificationsOff, null, Modifier.padding(start = 5.dp).size(13.dp), tint = quiet)
                 }
                 Spacer(Modifier.width(8.dp))
                 Text(
                     time, style = MaterialTheme.typography.labelMedium,
-                    color = if (unread) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Medium,
+                    color = if (unread) strong else quiet,
+                    fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1,
                 )
             }
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(2.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 when {
-                    c.hasFailed -> Icon(Icons.Outlined.ErrorOutline, null, Modifier.padding(end = 4.dp).size(16.dp), tint = MaterialTheme.colorScheme.error)
-                    !c.draft.isNullOrBlank() -> Icon(Icons.Outlined.Drafts, null, Modifier.padding(end = 4.dp).size(16.dp), tint = MaterialTheme.colorScheme.tertiary)
-                    c.snippetFromMe && c.snippetStatus in MessageStatus.OUTGOING_PENDING -> Icon(Icons.Outlined.Schedule, null, Modifier.padding(end = 4.dp).size(16.dp))
+                    c.hasFailed -> Icon(Icons.Outlined.ErrorOutline, null, Modifier.padding(end = 4.dp).size(15.dp), tint = MaterialTheme.colorScheme.error)
+                    !c.draft.isNullOrBlank() -> Icon(Icons.Outlined.Drafts, null, Modifier.padding(end = 4.dp).size(15.dp), tint = MaterialTheme.colorScheme.tertiary)
+                    c.snippetFromMe && c.snippetStatus in MessageStatus.OUTGOING_PENDING -> Icon(Icons.Outlined.Schedule, null, Modifier.padding(end = 4.dp).size(15.dp), tint = quiet)
                 }
                 Text(
                     preview,
                     style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    color = if (unread) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    color = if (unread) strong else quiet,
+                    fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
                     modifier = Modifier.weight(1f),
                 )
                 if (unread) {
                     Spacer(Modifier.width(10.dp))
-                    Box(
-                        Modifier.clip(CircleShape).background(MaterialTheme.colorScheme.primary).padding(horizontal = 7.dp, vertical = 2.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(if (c.unreadCount > 99) "99+" else c.unreadCount.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimary)
-                    }
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
                 }
             }
             item.otpCode?.let { code ->
-                Spacer(Modifier.height(8.dp))
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.clip(CircleShape).clickable { onCopyCode(code) }.semantics { contentDescription = "Copy code $code" },
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                        .clickable { onCopyCode(code) }
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .semantics(mergeDescendants = true) { contentDescription = "Copy code $code" },
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(code, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer, letterSpacing = androidx.compose.ui.unit.TextUnit(2f, androidx.compose.ui.unit.TextUnitType.Sp))
-                        Spacer(Modifier.width(8.dp))
-                        Icon(Icons.Outlined.ContentCopy, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                    }
+                    Icon(Icons.Outlined.ContentCopy, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(6.dp))
+                    Text(code, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.5.sp)
                 }
             }
         }
@@ -539,7 +577,7 @@ private fun SelectionTopBar(
     TopAppBar(
         title = { Text("$count", style = MaterialTheme.typography.titleLarge, maxLines = 1) },
         navigationIcon = { IconButton(onClick = vm::clearSelection) { Icon(Icons.Filled.Close, "Clear selection") } },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
         actions = {
             if (view == InboxView.BLOCKED) {
                 TextButton(onClick = { vm.unblock() }) { Text("Unblock") }
@@ -608,14 +646,14 @@ private fun StatusBanners(status: InboxStatus, onSetDefault: () -> Unit) {
 @Composable
 private fun Banner(icon: ImageVector, text: String, action: String? = null, onAction: (() -> Unit)? = null, emphasis: Boolean = false) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         color = if (emphasis) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp),
     ) {
-        Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(12.dp))
-            Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Row(Modifier.padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp).heightIn(min = 32.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
             if (action != null && onAction != null) TextButton(onClick = onAction) { Text(action, fontWeight = FontWeight.SemiBold) }
         }
     }
@@ -623,9 +661,9 @@ private fun Banner(icon: ImageVector, text: String, action: String? = null, onAc
 
 @Composable
 private fun EmptyInbox(view: InboxView, importing: Boolean) {
-    Box(Modifier.fillMaxSize().padding(40.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxWidth().padding(horizontal = 40.dp, vertical = 96.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            if (view == InboxView.ALL) YarnLogo(size = 72.dp) else Icon(Icons.AutoMirrored.Outlined.Chat, null, Modifier.size(56.dp), tint = MaterialTheme.colorScheme.outline)
+            if (view == InboxView.ALL) YarnLogo(size = 56.dp) else Icon(Icons.AutoMirrored.Outlined.Chat, null, Modifier.size(44.dp), tint = MaterialTheme.colorScheme.outline)
             Spacer(Modifier.height(16.dp))
             Text(
                 when {
