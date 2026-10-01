@@ -65,13 +65,13 @@ Yarn works with SMS and MMS. Android does not allow third-party apps to use RCS 
 | Feature graphic (1024×500) | `feature-graphic.png` |
 | Phone screenshots (1080×1920) | `screenshot-1.png` … `screenshot-5.png` |
 
-## App content (Policy → App content)
+## App content (Policy and programmes → App content)
 
 **Privacy policy:** https://karanmittal01.github.io/Yarn/privacy.html
 
 **Ads:** No, my app does not contain ads.
 
-**App access:** All functionality is available without special access. (Google sign-in is optional and only for backup.)
+**Sign-in details** (formerly "App access"): **No**, no part of the app is restricted. (No Yarn account exists; Google sign-in is optional and only for backup; App lock is off by default.)
 
 **Content rating:** start the questionnaire, category **All other app types / Communication**.
 - Violence, sexuality, language, controlled substances, gambling: **No** to all
