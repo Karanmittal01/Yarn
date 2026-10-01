@@ -74,4 +74,14 @@ class EntityExtractorTest {
         assertThat(of("Call me on +1 (415) 555-0132 later", EntityType.PHONE).single().value).isEqualTo("+14155550132")
         assertThat(of("Deliver to 1600 Amphitheatre Parkway, Mountain View, CA 94043", EntityType.ADDRESS)).hasSize(1)
     }
+
+    @Test
+    fun referenceNumbersAreNotPhoneNumbers() {
+        val text = "HSBC: Rs 80.0 spent on your HSBC Credit Card ending 9578 at CRED on 01 Oct 2026 through UPI: 664017641271. Trxn. not done by you? Call 18002673456."
+        val phones = EntityExtractor().extract(text, 0L).filter { it.type == EntityType.PHONE }.map { it.value }
+        com.google.common.truth.Truth.assertThat(phones).containsExactly("18002673456")
+        val ref = EntityExtractor().extract("Paid Rs 500. UPI Ref No 512345678901. Call +914065118002 to report.", 0L)
+            .filter { it.type == EntityType.PHONE }.map { it.value }
+        com.google.common.truth.Truth.assertThat(ref).containsExactly("+914065118002")
+    }
 }

@@ -317,6 +317,8 @@ private fun linkify(
 private fun InsightChips(item: MessageWithAttachments, risky: Set<String>, onTranslate: () -> Unit, onRisky: (String) -> Unit) {
     val context = LocalContext.current
     val m = item.message
+    // Quick actions (copy, call, open, track…) only for recent messages; older ones stay as they are.
+    if (System.currentTimeMillis() - m.date > SUGGESTION_WINDOW_MS) return
     val entities = item.entities.distinctBy { it.type + it.value }
     val verdict = runCatching { SpamVerdict.valueOf(m.spamVerdict) }.getOrDefault(SpamVerdict.CLEAN)
     val chips = ArrayList<@Composable () -> Unit>()
@@ -385,3 +387,5 @@ private fun InsightChips(item: MessageWithAttachments, risky: Set<String>, onTra
         chips.forEach { it() }
     }
 }
+
+private const val SUGGESTION_WINDOW_MS = 24 * 60 * 60 * 1000L

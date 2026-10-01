@@ -238,6 +238,12 @@ class EntityExtractor(
     private fun phones(text: String): List<Entity> = PHONE.findAll(text).mapNotNull { m ->
         val digits = m.value.filter { it.isDigit() }
         if (digits.length !in 8..15) return@mapNotNull null
+        // Reference numbers are not phone numbers: "UPI: 664017641271", "Ref No 512…", "UTR …", "AWB …".
+        val before = text.substring(maxOf(0, m.range.first - 24), m.range.first).lowercase()
+        if (REFERENCE_BEFORE.containsMatchIn(before)) return@mapNotNull null
+        // A long unbroken digit run is an ID unless it carries a country code (+…, 91…, 0…) or is toll-free.
+        val plain = m.value.trim()
+        if (plain.all { it.isDigit() } && digits.length >= 12 && !digits.startsWith("91") && !digits.startsWith("0")) return@mapNotNull null
         val value = (if (m.value.trim().startsWith("+")) "+" else "") + digits
         Entity(EntityType.PHONE, m.value.trim(), value, m.range.first, m.range.first + m.value.trimEnd().length)
     }.toList()
@@ -422,6 +428,7 @@ class EntityExtractor(
             "\\b\\d{1,6}\\s+(?:[A-Z][A-Za-z0-9.']*\\s){1,4}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Ln|Lane|Dr|Drive|Ct|Court|Way|Pl|Place|Pkwy|Parkway|Hwy|Highway|Ter|Terrace|Cir|Circle)\\b\\.?" +
                 "(?:,?\\s+(?:Apt|Suite|Ste|Unit|#)\\s*[\\w-]+)?(?:,\\s*[A-Z][A-Za-z .]+)?(?:,\\s*[A-Z]{2}(?:\\s+\\d{5}(?:-\\d{4})?)?)?",
         )
+        private val REFERENCE_BEFORE = Regex("(?:upi|ref|utr|rrn|txn|trxn|transaction|a/c|acct|account|awb|order|pnr|folio|policy|id|no\\.?)\\s*(?:no\\.?|id|number|#)?\\s*[:#-]?\\s*$")
         private val PHONE = Regex("(?<![\\w+/])\\+?\\d[\\d\\s().-]{6,18}\\d(?![\\w/])")
 
         private val ISO_DATE = Regex("\\b(\\d{4})-(\\d{1,2})-(\\d{1,2})\\b")
