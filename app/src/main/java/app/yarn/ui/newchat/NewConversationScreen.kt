@@ -1,5 +1,13 @@
 package app.yarn.ui.newchat
 
+import androidx.compose.material.icons.outlined.PersonSearch
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -112,92 +120,208 @@ class NewConversationViewModel(private val c: AppContainer, initialRecipients: L
     }
 }
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun NewConversationScreen(vm: NewConversationViewModel, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     val query by vm.query.collectAsStateWithLifecycle()
     val recipients by vm.recipients.collectAsStateWithLifecycle()
     val results by vm.results.collectAsStateWithLifecycle()
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) vm.onPermission() }
+    NewConversationContent(
+        query = query,
+        recipients = recipients,
+        results = results,
+        hasContacts = vm.hasContacts(),
+        onQuery = { vm.query.value = it },
+        onAdd = vm::add,
+        onRemove = vm::remove,
+        onStart = { vm.start(onOpen) },
+        onRequestContacts = { permission.launch(Manifest.permission.READ_CONTACTS) },
+        onBack = onBack,
+    )
+}
+
+/** Stateless layout, also rendered by the screenshot tests. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun NewConversationContent(
+    query: String,
+    recipients: List<Recipient>,
+    results: List<ContactPhone>,
+    hasContacts: Boolean,
+    onQuery: (String) -> Unit,
+    onAdd: (String, String) -> Unit,
+    onRemove: (Recipient) -> Unit,
+    onStart: () -> Unit,
+    onRequestContacts: () -> Unit,
+    onBack: () -> Unit,
+    autoFocus: Boolean = true,
+) {
     // Derived from the live text so the "Send to" row always shows (and uses) exactly what was typed.
     val typedAddress = NewConversationViewModel.addressFrom(query)
     var dialpad by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) vm.onPermission() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    LaunchedEffect(Unit) { if (autoFocus) runCatching { focus.requestFocus() } }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("New conversation") },
+                title = { Text("New chat", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
             )
         },
         floatingActionButton = {
             if (recipients.size > 1 || (recipients.isNotEmpty() && query.isBlank())) {
-                ExtendedFloatingActionButton(onClick = { vm.start(onOpen) }, text = { Text(if (recipients.size > 1) "Start group" else "Next") }, icon = {})
+                ExtendedFloatingActionButton(
+                    onClick = onStart,
+                    text = { Text(if (recipients.size > 1) "Start group" else "Next", style = MaterialTheme.typography.titleMedium) },
+                    icon = {},
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                )
             }
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            FlowRow(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                recipients.forEach { r ->
-                    InputChip(
-                        selected = true, onClick = { vm.remove(r) }, label = { Text(r.name) },
-                        trailingIcon = { Icon(Icons.Outlined.Close, "Remove ${r.name}") },
-                    )
-                }
-            }
-            TextField(
-                value = query,
-                onValueChange = { vm.query.value = it },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).focusRequester(focus),
-                placeholder = { Text("Type a name, phone number or email") },
-                singleLine = true,
-                leadingIcon = { Text("To", Modifier.padding(start = 8.dp), style = MaterialTheme.typography.labelLarge) },
-                trailingIcon = {
-                    IconButton(onClick = { dialpad = !dialpad }) {
-                        Icon(if (dialpad) Icons.Outlined.Keyboard else Icons.Outlined.Dialpad, if (dialpad) "Use keyboard" else "Use dial pad")
-                    }
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = if (dialpad) KeyboardType.Phone else KeyboardType.Text, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { vm.typedAddress()?.let { vm.add(it, it) } }),
-                colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent),
-            )
-            LazyColumn(Modifier.fillMaxSize()) {
-                typedAddress?.let { typed ->
-                    item(key = "typed") {
-                        ListItem(
-                            headlineContent = { Text("Send to $typed") },
-                            supportingContent = { Text("Tap to start, or add more people") },
-                            leadingContent = { Avatar(typed, null, size = 40.dp) },
-                            trailingContent = { TextButton(onClick = { vm.add(typed, typed) }) { Text("Add") } },
-                            modifier = Modifier.clickable { if (recipients.isEmpty()) vm.start(onOpen) else vm.add(typed, typed) },
+            if (recipients.isNotEmpty()) {
+                FlowRow(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    recipients.forEach { r ->
+                        InputChip(
+                            selected = true, onClick = { onRemove(r) }, label = { Text(r.name, style = MaterialTheme.typography.labelLarge) },
+                            trailingIcon = { Icon(Icons.Outlined.Close, "Remove ${r.name}", Modifier.size(16.dp)) },
+                            shape = androidx.compose.foundation.shape.CircleShape,
                         )
                     }
                 }
-                if (!vm.hasContacts() && query.isNotBlank()) {
+            }
+            // One clean search pill, like Google Messages.
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .height(56.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(app.yarn.ui.inbox.inboxHeaderColor())
+                    .padding(start = 20.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("To", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(14.dp))
+                androidx.compose.foundation.text.BasicTextField(
+                    value = query,
+                    onValueChange = onQuery,
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, color = MaterialTheme.colorScheme.onSurface),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
+                    keyboardOptions = KeyboardOptions(keyboardType = if (dialpad) KeyboardType.Phone else KeyboardType.Text, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { typedAddress?.let { onAdd(it, it) } }),
+                    modifier = Modifier.weight(1f).focusRequester(focus),
+                    decorationBox = { inner ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (query.isEmpty()) {
+                                Text(
+                                    "Name, number or email",
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                )
+                            }
+                            inner()
+                        }
+                    },
+                )
+                IconButton(onClick = { dialpad = !dialpad }) {
+                    Icon(if (dialpad) Icons.Outlined.Keyboard else Icons.Outlined.Dialpad, if (dialpad) "Use keyboard" else "Use dial pad")
+                }
+            }
+            if (query.isBlank() && recipients.isEmpty()) {
+                Column(
+                    Modifier.fillMaxWidth().padding(top = 72.dp, start = 40.dp, end = 40.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Icon(Icons.Outlined.PersonSearch, null, Modifier.size(44.dp), tint = MaterialTheme.colorScheme.outline)
+                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        "Start typing a name or number",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Add more people to start a group chat.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp)) {
+                typedAddress?.let { typed ->
+                    item(key = "typed") {
+                        RecipientRow(
+                            title = "Send to $typed",
+                            subtitle = if (recipients.isEmpty()) "Tap to start" else "Tap to add",
+                            avatar = { Avatar(typed, null, size = 48.dp, neutral = true) },
+                            action = "Add",
+                            onAction = { onAdd(typed, typed) },
+                            onClick = { if (recipients.isEmpty()) onStart() else onAdd(typed, typed) },
+                        )
+                    }
+                }
+                if (!hasContacts && query.isNotBlank()) {
                     item {
-                        ListItem(
-                            headlineContent = { Text("Show your contacts") },
-                            supportingContent = { Text("Allow contacts access to search by name. Contacts stay on your phone.") },
-                            trailingContent = { TextButton(onClick = { permission.launch(Manifest.permission.READ_CONTACTS) }) { Text("Allow") } },
+                        RecipientRow(
+                            title = "Search your contacts",
+                            subtitle = "Allow access to find people by name. Contacts stay on your phone.",
+                            avatar = { Avatar("?", null, size = 48.dp, neutral = true, icon = Icons.Outlined.PersonSearch) },
+                            action = "Allow",
+                            onAction = onRequestContacts,
+                            onClick = onRequestContacts,
                         )
                     }
                 }
                 items(results, key = { "${it.contactId}-${it.number}" }) { contact ->
-                    ListItem(
-                        headlineContent = { Text(contact.name) },
-                        supportingContent = { Text(contact.number) },
-                        leadingContent = { Avatar(contact.name, contact.photoUri, size = 40.dp) },
-                        trailingContent = { TextButton(onClick = { vm.add(contact.name, contact.number) }) { Text("Add to group") } },
-                        modifier = Modifier.clickable {
+                    RecipientRow(
+                        title = contact.name,
+                        subtitle = contact.number,
+                        avatar = { Avatar(contact.name, contact.photoUri, size = 48.dp) },
+                        action = "Add",
+                        onAction = { onAdd(contact.name, contact.number) },
+                        onClick = {
                             // First pick opens the chat right away; later picks build a group.
-                            vm.add(contact.name, contact.number)
-                            if (recipients.isEmpty()) vm.start(onOpen)
+                            onAdd(contact.name, contact.number)
+                            if (recipients.isEmpty()) onStart()
                         },
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RecipientRow(
+    title: String,
+    subtitle: String,
+    avatar: @Composable () -> Unit,
+    action: String,
+    onAction: () -> Unit,
+    onClick: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = 20.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        avatar()
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp), color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+        }
+        TextButton(onClick = onAction) { Text(action, style = MaterialTheme.typography.labelLarge) }
     }
 }

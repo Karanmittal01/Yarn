@@ -25,7 +25,7 @@ object CategoryRules {
     private val RULES = listOf(
         // ---- One-time codes ---------------------------------------------------------------------
         r(Category.OTP, 3.5f, "Mentions a one-time password", "otp", "one[- ]time (?:password|passcode|pin|code)", "verification code", "security code",
-            "login code", "auth(?:entication)? code", "2fa", "passcode", "is your (?:\\w+ )?code", "code is", "code for (?:login|logging in|verification|sign[- ]?in)"),
+            "login code", "auth(?:entication)? code", "2fa", "passcode", "(?:delivery |secret |security |ride )?pin is", "code to verify", "is your (?:\\w+ )?code", "code is", "code for (?:login|logging in|verification|sign[- ]?in)"),
         r(Category.OTP, 1.5f, "Asks you not to share a code", "do not share", "don't share", "dont share", "never share", "valid (?:for|till) \\d+ ?(?:min|minutes|mins|seconds)"),
 
         // ---- Banks, cards, investments ----------------------------------------------------------
@@ -35,43 +35,53 @@ object CategoryRules {
         r(Category.BANKING, 1.8f, "Mentions a card or bank account", "credit card", "debit card", "card ending", "card xx\\d+", "savings account", "current account", "net ?banking",
             "statement", "emi", "loan account", "cheque", "kyc", "home branch", "card (?:has been |is )?(?:blocked|activated|dispatched|delivered)", "bank"),
         r(Category.BANKING, 2.2f, "Mentions investments", "demat", "ipo", "fpo", "sip", "mutual fund", "folio", "nav", "dividend", "allotment", "allotted",
-            "securities", "shares", "trading account", "funds (?:of $MONEY )?(?:added|withdrawn|credited)", "margin"),
+            "securities", "shares", "trading account", "order to (?:buy|sell)", "(?:buy|sell) order", "executed", "traded", "funds (?:of $MONEY )?(?:added|withdrawn|credited)", "margin"),
 
-        r(Category.PAYMENTS, 2.5f, "Mentions a payment", "upi", "paid to", "paid $MONEY to", "payment (?:of|received|successful|failed|is successful)", "sent to",
-            "received from", "money request", "collect request", "wallet", "vpa", "transaction id", "txn id", "ref no", "upi ref", "utr"),
+        r(Category.PAYMENTS, 2.5f, "Mentions a payment", "upi", "paid to", "paid $MONEY", "payment (?:of|received|successful|failed|is successful|done)", "sent to",
+            "received from", "money request", "collect request", "wallet", "vpa", "transaction id", "txn id", "ref no", "upi ref", "utr", "autopay",
+            "$MONEY (?:has been |is |was )?(?:debited|credited|deducted|paid|received|added|refunded|transferred)",
+            "(?:debited|credited|deducted|added|refunded) (?:from|to|in|into) your \\w+ (?:money|wallet|pay|balance|account)",
+            "\\w+ (?:money|pay|wallet) (?:balance|is credited|has been credited|credited|debited)", "(?:money|pay) balance",
+            "refund (?:of|for|has been|is|was|amount)", "refunded", "cashback (?:of|has been|is|credited|received|added)", "cashback credited",
+            "gift card (?:of|worth|has been|is|was|added|credited|redeemed|balance)", "gift card has", "added to your (?:\\w+ )?(?:account|wallet|balance)",
+            "balance (?:is|of)", "recharge (?:of|successful|is successful|done)", "fastag",
+            "(?:has been |was |is )?charged (?:to|on) your", "charged $MONEY", "$MONEY (?:has been |was )?charged"),
 
         r(Category.BILLS, 2.5f, "Mentions a bill or due date", "bill (?:of|for|is|amount|generated)", "due date", "due on", "is due", "amount due", "amt due", "overdue",
             "postpaid", "electricity", "gas bill", "water bill", "broadband", "premium (?:of $MONEY )?(?:for|is|due)", "insurance premium", "autopay", "auto-debit",
             "mandate", "subscription renew(?:s|al|ed)", "plan expires", "validity (?:ends|expires)"),
 
         // ---- Orders, food, groceries, deliveries ------------------------------------------------
-        r(Category.SHOPPING, 3f, "Talks about your order", "your order", "your (?:\\w+ ){1,2}order", "order (?:#|no\\.?|id) ?\\w+",
+        r(Category.SHOPPING, 3f, "Talks about your order", "your order(?!s| now| to (?:buy|sell))", "your (?!next |first )(?:\\w+ ){1,2}order(?!s| now| to (?:buy|sell))", "order (?:#|no\\.?|id|number) ?[a-z]*\\d[\\w-]*",
             "order (?:has been |is |was )?(?:placed|confirmed|received|packed|ready|cancelled|canceled|returned|refunded|on (?:its|the) way)",
             "thank you for (?:ordering|shopping|your order|your purchase)", "thanks for (?:ordering|shopping)", "items? (?:in|from) your order",
-            "order total", "order value", "invoice", "refund (?:of|for|initiated|processed|has been|is|credited)", "return (?:request|pickup|initiated|of)",
-            "replacement", "rate your (?:order|delivery|experience|meal|purchase)", "enjoy your (?:meal|food|order)", "gift card"),
+            "order total", "order value", "invoice", "return (?:request|pickup|initiated|of)", "exchange (?:request|pickup)",
+            "replacement", "rate your (?:order|delivery|experience|meal|purchase)", "enjoy your (?:meal|food|order)", "being prepared", "is preparing your"),
         r(Category.DELIVERY, 2.8f, "Mentions a shipment", "shipped", "out for delivery", "delivered", "dispatched", "in transit", "tracking", "track (?:your|it)",
             "awb", "courier", "parcel", "package", "shipment", "delivery (?:partner|agent|executive|associate|attempt|scheduled|slot|boy)",
-            "arriving (?:today|tomorrow|by|in)", "will (?:arrive|reach you)", "scheduled for delivery", "picked up"),
+            "arriving (?:today|tomorrow|by|in)", "will (?:arrive|reach you)", "scheduled for delivery", "picked up",
+            "unable to deliver", "could not deliver", "couldn't deliver", "delivery (?:failed|attempted|was attempted|rescheduled)", "attempted delivery",
+            "on (?:its|the) way", "reached your location", "near your location", "valet"),
 
         // ---- Travel ---------------------------------------------------------------------------
         r(Category.TRAVEL, 2.8f, "Mentions travel", "flight", "boarding", "pnr", "check-?in", "gate", "departure", "arrival", "train", "coach", "berth", "hotel",
-            "itinerary", "cab", "ride", "your driver", "driver \\w+", "uber", "ola", "rapido", "airport", "terminal", "e-ticket", "ticket booked", "bus ticket"),
+            "itinerary", "cab", "ride", "captain", "bike [a-z]{2}\\d", "your driver", "driver \\w+", "uber", "ola", "rapido", "airport", "terminal", "e-ticket", "ticket booked", "bus ticket"),
 
         // ---- Marketing ------------------------------------------------------------------------
         r(Category.PROMOTIONS, 2.6f, "Looks like marketing", "sale", "sale is live", "offer", "offers", "discount", "discounts", "\\d+ ?% ?off", "up ?to \\d+ ?%",
             "flat (?:$MONEY|\\d+ ?%)", "$MONEY off", "coupon", "promo ?code", "use code", "deal", "deals", "loot", "lowest price", "best price", "starting (?:at|from|@)",
-            "cashback offer", "(?:get|earn|win|assured|extra) (?:up ?to )?(?:\\d+ ?% )?cashback", "voucher", "freebie", "free (?:delivery|shipping|gift|trial)",
+            "cashback offer", "(?:get|earn|win|assured|extra) (?:up ?to )?(?:$MONEY |\\d+ ?% )?cashback", "cashback (?:of )?up ?to", "get \\d+ ?% back", "voucher", "freebie", "free (?:delivery|shipping|gift|trial)",
             "bogo", "buy (?:1|one) get (?:1|one)", "combo", "chhoot", "bumper", "bonanza", "big billion", "great indian festival", "end of (?:season|reason)", "eoss",
             "mega", "festive", "diwali (?:sale|offer|deal)s?"),
         r(Category.PROMOTIONS, 1.8f, "Asks you to buy or sign up", "shop now", "buy now", "order now", "book now", "apply now", "grab (?:now|it|yours)?", "explore now",
             "download (?:the )?app", "install now", "click to apply", "open now", "recharge now", "subscribe now", "visit (?:our|your nearest)", "don't miss", "dont miss",
-            "abhi order", "t&c", "t&cs", "tnc", "\\*t&c apply"),
+            "abhi order", "t&c", "t&cs", "tnc", "\\*t&c apply", "pay now", "add money", "try now", "check it out", "claim now"),
         r(Category.PROMOTIONS, 1.6f, "Creates urgency to buy", "hurry", "limited (?:time|period|stock|offer)", "ends (?:today|tonight|soon|at midnight|in)", "last (?:day|chance|few hours)",
             "today only", "only today", "sirf aaj", "missing out", "your cart misses you", "left in your cart", "back in stock", "new arrivals?", "just launched",
-            "craving", "hungry\\?"),
+            "craving", "hungry\\?", "new on \\w+", "now available", "delivered in \\d+ ?(?:min|mins|minutes)", "in just \\d+ ?(?:min|mins|minutes)"),
         r(Category.PROMOTIONS, 1.6f, "Advertises a loan, card or plan", "pre-?approved", "eligible for", "instant (?:loan|personal loan|credit)", "loan (?:of )?up ?to",
             "lifetime free", "get (?:an? )?(?:loan|credit card|card)", "upgrade to", "interest rates? (?:starting|as low)", "unlimited (?:5g|data|calls)",
+            "5g unlimited", "with $MONEY plan", "$MONEY plan", "recharge (?:before|with)",
             "(?:\\d+ )?months? (?:of )?\\w+ free", "earn \\d+ ?% cashback"),
         r(Category.PROMOTIONS, 1.2f, "Has an opt-out footer", "unsubscribe", "opt[- ]?out", "reply stop", "txt stop", "sms stop", "to stop (?:receiving|these)"),
 
@@ -89,6 +99,17 @@ object CategoryRules {
     )
 
     private val CATEGORIES = Category.entries.filter { it != Category.SPAM }
+
+    // Money actually moved (not just a price in an advert).
+    private val MONEY_LEAD = Regex(
+        "(?i)(?:debited|credited|deducted|refunded|refund (?:of|for|has|is|amount)|\\bpaid\\b|payment (?:of|received|successful|is successful|done|failed)|" +
+            "\\bspent\\b|charged|transferred|withdrawn|gift card (?:has|of|worth|is)|\\b\\w+ money (?:is|has)|cashback (?:of|has been|credited|is credited)|" +
+            "added to your \\w* ?(?:balance|wallet|account))",
+    )
+    private val ORDER_LEAD = Regex(
+        "(?i)(?:your (?!next |first )(?:\\w+ ){0,2}order(?!s| now| to (?:buy|sell))|order (?:#|no\\.|id|number|is|has|was|of|for|from|\\d)|shipped|shipment|dispatched|packed|" +
+            "out for delivery|return pickup|parcel|package|courier|unable to deliver|(?:has been|was|is|got) delivered|delivered (?:to|at|today|successfully)|order delivered)",
+    )
     private val SERVICE = listOf(Category.OTP, Category.BANKING, Category.PAYMENTS, Category.BILLS, Category.SHOPPING, Category.DELIVERY, Category.TRAVEL)
 
     data class Scores(val probabilities: Map<Category, Float>, val reasons: Map<Category, List<String>>) {
@@ -168,18 +189,14 @@ object CategoryRules {
                     // "Anything from the bank" is a transaction unless it is clearly an advert.
                     add(brand, 3f, "Sent by $name")
                 }
-                else -> add(brand, 2.2f, "Sent by $name")
-            }
-            if (brand == Category.SHOPPING || brand == Category.DELIVERY) {
-                // Refunds to Swiggy Money or a shop wallet belong with the order, not the bank.
-                scale(Category.BANKING, 0.4f); scale(Category.PAYMENTS, 0.4f)
+                else -> add(brand, 1.2f, "Sent by $name")
             }
         }
 
         when (sender.commercialSuffix) {
             CommercialSuffix.PROMOTIONAL -> {
-                add(Category.PROMOTIONS, 6f, "Sender header is marked promotional (-P)")
-                for (c in SERVICE) if (c != Category.OTP) scale(c, 0.25f)
+                // Operators only allow advertising on -P headers, so this is always an offer.
+                add(Category.PROMOTIONS, 40f, "Sender header is marked promotional (-P)")
             }
             CommercialSuffix.TRANSACTIONAL -> {
                 scale(Category.PROMOTIONS, 0.2f)
@@ -187,6 +204,16 @@ object CategoryRules {
             }
             CommercialSuffix.GOVERNMENT -> add(Category.UPDATES, 2f, "Sender header is marked government (-G)")
             CommercialSuffix.SERVICE, null -> Unit
+        }
+
+        // When a message talks about both money and an order, its opening line says what it is
+        // ("Payment of Rs 185 from Zomato Money…" is a transaction; "Your order is on the way…" is shopping).
+        // Only for businesses (people mention money and orders casually) and never over a real code.
+        if (sender.isBusinessLike && otp == null) {
+            val moneyAt = MONEY_LEAD.find(text)?.range?.first
+            val orderAt = ORDER_LEAD.find(text)?.range?.first
+            if (moneyAt != null && (orderAt == null || moneyAt < orderAt)) add(Category.PAYMENTS, 5f, "Money moved")
+            if (orderAt != null && (moneyAt == null || orderAt < moneyAt)) add(Category.SHOPPING, 5f, "About your order")
         }
 
         // Real activity beats marketing lines in footers ("Get 10% cashback on your next order").

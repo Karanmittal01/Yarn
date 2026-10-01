@@ -68,10 +68,10 @@ class IndianSmsCorpusTest {
         c("JD-BLNKIT-S", "Your Blinkit order #12345 has been packed and will arrive in 8 minutes.", CategoryGroup.SHOPPING),
         c("AD-BIGBSK-S", "Your bigbasket order BB123456 is scheduled for delivery tomorrow between 7-9 AM.", CategoryGroup.SHOPPING),
         c("VM-DLHVRY-S", "Your shipment AWB 1234567890 from Myntra is out for delivery today. Delivery agent: Ramesh", CategoryGroup.SHOPPING),
-        c("AX-MYNTRA-S", "Refund of Rs 1,299 for your return of order 1234567 has been initiated to your original payment method.", CategoryGroup.SHOPPING),
+        c("AX-MYNTRA-S", "Refund of Rs 1,299 for your return of order 1234567 has been initiated to your original payment method.", CategoryGroup.TRANSACTIONS),
         c("VM-NYKAAF-S", "Your Nykaa order NYK1234567 has been dispatched and will reach you by 9 Mar.", CategoryGroup.SHOPPING),
         c("AD-JIOMRT-S", "Your JioMart order OD12345 is confirmed. We will notify you when it is shipped.", CategoryGroup.SHOPPING),
-        c("VK-SWIGGY-S", "Rs 89 has been credited to your Swiggy Money as a refund for order #1234567.", CategoryGroup.SHOPPING),
+        c("VK-SWIGGY-S", "Rs 89 has been credited to your Swiggy Money as a refund for order #1234567.", CategoryGroup.TRANSACTIONS),
         c("AX-XPRSBS-S", "Your XpressBees shipment 13579246801 is in transit and will be delivered by tomorrow.", CategoryGroup.SHOPPING),
 
         // ---- Updates: travel, government, telecom service notices, appointments ----------------

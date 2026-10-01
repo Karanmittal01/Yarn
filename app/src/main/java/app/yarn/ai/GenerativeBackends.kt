@@ -104,14 +104,14 @@ class GeminiNanoService(@Suppress("unused") private val context: Context) {
      */
     suspend fun classify(sender: String, header: String, text: String): String? {
         val prompt = """
-            You sort SMS for an Indian messaging app. Pick exactly one group for the message.
+            You sort SMS for an Indian messaging app by WHAT THE MESSAGE IS, never by which company sent it.
             PERSONAL: written by a person to you (friends, family, colleagues, a neighbour).
-            OTP: contains a one-time password or verification/login code.
-            TRANSACTIONS: money actually moved or is owed: bank debit/credit, card spend, UPI payment, balance, card or account service notice from a bank, bill or premium due, investments.
-            SHOPPING: an order you placed: confirmed, packed, shipped, out for delivery, delivered, returned, refunded. Includes groceries, food delivery, medicines and couriers.
+            OTP: contains a one-time password, verification code, login code or delivery PIN.
+            TRANSACTIONS: money moved or is owed: debited, credited, paid, spent, charged, refunded, cashback credited, wallet or gift card balance, bill or EMI due, investments. This includes payments from Zomato, Swiggy, Amazon, Uber or any app, not just banks.
+            SHOPPING: the progress of an order: placed, confirmed, packed, shipped, out for delivery, delivered, failed delivery, return pickup, cancelled.
             UPDATES: travel bookings, rides, appointments, government notices, telecom or app service notices.
-            OFFERS: advertising: sales, discounts, coupons, cashback offers, loan or card offers, new plans, "order now", "shop now". A shop or bank sending an advert is OFFERS, not SHOPPING or TRANSACTIONS.
-            The sender header ends in -P for promotional, -S for service, -T for transactional, -G for government.
+            OFFERS: advertising: sales, discounts, coupon codes, cashback offers, loan or card offers, new plans, "order now", "shop now", "apply now".
+            The sender header ends in -P (promotional, always OFFERS), -S (service), -T (transactional) or -G (government); for -S and -T read the message itself.
             Sender: $sender ($header)
             Message: ${text.take(600)}
             Answer with one word: PERSONAL, OTP, TRANSACTIONS, SHOPPING, UPDATES or OFFERS.

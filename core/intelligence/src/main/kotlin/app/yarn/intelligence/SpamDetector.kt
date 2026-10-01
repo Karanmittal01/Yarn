@@ -43,7 +43,7 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
         s(0.4f, "Electricity/utility disconnection threat", true,
             "(?:electricity|power|gas|connection) (?:will be |is )?(?:disconnected|cut)", "disconnection (?:tonight|today)"),
         s(0.35f, "Urgent pressure language", false,
-            "urgent", "immediately", "act now", "final (?:notice|warning|reminder)", "within 24 ?h(?:ou)?rs", "expires? today", "last chance", "respond now"),
+            "urgent", "immediately", "act now", "call now", "call immediately", "final (?:notice|warning|reminder)", "within 24 ?h(?:ou)?rs", "expires? today", "last chance", "respond now"),
         s(0.3f, "Pushes you to click a link", false,
             "click (?:here|the link|below|on the link|now)", "tap (?:here|the link)", "visit (?:the )?link", "open (?:the )?link", "log ?in (?:here|now|at)"),
         s(0.25f, "Free-gift or loan bait", false,

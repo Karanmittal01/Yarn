@@ -157,4 +157,17 @@ class UiSnapshotTest {
 
     @Test fun defaultPromptLight() = animatedShot(false, "9_default_prompt_light") { app.yarn.ui.inbox.DefaultAppPromptContent({}, {}) }
     @Test fun defaultPromptDark() = animatedShot(true, "10_default_prompt_dark") { app.yarn.ui.inbox.DefaultAppPromptContent({}, {}) }
+    private fun newChat(query: String) = shot(true, if (query.isEmpty()) "11_new_chat_empty" else "12_new_chat_typing") {
+        app.yarn.ui.newchat.NewConversationContent(
+            query = query, recipients = emptyList(),
+            results = if (query.isEmpty()) emptyList() else listOf(
+                app.yarn.data.contacts.ContactPhone(1, "Rahul Verma", "+91 98187 16240", "Mobile", null, false),
+                app.yarn.data.contacts.ContactPhone(2, "Rahul Office", "+91 99100 22334", "Work", null, false),
+            ),
+            hasContacts = true, onQuery = {}, onAdd = { _, _ -> }, onRemove = {}, onStart = {}, onRequestContacts = {}, onBack = {}, autoFocus = false,
+        )
+    }
+
+    @Test fun newChatEmpty() = newChat("")
+    @Test fun newChatTyping() = newChat("9818716240")
 }
