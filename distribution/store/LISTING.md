@@ -7,7 +7,7 @@ Images are in this folder.
 
 **App name** (max 30)
 ```
-Yarn: Smart SMS & OTP
+Yarn - Smart Messaging
 ```
 
 **Short description** (max 80)
