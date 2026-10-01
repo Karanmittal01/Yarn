@@ -233,6 +233,8 @@ class ConversationRepository(
     suspend fun setPreferredSim(conversationId: Long, subId: Int) = db.conversations().setPreferredSub(conversationId, subId)
     suspend fun rename(conversationId: Long, title: String?) = db.conversations().setCustomTitle(conversationId, title?.takeIf { it.isNotBlank() })
     suspend fun saveDraft(conversationId: Long, text: String) {
+        val current = db.conversations().get(conversationId)?.draft.orEmpty()
+        if (current == text.ifBlank { "" }) return // unchanged: don't bump the conversation to the top
         db.conversations().setDraft(conversationId, text.ifBlank { null }, System.currentTimeMillis())
         db.conversations().refresh(conversationId)
     }

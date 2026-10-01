@@ -32,6 +32,7 @@ import app.yarn.notifications.Notifier
 import app.yarn.telephony.DefaultSmsApp
 import app.yarn.telephony.SimManager
 import app.yarn.telephony.TelephonyStore
+import app.yarn.ui.conversation.ShareHolder
 import app.yarn.work.MaintenanceWorker
 import app.yarn.work.SendWorker
 import app.yarn.work.SyncWorker
@@ -72,6 +73,7 @@ class AppContainer(val app: Application) {
     val localLlm by lazy { LocalLlmService(app) }
     val assistant by lazy { AssistantService(settings, nano, localLlm, SelfHostedAiService(), SmartReplyService(), language, mlEntities) }
     val backup by lazy { BackupManager(app, db, store, sync, providerLock) }
+    val shareHolder = ShareHolder()
 
     private val _isDefaultSmsApp = MutableStateFlow(false)
     val isDefaultSmsApp: StateFlow<Boolean> = _isDefaultSmsApp.asStateFlow()

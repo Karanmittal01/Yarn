@@ -202,20 +202,22 @@ class MessageSender(
 
         val providerIds = providerLock.withLock {
             val existing = listOfNotNull(m.providerId) + m.extraProviderIds.orEmpty().split(',').mapNotNull { it.toLongOrNull() }
-            if (existing.size == recipients.size) {
+            val ids = if (existing.size == recipients.size) {
                 existing.forEach { store.updateSmsType(it, Telephony.Sms.MESSAGE_TYPE_OUTBOX) }
                 existing
             } else {
                 recipients.map { r -> store.insertOutgoingSms(r, m.body, now, subId, m.conversationId, m.deliveryReport) ?: -1L }
             }
+            // Record provider ids before releasing the lock so an import can't duplicate the row.
+            db.messages().update(
+                m.copy(
+                    status = MessageStatus.SENDING, attempts = attempt, subId = subId, date = if (m.status == MessageStatus.SCHEDULED || m.status == MessageStatus.DELAYED) now else m.date,
+                    providerId = ids.firstOrNull()?.takeIf { it > 0 }, extraProviderIds = ids.drop(1).filter { it > 0 }.joinToString(",").ifEmpty { null },
+                    partsTotal = parts.size * recipients.size, partsSent = 0, partsFailed = 0, partsDelivered = 0, nextAttemptAt = now,
+                ),
+            )
+            ids
         }
-        db.messages().update(
-            m.copy(
-                status = MessageStatus.SENDING, attempts = attempt, subId = subId, date = if (m.status == MessageStatus.SCHEDULED || m.status == MessageStatus.DELAYED) now else m.date,
-                providerId = providerIds.firstOrNull()?.takeIf { it > 0 }, extraProviderIds = providerIds.drop(1).filter { it > 0 }.joinToString(",").ifEmpty { null },
-                partsTotal = parts.size * recipients.size, partsSent = 0, partsFailed = 0, partsDelivered = 0, nextAttemptAt = now,
-            ),
-        )
         db.conversations().refresh(m.conversationId)
 
         var failedImmediately = 0
@@ -381,12 +383,19 @@ class MessageSender(
                 subject = m.subject, dateEpochSeconds = now / 1000, deliveryReport = m.deliveryReport,
             ),
         )
-        val providerId = providerLock.withLock {
-            m.providerId?.also { store.updateMmsBox(it, Telephony.Mms.MESSAGE_BOX_OUTBOX) } ?: store.persistMms(
+        providerLock.withLock {
+            val providerId = m.providerId?.also { store.updateMmsBox(it, Telephony.Mms.MESSAGE_BOX_OUTBOX) } ?: store.persistMms(
                 box = Telephony.Mms.MESSAGE_BOX_OUTBOX, threadId = m.conversationId, from = null, recipients = recipients,
                 subject = m.subject, dateMillis = now, parts = parts.map { PartToStore(it.contentType, it.data, it.fileName, it.contentId, null) },
                 subId = subId, read = true, deliveryReport = m.deliveryReport,
             )?.id
+            db.messages().update(
+                m.copy(
+                    status = MessageStatus.SENDING, attempts = attempt, subId = subId, providerId = providerId, partsTotal = 1,
+                    partsSent = 0, partsFailed = 0, nextAttemptAt = now,
+                    date = if (m.status == MessageStatus.SCHEDULED || m.status == MessageStatus.DELAYED) now else m.date,
+                ),
+            )
         }
         val file = File(MediaTools.mmsDir(context), "send-${m.id}-$attempt.pdu").apply { writeBytes(pdu) }
         val contentUri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
@@ -396,13 +405,6 @@ class MessageSender(
             .putExtra(EXTRA_ATTEMPT, attempt)
             .putExtra(EXTRA_FILE, file.absolutePath)
         val pi = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
-        db.messages().update(
-            m.copy(
-                status = MessageStatus.SENDING, attempts = attempt, subId = subId, providerId = providerId, partsTotal = 1,
-                partsSent = 0, partsFailed = 0, nextAttemptAt = now,
-                date = if (m.status == MessageStatus.SCHEDULED || m.status == MessageStatus.DELAYED) now else m.date,
-            ),
-        )
         db.conversations().refresh(m.conversationId)
         try {
             sims.smsManager(subId).sendMultimediaMessage(context, contentUri, null, null, pi)

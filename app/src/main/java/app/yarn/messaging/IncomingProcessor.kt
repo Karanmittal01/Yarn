@@ -69,20 +69,20 @@ class IncomingProcessor(
         }
         val now = System.currentTimeMillis()
         val dateSent = first.timestampMillis.takeIf { it > 0 } ?: now
-        val (providerId, threadId) = providerLock.withLock {
-            store.insertIncomingSms(address, body, now, dateSent, subId, read = false)
-        } ?: run {
+        // Provider row and our row are written under one lock so a concurrent import can't duplicate it.
+        val (id, threadId) = providerLock.withLock {
+            val inserted = store.insertIncomingSms(address, body, now, dateSent, subId, read = false)
             // Not the default SMS app (or provider unavailable): keep a local copy so nothing is lost.
-            null to runCatching { providerLock.withLock { store.threadIdFor(setOf(address)) } }.getOrElse { -address.hashCode().toLong() }
+            val threadId = inserted?.second ?: runCatching { store.threadIdFor(setOf(address)) }.getOrElse { -address.hashCode().toLong() }
+            conversations.ensure(threadId, listOf(address))
+            db.messages().insert(
+                MessageEntity(
+                    conversationId = threadId, kind = MessageKind.SMS, providerId = inserted?.first, address = address, body = body,
+                    date = now, dateSent = dateSent, outgoing = false, status = MessageStatus.RECEIVED, subId = subId,
+                    read = false, seen = false,
+                ),
+            ) to threadId
         }
-        conversations.ensure(threadId, listOf(address))
-        val id = db.messages().insert(
-            MessageEntity(
-                conversationId = threadId, kind = MessageKind.SMS, providerId = providerId, address = address, body = body,
-                date = now, dateSent = dateSent, outgoing = false, status = MessageStatus.RECEIVED, subId = subId,
-                read = false, seen = false,
-            ),
-        )
         afterIncoming(id, threadId, forceSpam = block == ConversationRepository.Block.FILTER)
     }
 
@@ -215,38 +215,37 @@ class IncomingProcessor(
         val date = conf.dateEpochSeconds?.times(1000) ?: m.date
         val parts = conf.parts.map(PartToStore::from)
 
-        val stored = providerLock.withLock {
+        val text = conf.parts.filter { it.isText }.joinToString("\n") { it.text().trim() }.trim()
+        val threadId = providerLock.withLock {
             val threadId = runCatching { store.threadIdFor(participants.toSet()) }.getOrDefault(m.conversationId)
             val saved = store.persistMms(
                 box = Telephony.Mms.MESSAGE_BOX_INBOX, threadId = threadId, from = from, recipients = others,
                 subject = conf.subject, dateMillis = date, parts = parts, subId = m.subId, read = false,
                 messageId = conf.messageId, transactionId = conf.transactionId ?: m.mmsTransactionId, contentLocation = m.mmsContentLocation,
             )
-            threadId to saved
+            conversations.ensure(threadId, participants)
+            val attachments = saved?.partUris?.filter { (p, _) -> !p.isText && !p.isSmil }?.map { (p, uri) ->
+                AttachmentEntity(messageId = messageId, mimeType = p.contentType, uri = uri.toString(), fileName = p.name, size = p.data.size.toLong())
+            } ?: conf.parts.filter { !it.isText && !it.isSmil }.mapIndexedNotNull { i, p ->
+                // Provider write failed: keep the media in private storage so the user still sees it.
+                val f = File(MediaTools.outboxDir(context), "in-$messageId-$i-${p.displayName ?: "part"}".replace(Regex("[^A-Za-z0-9._-]"), "_"))
+                runCatching { f.writeBytes(p.data) }.getOrNull() ?: return@mapIndexedNotNull null
+                AttachmentEntity(messageId = messageId, mimeType = p.contentType, uri = Uri.fromFile(f).toString(), fileName = p.displayName, size = p.data.size.toLong())
+            }
+            db.messages().deleteAttachments(messageId)
+            if (attachments.isNotEmpty()) db.messages().insertAttachments(attachments)
+            db.messages().update(
+                m.copy(
+                    conversationId = threadId, providerId = saved?.id, address = from, body = text, subject = conf.subject,
+                    date = date, status = MessageStatus.RECEIVED, hasAttachments = attachments.isNotEmpty(), errorCode = 0,
+                    mmsMessageId = conf.messageId, analyzed = false,
+                ),
+            )
+            threadId
         }
-        val (threadId, saved) = stored
-        conversations.ensure(threadId, participants)
-        val text = conf.parts.filter { it.isText }.joinToString("\n") { it.text().trim() }.trim()
-        val attachments = saved?.partUris?.filter { (p, _) -> !p.isText && !p.isSmil }?.map { (p, uri) ->
-            AttachmentEntity(messageId = messageId, mimeType = p.contentType, uri = uri.toString(), fileName = p.name, size = p.data.size.toLong())
-        } ?: conf.parts.filter { !it.isText && !it.isSmil }.mapIndexedNotNull { i, p ->
-            // Provider write failed: keep the media in private storage so the user still sees it.
-            val f = File(MediaTools.outboxDir(context), "in-$messageId-$i-${p.displayName ?: "part"}".replace(Regex("[^A-Za-z0-9._-]"), "_"))
-            runCatching { f.writeBytes(p.data) }.getOrNull() ?: return@mapIndexedNotNull null
-            AttachmentEntity(messageId = messageId, mimeType = p.contentType, uri = Uri.fromFile(f).toString(), fileName = p.displayName, size = p.data.size.toLong())
-        }
-        db.messages().deleteAttachments(messageId)
-        if (attachments.isNotEmpty()) db.messages().insertAttachments(attachments)
-        db.messages().update(
-            m.copy(
-                conversationId = threadId, providerId = saved?.id, address = from, body = text, subject = conf.subject,
-                date = date, status = MessageStatus.RECEIVED, hasAttachments = attachments.isNotEmpty(), errorCode = 0,
-                mmsMessageId = conf.messageId, analyzed = false,
-            ),
-        )
         if (threadId != m.conversationId) {
             db.conversations().refresh(m.conversationId)
-            db.conversations().deleteEmpty()
+            db.conversations().deleteIfEmpty(m.conversationId)
         }
         acknowledge(conf.transactionId ?: m.mmsTransactionId, m.subId)
         afterIncoming(messageId, threadId, forceSpam = conversations.blockDecision(from, text) == ConversationRepository.Block.FILTER)

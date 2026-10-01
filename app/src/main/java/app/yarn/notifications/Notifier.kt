@@ -1,6 +1,7 @@
 package app.yarn.notifications
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -65,8 +66,19 @@ class Notifier(
         manager.createNotificationChannels(channels)
     }
 
-    private fun canPost() = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED ||
-        android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU
+    private fun canPost() = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+    /** Every post goes through here; the permission is checked right before notifying. */
+    @SuppressLint("MissingPermission")
+    private fun post(id: Int, notification: android.app.Notification) {
+        if (!canPost()) return
+        try {
+            nm.notify(id, notification)
+        } catch (e: SecurityException) {
+            // Permission revoked between the check and the call.
+        }
+    }
 
     fun openConversationIntent(conversationId: Long, messageId: Long? = null): PendingIntent {
         val uri = Uri.parse("yarn://conversation/$conversationId" + (messageId?.let { "?message=$it" } ?: ""))
@@ -185,7 +197,7 @@ class Notifier(
                 .setShowsUserInterface(false)
                 .build(),
         )
-        runCatching { nm.notify(conversationId.toInt(), builder.build()) }
+        post(conversationId.toInt(), builder.build())
     }
 
     private fun ensureShortcut(conversation: ConversationEntity, person: Person?): String {
@@ -222,7 +234,7 @@ class Notifier(
                 actionIntent(NotificationActionReceiver.ACTION_RETRY, message.conversationId, { putExtra(NotificationActionReceiver.EXTRA_MESSAGE_ID, message.id) }),
             )
             .build()
-        runCatching { nm.notify(FAILED_BASE + message.id.toInt(), n) }
+        post(FAILED_BASE + message.id.toInt(), n)
     }
 
     fun cancelFailed(messageId: Long) = nm.cancel(FAILED_BASE + messageId.toInt())
@@ -240,7 +252,7 @@ class Notifier(
                 actionIntent(NotificationActionReceiver.ACTION_DOWNLOAD_MMS, message.conversationId, { putExtra(NotificationActionReceiver.EXTRA_MESSAGE_ID, message.id) }),
             )
             .build()
-        runCatching { nm.notify(MMS_BASE + message.id.toInt(), n) }
+        post(MMS_BASE + message.id.toInt(), n)
     }
 
     fun cancelMmsPending(messageId: Long) = nm.cancel(MMS_BASE + messageId.toInt())
@@ -259,7 +271,7 @@ class Notifier(
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             .build()
-        runCatching { nm.notify(FLASH_BASE + (address + body).hashCode() % 1000, n) }
+        post(FLASH_BASE + (address + body).hashCode() % 1000, n)
     }
 
     fun backgroundNotification(text: String) = NotificationCompat.Builder(context, CH_BACKGROUND)

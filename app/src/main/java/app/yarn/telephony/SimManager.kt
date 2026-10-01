@@ -60,7 +60,15 @@ class SimManager(private val context: Context) {
         _sims.value = loadSims()
         if (listening || !hasPhoneStatePermission()) return
         runCatching {
-            subscriptionManager?.addOnSubscriptionsChangedListener(ContextCompat.getMainExecutor(context), listener)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                subscriptionManager?.addOnSubscriptionsChangedListener(ContextCompat.getMainExecutor(context), listener)
+            } else {
+                // API 29: callbacks arrive on the calling thread's looper, so register from main.
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    @Suppress("DEPRECATION")
+                    subscriptionManager?.addOnSubscriptionsChangedListener(listener)
+                }
+            }
             listening = true
         }.onFailure { Log.w(TAG, "Unable to observe subscriptions", it) }
     }

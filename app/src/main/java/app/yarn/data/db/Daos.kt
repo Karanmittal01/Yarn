@@ -83,6 +83,9 @@ abstract class ConversationDao {
     @Query("DELETE FROM conversations WHERE messageCount = 0 AND (draft IS NULL OR draft = '')")
     abstract suspend fun deleteEmpty()
 
+    @Query("DELETE FROM conversations WHERE id = :id AND messageCount = 0 AND (draft IS NULL OR draft = '')")
+    abstract suspend fun deleteIfEmpty(id: Long)
+
     @Query("SELECT category, SUM(unreadCount) AS unread FROM conversations WHERE archived = 0 AND spam = 0 AND blocked = 0 GROUP BY category")
     abstract fun unreadByCategory(): Flow<List<CategoryCount>>
 

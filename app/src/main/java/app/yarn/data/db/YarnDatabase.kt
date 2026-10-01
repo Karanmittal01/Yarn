@@ -90,6 +90,8 @@ abstract class YarnDatabase : RoomDatabase() {
     }
 }
 
+// commit() is deliberate: the key must be durable before the database is created with it.
+@android.annotation.SuppressLint("ApplySharedPref")
 internal object DatabaseKey {
     private const val PREFS = "yarn_db_key"
     private const val PREF_KEY = "wrapped"

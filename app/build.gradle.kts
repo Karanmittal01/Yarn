@@ -37,12 +37,26 @@ android {
         buildConfig = true
     }
 
+    // Per-ABI APKs for sideloading; Play builds from the App Bundle split automatically.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = false
+        }
+    }
+
     packaging {
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "META-INF/DEPENDENCIES")
     }
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        unitTests.all {
+            // Robolectric fetches its Android runtime jars; use Google's Maven Central mirror.
+            it.systemProperty("robolectric.dependency.repo.url", "https://maven-central.storage-download.googleapis.com/maven2")
+        }
     }
 }
 
@@ -74,7 +88,6 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons)
-    implementation(libs.compose.adaptive)
     debugImplementation(libs.compose.ui.tooling)
 
     implementation(libs.room.runtime)
