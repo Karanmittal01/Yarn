@@ -52,10 +52,12 @@ class MainActivity : FragmentActivity() {
     private var locked by mutableStateOf(false)
     private var backgroundedAt = 0L
     private var settingsSnapshot = AppSettings()
+    private lateinit var updates: InAppUpdates
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        updates = InAppUpdates(this).also { it.register() }
         lifecycleScope.launch {
             settingsSnapshot = container.settings.current()
             if (savedInstanceState == null && settingsSnapshot.appLock) locked = true
@@ -82,6 +84,17 @@ class MainActivity : FragmentActivity() {
                         locked && s.appLock -> LockScreen()
                         else -> YarnNavHost(externalNav) { externalNav.value = null }
                     }
+                    val updateReady by updates.readyToInstall.collectAsStateWithLifecycle()
+                    var updateLater by androidx.compose.runtime.remember { mutableStateOf(false) }
+                    if (updateReady && !updateLater) {
+                        androidx.compose.material3.AlertDialog(
+                            onDismissRequest = {},
+                            title = { Text("Update ready") },
+                            text = { Text("A new version of Yarn has downloaded. Restart now to finish updating? Your messages are not affected.") },
+                            confirmButton = { androidx.compose.material3.TextButton(onClick = { updates.completeUpdate() }) { Text("Restart") } },
+                            dismissButton = { androidx.compose.material3.TextButton(onClick = { updateLater = true }) { Text("Later") } },
+                        )
+                    }
                 }
             }
         }
@@ -105,8 +118,14 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         container.refreshPlatformState()
+        updates.check()
         // Keep the local store in sync with anything that changed while we were away.
         if (settingsSnapshot.onboardingDone) SyncWorker.enqueue(this)
+    }
+
+    override fun onDestroy() {
+        updates.unregister()
+        super.onDestroy()
     }
 
     override fun onStop() {

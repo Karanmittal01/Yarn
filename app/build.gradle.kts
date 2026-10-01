@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,24 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
 }
+
+/**
+ * Version codes are derived automatically so nobody has to bump them by hand:
+ * CI passes YARN_VERSION_CODE (run number); locally we use the git commit count.
+ */
+fun gitCommitCount(): Int = runCatching {
+    val process = ProcessBuilder("git", "rev-list", "--count", "HEAD").directory(rootDir).redirectErrorStream(true).start()
+    process.inputStream.bufferedReader().readText().trim().toInt()
+}.getOrDefault(1)
+
+val autoVersionCode: Int = System.getenv("YARN_VERSION_CODE")?.toIntOrNull() ?: gitCommitCount()
+
+/** Release signing comes from keystore.properties (local, git-ignored) or CI environment variables. */
+val signingProps = Properties().apply {
+    rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+fun signingValue(key: String, env: String): String? = signingProps.getProperty(key) ?: System.getenv(env)
+val releaseStoreFile = signingValue("storeFile", "YARN_KEYSTORE_PATH")
 
 android {
     namespace = "app.yarn"
@@ -14,13 +34,25 @@ android {
         applicationId = "app.yarn.messages"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = autoVersionCode
+        versionName = "0.1.$autoVersionCode"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFile)
+                storePassword = signingValue("storePassword", "YARN_KEYSTORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "YARN_KEY_ALIAS")
+                keyPassword = signingValue("keyPassword", "YARN_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -37,10 +69,11 @@ android {
         buildConfig = true
     }
 
-    // Per-ABI APKs for sideloading; Play builds from the App Bundle split automatically.
+    // Per-ABI APKs for sideloading (./gradlew assembleRelease -PabiSplits). Off by default because
+    // App Bundles can't be built with splits enabled; Play splits bundles per device itself.
     splits {
         abi {
-            isEnable = true
+            isEnable = project.hasProperty("abiSplits")
             reset()
             include("arm64-v8a", "armeabi-v7a", "x86_64")
             isUniversalApk = false
@@ -117,6 +150,7 @@ dependencies {
     implementation(libs.mlkit.genai.summarization)
     implementation(libs.mlkit.genai.rewriting)
     implementation(libs.mediapipe.genai)
+    implementation(libs.play.app.update)
 
     testImplementation(libs.junit)
     testImplementation(libs.truth)
