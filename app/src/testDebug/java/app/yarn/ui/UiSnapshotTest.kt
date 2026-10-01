@@ -23,6 +23,7 @@ import app.yarn.ui.inbox.InboxItem
 import app.yarn.ui.settings.NavRow
 import app.yarn.ui.settings.settingsHubItems
 import app.yarn.ui.settings.smartFeatureItems
+import app.yarn.ui.settings.backupItems
 import app.yarn.ui.settings.SettingsGroup
 import app.yarn.ui.theme.YarnTheme
 import org.junit.Rule
@@ -122,6 +123,19 @@ class UiSnapshotTest {
     @Test fun selectionLight() = shot(false, "6_selected_row_light") {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 24.dp)) {
             inbox.take(4).forEachIndexed { i, it -> ConversationRow(it, i == 3, false, {}, {}) }
+        }
+    }
+    @Test fun backupSignedOut() = shot(false, "7_backup_signed_out") {
+        app.yarn.ui.settings.SettingsScaffold("Backup", {}) {
+            backupItems(app.yarn.data.prefs.AppSettings(), null, app.yarn.backup.BackupState.Idle, false, null, false, {}, {}, {}, {}, {}, {})
+        }
+    }
+    @Test fun backupSignedIn() = shot(true, "8_backup_signed_in_dark") {
+        app.yarn.ui.settings.SettingsScaffold("Backup", {}) {
+            backupItems(
+                app.yarn.data.prefs.AppSettings(googleAccount = "you@gmail.com", lastBackupAt = now - 3_600_000, lastBackupBytes = 48_000_000),
+                null, app.yarn.backup.BackupState.Done("Backed up 12,306 messages to Google Drive"), false, null, false, {}, {}, {}, {}, {}, {},
+            )
         }
     }
 }

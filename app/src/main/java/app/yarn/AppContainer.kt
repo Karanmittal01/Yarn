@@ -1,6 +1,8 @@
 package app.yarn
 
 import app.yarn.ai.SmartSorter
+import app.yarn.backup.GoogleDrive
+import app.yarn.work.GoogleBackupWorker
 import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -75,6 +77,7 @@ class AppContainer(val app: Application) {
     val localLlm by lazy { LocalLlmService(app) }
     val assistant by lazy { AssistantService(settings, nano, localLlm, SelfHostedAiService(), SmartReplyService(), language, mlEntities) }
     val backup by lazy { BackupManager(app, db, store, sync, providerLock) }
+    val drive by lazy { GoogleDrive(app) }
     val shareHolder = ShareHolder()
 
     private val _isDefaultSmsApp = MutableStateFlow(false)
@@ -90,6 +93,10 @@ class AppContainer(val app: Application) {
         notifier.createChannels()
         refreshPlatformState()
         MaintenanceWorker.schedule(app)
+        scope.launch {
+            val s = settings.current()
+            GoogleBackupWorker.schedule(app, s.googleAccount != null && s.autoBackup)
+        }
         // Prepare the free on-device models in the background (no-ops when unsupported).
         scope.launch {
             delay(5_000)

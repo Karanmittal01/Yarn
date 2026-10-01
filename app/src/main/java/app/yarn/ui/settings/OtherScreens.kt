@@ -1,5 +1,22 @@
 package app.yarn.ui.settings
 
+import kotlinx.coroutines.launch
+import app.yarn.ui.common.ConfirmDialog
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.CloudDone
+import androidx.compose.material.icons.outlined.CloudUpload
+import app.yarn.work.GoogleBackupWorker
+import app.yarn.backup.NeedsConsentException
+import app.yarn.backup.DriveBackup
+import androidx.activity.result.IntentSenderRequest
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
@@ -141,78 +158,232 @@ fun BlockedScreen(vm: SettingsViewModel, onBack: () -> Unit, onBlockedConversati
 
 @Composable
 fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
-    val state by vm.c.backup.state.collectAsStateWithLifecycle()
+    val c = vm.c
+    val s by vm.settings.collectAsStateWithLifecycle()
+    val state by c.backup.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var includeMedia by remember { mutableStateOf(true) }
-    var passFor by remember { mutableStateOf<Pair<Boolean, Uri>?>(null) } // (isExport, uri)
-    val createDoc = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri -> uri?.let { passFor = true to it } }
-    val openDoc = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { passFor = false to it } }
-    val running = state is BackupState.Running
+    val scope = rememberCoroutineScope()
+    var error by remember { mutableStateOf<String?>(null) }
+    var latest by remember { mutableStateOf<DriveBackup?>(null) }
+    var checking by remember { mutableStateOf(false) }
+    var confirmRestore by remember { mutableStateOf<DriveBackup?>(null) }
+    var confirmOff by remember { mutableStateOf(false) }
+    var pending by remember { mutableStateOf<(suspend (String) -> Unit)?>(null) }
+    val running = state is BackupState.Running || checking
 
-    SettingsScaffold("Backup & restore", onBack) {
+    val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        val action = pending
+        pending = null
+        if (result.resultCode != android.app.Activity.RESULT_OK || action == null) { checking = false; return@rememberLauncherForActivityResult }
+        scope.launch {
+            runCatching { action(c.drive.tokenFrom(result.data)) }.onFailure { error = it.message }
+            checking = false
+        }
+    }
+
+    /** Runs [action] with a Google access token, asking the user to sign in first when needed. */
+    fun withGoogle(action: suspend (String) -> Unit) {
+        error = null
+        checking = true
+        scope.launch {
+            try {
+                action(c.drive.token())
+                checking = false
+            } catch (e: NeedsConsentException) {
+                pending = action
+                consent.launch(IntentSenderRequest.Builder(e.pendingIntent).build())
+            } catch (e: Exception) {
+                error = e.message ?: "Couldn't reach Google"
+                checking = false
+            }
+        }
+    }
+
+    suspend fun refreshLatest(token: String) { latest = c.drive.latest(token) }
+
+    LaunchedEffect(s.googleAccount) {
+        if (s.googleAccount != null) runCatching { refreshLatest(c.drive.token()) }
+    }
+
+    SettingsScaffold("Backup", onBack) {
+        backupItems(
+            s, latest, state, checking, error, running,
+            onSignIn = {
+                withGoogle { token ->
+                    val email = c.drive.accountEmail(token)
+                    c.settings.update { it.copy(googleAccount = email) }
+                    GoogleBackupWorker.schedule(context, s.autoBackup)
+                    refreshLatest(token)
+                    // Coming from another phone: offer to bring the messages back straight away.
+                    latest?.let { confirmRestore = it }
+                }
+            },
+            onBackupNow = {
+                withGoogle { token ->
+                    c.backup.backupToGoogle(c.drive, token, s.backupMedia)?.let { (bytes, _) ->
+                        c.settings.update { it.copy(lastBackupAt = System.currentTimeMillis(), lastBackupBytes = bytes) }
+                    }
+                    refreshLatest(token)
+                }
+            },
+            onAutoBackup = { v ->
+                vm.update { it.copy(autoBackup = v) }
+                GoogleBackupWorker.schedule(context, v)
+            },
+            onMedia = { v -> vm.update { it.copy(backupMedia = v) } },
+            onRestore = {
+                withGoogle { token ->
+                    refreshLatest(token)
+                    if (latest == null) error = "No backup found in this Google account." else confirmRestore = latest
+                }
+            },
+            onTurnOff = { confirmOff = true },
+        )
+    }
+
+    confirmRestore?.let { b ->
+        ConfirmDialog(
+            "Restore messages?",
+            "Found a backup from ${Format.listTime(context, b.modifiedAt)}" +
+                (if (b.messageCount > 0) " with ${java.text.NumberFormat.getIntegerInstance().format(b.messageCount)} messages" else "") +
+                ". Messages already on this phone are kept; duplicates are skipped.",
+            "Restore",
+            onConfirm = {
+                withGoogle { token ->
+                    c.backup.restoreFromGoogle(c.drive, token, b)
+                    ReanalyzeWorker.enqueue(context)
+                }
+            },
+            onDismiss = { confirmRestore = null },
+        )
+    }
+    if (confirmOff) {
+        ConfirmDialog(
+            "Turn off Google backup?", "Yarn stops backing up. Your existing backup stays in Google Drive so you can restore it later.", "Turn off",
+            onConfirm = {
+                vm.update { it.copy(googleAccount = null) }
+                GoogleBackupWorker.schedule(context, false)
+                latest = null
+            },
+            onDismiss = { confirmOff = false }, destructive = true,
+        )
+    }
+}
+
+/** Backup page rows, split out so they can be rendered in screenshot tests. */
+internal fun androidx.compose.foundation.lazy.LazyListScope.backupItems(
+    s: app.yarn.data.prefs.AppSettings,
+    latest: DriveBackup?,
+    state: BackupState,
+    checking: Boolean,
+    error: String?,
+    running: Boolean,
+    onSignIn: () -> Unit,
+    onBackupNow: () -> Unit,
+    onAutoBackup: (Boolean) -> Unit,
+    onMedia: (Boolean) -> Unit,
+    onRestore: () -> Unit,
+    onTurnOff: () -> Unit,
+) {
+    if (s.googleAccount == null) {
+        item {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(settingsCardColor())
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(androidx.compose.ui.graphics.Color(0xFF1466F0)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.CloudUpload, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(30.dp))
+                }
+                Spacer(Modifier.height(16.dp))
+                Text("Back up to Google Drive", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Keep your messages safe and bring them to a new phone. Free — it uses your Google account's storage.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+                Spacer(Modifier.height(20.dp))
+                Button(
+                    onClick = onSignIn,
+                    enabled = !running,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                ) { Text("Sign in with Google") }
+            }
+        }
+    } else {
         item {
             SettingsGroup {
-                SwitchRow("Include photos & attachments", checked = includeMedia) { includeMedia = it }
+                SettingsRow(
+                    s.googleAccount.orEmpty(),
+                    summary = when {
+                        s.lastBackupAt > 0 -> "Last backup ${Format.listTime(LocalContext.current, s.lastBackupAt)} · ${android.text.format.Formatter.formatShortFileSize(LocalContext.current, s.lastBackupBytes)}"
+                        latest != null -> "Last backup ${Format.listTime(LocalContext.current, latest.modifiedAt)} · ${android.text.format.Formatter.formatShortFileSize(LocalContext.current, latest.sizeBytes)}"
+                        else -> "Not backed up yet"
+                    },
+                    icon = Icons.Outlined.CloudDone, tint = androidx.compose.ui.graphics.Color(0xFF1466F0),
+                )
+            }
+        }
+        item {
+            Button(
+                onClick = onBackupNow,
+                enabled = !running,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp).height(48.dp),
+            ) { Text("Back up now") }
+        }
+        item { BackupProgress(state, checking) }
+        item { SectionHeader("Settings") }
+        item {
+            SettingsGroup {
+                SwitchRow("Back up daily", "On Wi-Fi while charging", s.autoBackup, icon = Icons.Outlined.Schedule, tint = androidx.compose.ui.graphics.Color(0xFF34C759)) { v -> onAutoBackup(v) }
+                SwitchRow("Include photos & videos", checked = s.backupMedia, icon = Icons.Outlined.Image, tint = androidx.compose.ui.graphics.Color(0xFFFF9500)) { v -> onMedia(v) }
             }
         }
         item { Spacer(Modifier.height(12.dp)) }
         item {
-            Column(Modifier.padding(horizontal = 16.dp)) {
-                Button(
-                    onClick = { createDoc.launch("yarn-backup-${SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())}.yarnbak") },
-                    enabled = !running, modifier = Modifier.fillMaxWidth().height(48.dp),
-                ) { Text("Back up now") }
-                OutlinedButton(onClick = { openDoc.launch(arrayOf("*/*")) }, enabled = !running, modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(48.dp)) { Text("Restore from backup") }
-                when (val st = state) {
-                    is BackupState.Running -> {
-                        Text("${st.label}… ${if (st.total > 0) "${st.done} / ${st.total}" else st.done.toString()}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 16.dp))
-                        if (st.total > 0) LinearProgressIndicator(progress = { st.done.toFloat() / st.total }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
-                        else LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
-                    }
-                    is BackupState.Done -> Text(st.message, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 16.dp))
-                    is BackupState.Failed -> Text(st.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 16.dp))
-                    BackupState.Idle -> Unit
-                }
+            SettingsGroup {
+                ClickRow("Restore from Google Drive", icon = Icons.Outlined.CloudDownload, tint = androidx.compose.ui.graphics.Color(0xFF0FA3B1)) { onRestore() }
+                ClickRow("Turn off Google backup", destructive = true) { onTurnOff() }
             }
         }
+    }
+    error?.let { e ->
         item {
-            Text(
-                "Backups are encrypted with a passphrase only you know (AES-256). Save them anywhere — phone, SD card or a cloud drive — and restore on a new phone. Yarn can't recover a lost passphrase.",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 32.dp, vertical = 14.dp),
-            )
+            Text(e, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp))
         }
     }
-
-    passFor?.let { (export, uri) ->
-        var pass by remember { mutableStateOf("") }
-        var confirm by remember { mutableStateOf("") }
-        val valid = pass.length >= 8 && (!export || pass == confirm)
-        AlertDialog(
-            onDismissRequest = { passFor = null },
-            title = { Text(if (export) "Choose a passphrase" else "Enter passphrase") },
-            text = {
-                Column {
-                    OutlinedTextField(pass, { pass = it }, label = { Text("Passphrase (8+ characters)") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
-                    if (export) OutlinedTextField(
-                        confirm, { confirm = it }, label = { Text("Repeat passphrase") }, singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(), modifier = Modifier.padding(top = 8.dp),
-                        isError = confirm.isNotEmpty() && confirm != pass,
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(enabled = valid, onClick = {
-                    val chars = pass.toCharArray()
-                    passFor = null
-                    vm.launch {
-                        if (export) backup.export(uri, chars, includeMedia)
-                        else { backup.restore(uri, chars); ReanalyzeWorker.enqueue(context) }
-                    }
-                }) { Text(if (export) "Back up" else "Restore") }
-            },
-            dismissButton = { TextButton(onClick = { passFor = null }) { Text("Cancel") } },
+    item {
+        Text(
+            "Backups are encrypted and kept in a private Yarn folder in your Google Drive that only Yarn can open. " +
+                "They count towards your Google storage (15 GB free). Yarn has no servers of its own.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 32.dp, vertical = 14.dp),
         )
+    }
+}
+
+@Composable
+private fun BackupProgress(state: BackupState, checking: Boolean) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+        when (state) {
+            is BackupState.Running -> {
+                Text(
+                    state.label + if (state.total > 0) " · ${state.done} / ${state.total}" else if (state.done > 0) " · ${state.done}" else "",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (state.total > 0) LinearProgressIndicator(progress = { state.done.toFloat() / state.total }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+                else LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp))
+            }
+            is BackupState.Done -> Text(state.message, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+            is BackupState.Failed -> Text(state.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            BackupState.Idle -> if (checking) LinearProgressIndicator(Modifier.fillMaxWidth())
+        }
     }
 }
 

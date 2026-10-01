@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.yarn.intelligence.SpamSensitivity
@@ -51,6 +52,12 @@ data class AppSettings(
     val swipeEnd: SwipeAction = SwipeAction.READ,
     val dayFirstDates: Boolean = Locale.getDefault().country !in setOf("US", "CA", "PH", "BZ", "FM"),
     val initialImportDone: Boolean = false,
+    /** Google account used for Drive backups, or null when backup is off. */
+    val googleAccount: String? = null,
+    val autoBackup: Boolean = true,
+    val backupMedia: Boolean = true,
+    val lastBackupAt: Long = 0,
+    val lastBackupBytes: Long = 0,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore("settings")
@@ -90,6 +97,11 @@ class SettingsRepository(private val context: Context) {
         val swipeEnd = stringPreferencesKey("swipe_end")
         val dayFirst = booleanPreferencesKey("day_first")
         val importDone = booleanPreferencesKey("initial_import_done")
+        val googleAccount = stringPreferencesKey("google_account")
+        val autoBackup = booleanPreferencesKey("auto_backup")
+        val backupMedia = booleanPreferencesKey("backup_media")
+        val lastBackupAt = longPreferencesKey("last_backup_at")
+        val lastBackupBytes = longPreferencesKey("last_backup_bytes")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { readFrom(it, AppSettings()) }
@@ -133,6 +145,11 @@ class SettingsRepository(private val context: Context) {
             p[K.swipeEnd] = s.swipeEnd.name
             p[K.dayFirst] = s.dayFirstDates
             p[K.importDone] = s.initialImportDone
+            if (s.googleAccount != null) p[K.googleAccount] = s.googleAccount else p.remove(K.googleAccount)
+            p[K.autoBackup] = s.autoBackup
+            p[K.backupMedia] = s.backupMedia
+            p[K.lastBackupAt] = s.lastBackupAt
+            p[K.lastBackupBytes] = s.lastBackupBytes
         }
     }
 
@@ -170,5 +187,10 @@ class SettingsRepository(private val context: Context) {
         swipeEnd = p[K.swipeEnd]?.let { runCatching { SwipeAction.valueOf(it) }.getOrNull() } ?: d.swipeEnd,
         dayFirstDates = p[K.dayFirst] ?: d.dayFirstDates,
         initialImportDone = p[K.importDone] ?: d.initialImportDone,
+        googleAccount = p[K.googleAccount],
+        autoBackup = p[K.autoBackup] ?: d.autoBackup,
+        backupMedia = p[K.backupMedia] ?: d.backupMedia,
+        lastBackupAt = p[K.lastBackupAt] ?: d.lastBackupAt,
+        lastBackupBytes = p[K.lastBackupBytes] ?: d.lastBackupBytes,
     )
 }

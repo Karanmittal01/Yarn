@@ -143,6 +143,7 @@ dependencies {
 
     implementation(libs.coroutines.android)
     implementation(libs.coroutines.play.services)
+    implementation(libs.play.services.auth)
     implementation(libs.coroutines.guava)
     implementation(libs.serialization.json)
 

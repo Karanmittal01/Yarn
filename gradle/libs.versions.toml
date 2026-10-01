@@ -27,6 +27,7 @@ mlkitGenAiPrompt = "1.0.0-beta4"
 haze = "1.6.10"
 mediapipeGenAi = "0.10.27"
 playAppUpdate = "2.1.0"
+playServicesAuth = "21.5.1"
 junit = "4.13.2"
 truth = "1.4.4"
 robolectric = "4.16"
@@ -79,6 +80,7 @@ haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 haze-materials = { module = "dev.chrisbanes.haze:haze-materials", version.ref = "haze" }
 mediapipe-genai = { module = "com.google.mediapipe:tasks-genai", version.ref = "mediapipeGenAi" }
 play-app-update = { module = "com.google.android.play:app-update-ktx", version.ref = "playAppUpdate" }
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 junit = { module = "junit:junit", version.ref = "junit" }
 truth = { module = "com.google.truth:truth", version.ref = "truth" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }

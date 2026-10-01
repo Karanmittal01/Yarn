@@ -23,6 +23,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -89,6 +90,56 @@ class BackupManager(
 
     suspend fun export(target: Uri, passphrase: CharArray, includeMedia: Boolean) = withContext(Dispatchers.IO) {
         try {
+            val done = write(target, passphrase, includeMedia)
+            _state.value = BackupState.Done("Backed up $done messages")
+        } catch (e: Exception) {
+            _state.value = BackupState.Failed(e.message ?: "Backup failed")
+        } finally {
+            passphrase.fill('\u0000')
+        }
+    }
+
+    /**
+     * Encrypts a backup and uploads it to the user's Google Drive. Returns the uploaded size and
+     * message count, or null when it failed (the reason is in [state]).
+     */
+    suspend fun backupToGoogle(drive: GoogleDrive, token: String, includeMedia: Boolean): Pair<Long, Int>? = withContext(Dispatchers.IO) {
+        val tmp = File(context.cacheDir, "drive-backup.tmp")
+        var key: CharArray? = null
+        try {
+            _state.value = BackupState.Running("Preparing backup", 0, 0)
+            key = drive.backupKey(token)
+            val count = write(Uri.fromFile(tmp), key, includeMedia)
+            _state.value = BackupState.Running("Uploading to Google Drive", 0, 0)
+            drive.upload(token, tmp, count)
+            _state.value = BackupState.Done("Backed up $count messages to Google Drive")
+            tmp.length() to count
+        } catch (e: Exception) {
+            _state.value = BackupState.Failed(e.message ?: "Backup failed")
+            null
+        } finally {
+            key?.fill('\u0000')
+            tmp.delete()
+        }
+    }
+
+    /** Downloads the latest Google Drive backup and restores it. */
+    suspend fun restoreFromGoogle(drive: GoogleDrive, token: String, backup: DriveBackup) = withContext(Dispatchers.IO) {
+        val tmp = File(context.cacheDir, "drive-restore.tmp")
+        try {
+            _state.value = BackupState.Running("Downloading from Google Drive", 0, 0)
+            val key = drive.backupKey(token)
+            drive.download(token, backup, tmp)
+            restore(Uri.fromFile(tmp), key)
+        } catch (e: Exception) {
+            _state.value = BackupState.Failed(e.message ?: "Restore failed")
+        } finally {
+            tmp.delete()
+        }
+    }
+
+    private suspend fun write(target: Uri, passphrase: CharArray, includeMedia: Boolean): Int {
+        run {
             val conversations = db.conversations().all()
             val byId = conversations.associateBy { it.id }
             val total = conversations.sumOf { it.messageCount }
@@ -140,11 +191,7 @@ class BackupManager(
                     zip.closeEntry()
                 }
             }
-            _state.value = BackupState.Done("Backed up $done messages")
-        } catch (e: Exception) {
-            _state.value = BackupState.Failed(e.message ?: "Backup failed")
-        } finally {
-            passphrase.fill('\u0000')
+            return done
         }
     }
 

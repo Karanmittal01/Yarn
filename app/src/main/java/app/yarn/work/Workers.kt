@@ -185,3 +185,38 @@ class MaintenanceWorker(context: Context, params: WorkerParameters) : CoroutineW
         }
     }
 }
+
+/** Daily encrypted backup to the user's Google Drive, on Wi-Fi while charging. */
+class GoogleBackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result {
+        val c = applicationContext.container
+        val s = c.settings.current()
+        if (s.googleAccount == null || !s.autoBackup) return Result.success()
+        // Only works silently when access was granted before; otherwise wait for the user.
+        val token = runCatching { c.drive.token() }.getOrElse { return Result.success() }
+        val result = c.backup.backupToGoogle(c.drive, token, s.backupMedia) ?: return if (runAttemptCount < 3) Result.retry() else Result.success()
+        c.settings.update { it.copy(lastBackupAt = System.currentTimeMillis(), lastBackupBytes = result.first) }
+        c.backup.reset()
+        return Result.success()
+    }
+
+    companion object {
+        private const val NAME = "google-backup"
+
+        fun schedule(context: Context, enabled: Boolean) {
+            val wm = WorkManager.getInstance(context)
+            if (!enabled) { wm.cancelUniqueWork(NAME); return }
+            wm.enqueueUniquePeriodicWork(
+                NAME, ExistingPeriodicWorkPolicy.KEEP,
+                PeriodicWorkRequestBuilder<GoogleBackupWorker>(24, TimeUnit.HOURS)
+                    .setConstraints(
+                        Constraints.Builder()
+                            .setRequiredNetworkType(androidx.work.NetworkType.UNMETERED)
+                            .setRequiresCharging(true)
+                            .build(),
+                    )
+                    .build(),
+            )
+        }
+    }
+}
