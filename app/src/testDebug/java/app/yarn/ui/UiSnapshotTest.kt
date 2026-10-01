@@ -175,4 +175,10 @@ class UiSnapshotTest {
         org.robolectric.RuntimeEnvironment.setFontScale(1.3f)
         shot(true, "13_inbox_dark_large_text") { InboxMock() }
     }
+    @Test fun textSizeSetting() = shot(true, "14_text_size_setting") {
+        app.yarn.ui.settings.SettingsScaffold("Appearance", {}) {
+            item { app.yarn.ui.settings.SectionHeader("Text size") }
+            item { app.yarn.ui.settings.TextSizeCard(1.1f) {} }
+        }
+    }
 }

@@ -126,7 +126,7 @@ private val YarnTypography = Typography(
 val LocalDarkTheme = staticCompositionLocalOf { false }
 
 @Composable
-fun YarnTheme(mode: ThemeMode = ThemeMode.SYSTEM, dynamicColor: Boolean = false, content: @Composable () -> Unit) {
+fun YarnTheme(mode: ThemeMode = ThemeMode.SYSTEM, dynamicColor: Boolean = false, textScale: Float = 1f, content: @Composable () -> Unit) {
     val dark = when (mode) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
         ThemeMode.LIGHT -> false
@@ -138,7 +138,10 @@ fun YarnTheme(mode: ThemeMode = ThemeMode.SYSTEM, dynamicColor: Boolean = false,
         dark -> DarkColors
         else -> LightColors
     }
-    androidx.compose.runtime.CompositionLocalProvider(LocalDarkTheme provides dark) {
+    // Yarn's text size setting multiplies the phone's own font size.
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val scaled = androidx.compose.ui.unit.Density(density.density, density.fontScale * textScale)
+    androidx.compose.runtime.CompositionLocalProvider(LocalDarkTheme provides dark, androidx.compose.ui.platform.LocalDensity provides scaled) {
         MaterialTheme(colorScheme = colors, shapes = YarnShapes, typography = YarnTypography, content = content)
     }
 }

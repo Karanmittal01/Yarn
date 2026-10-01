@@ -71,7 +71,7 @@ class MainActivity : FragmentActivity() {
                 if (s?.secureScreen == true) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
                 else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
             }
-            YarnTheme(mode = s?.theme ?: app.yarn.data.prefs.ThemeMode.SYSTEM, dynamicColor = s?.dynamicColor ?: false) {
+            YarnTheme(mode = s?.theme ?: app.yarn.data.prefs.ThemeMode.SYSTEM, dynamicColor = s?.dynamicColor ?: false, textScale = s?.textScale ?: 1f) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     when {
                         s == null -> Unit

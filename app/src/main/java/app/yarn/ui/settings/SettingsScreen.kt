@@ -1,5 +1,7 @@
 package app.yarn.ui.settings
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -43,6 +45,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -181,6 +184,8 @@ fun AppearanceScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                 }
             }
         }
+        item { SectionHeader("Text size") }
+        item { TextSizeCard(s.textScale) { v -> vm.update { it.copy(textScale = v) } } }
         item { SectionHeader("Inbox gestures") }
         item {
             SettingsGroup {
@@ -311,3 +316,60 @@ fun AboutScreen(onBack: () -> Unit) {
         }
     }
 }
+
+private val TEXT_SIZES = listOf(0.85f to "Small", 0.92f to "Compact", 1f to "Default", 1.1f to "Large", 1.2f to "Larger", 1.3f to "Largest")
+
+/** Slider for Yarn's own text size, with a live preview of an inbox row. */
+@Composable
+fun TextSizeCard(value: Float, onChange: (Float) -> Unit) {
+    val index = TEXT_SIZES.indexOfFirst { kotlin.math.abs(it.first - value) < 0.01f }.takeIf { it >= 0 } ?: 2
+    var pos by androidx.compose.runtime.remember(index) { androidx.compose.runtime.mutableFloatStateOf(index.toFloat()) }
+    val current = TEXT_SIZES[pos.toInt().coerceIn(0, TEXT_SIZES.lastIndex)]
+    val base = androidx.compose.ui.platform.LocalDensity.current
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(settingsCardColor())
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+    ) {
+        // Preview at the size being chosen (relative to the size already applied).
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density, base.fontScale / value * current.first),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                app.yarn.ui.common.Avatar("Priya", null, size = 40.dp)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Priya Sharma", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                    Text("Are we still on for dinner tonight?", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("A", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            androidx.compose.material3.Slider(
+                value = pos,
+                onValueChange = { pos = it },
+                onValueChangeFinished = { onChange(TEXT_SIZES[pos.toInt().coerceIn(0, TEXT_SIZES.lastIndex)].first) },
+                valueRange = 0f..TEXT_SIZES.lastIndex.toFloat(),
+                steps = TEXT_SIZES.size - 2,
+                modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
+                    .androidxSemantics("Text size, ${current.second}"),
+            )
+            Text("A", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(
+            current.second + if (current.first == 1f) " · same as your phone" else "",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
+    }
+}
+
+private fun Modifier.androidxSemantics(label: String) = this.then(
+    androidx.compose.ui.Modifier.semantics { contentDescription = label },
+)

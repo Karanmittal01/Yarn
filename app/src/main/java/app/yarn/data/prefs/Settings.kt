@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -60,6 +61,8 @@ data class AppSettings(
     val lastBackupBytes: Long = 0,
     /** Version of the sorting rules the stored categories were computed with. */
     val rulesVersion: Int = 0,
+    /** Yarn's own text size, applied on top of the phone's font size (1 = same as the phone). */
+    val textScale: Float = 1f,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore("settings")
@@ -105,6 +108,7 @@ class SettingsRepository(private val context: Context) {
         val lastBackupAt = longPreferencesKey("last_backup_at")
         val lastBackupBytes = longPreferencesKey("last_backup_bytes")
         val rulesVersion = intPreferencesKey("rules_version")
+        val textScale = floatPreferencesKey("text_scale")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { readFrom(it, AppSettings()) }
@@ -154,6 +158,7 @@ class SettingsRepository(private val context: Context) {
             p[K.lastBackupAt] = s.lastBackupAt
             p[K.lastBackupBytes] = s.lastBackupBytes
             p[K.rulesVersion] = s.rulesVersion
+            p[K.textScale] = s.textScale
         }
     }
 
@@ -197,5 +202,6 @@ class SettingsRepository(private val context: Context) {
         lastBackupAt = p[K.lastBackupAt] ?: d.lastBackupAt,
         lastBackupBytes = p[K.lastBackupBytes] ?: d.lastBackupBytes,
         rulesVersion = p[K.rulesVersion] ?: d.rulesVersion,
+        textScale = p[K.textScale] ?: d.textScale,
     )
 }
