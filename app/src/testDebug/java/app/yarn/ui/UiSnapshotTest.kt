@@ -98,7 +98,11 @@ class UiSnapshotTest {
                         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
                     ) { items(chips.size) { i -> app.yarn.ui.inbox.GroupChip(chips[i], selected = i == 0) {} } }
                 }
-                items(inbox.size) { i -> ConversationRow(inbox[i], false, false, {}, {}) }
+                items(inbox.size) { i ->
+                    app.yarn.ui.inbox.SwipeableRow(true, app.yarn.data.prefs.SwipeAction.ARCHIVE, app.yarn.data.prefs.SwipeAction.DELETE, false, {}) {
+                        ConversationRow(inbox[i], false, false, {}, {})
+                    }
+                }
             }
         }
     }

@@ -383,7 +383,7 @@ internal fun GroupChip(chip: InboxChip, selected: Boolean, onClick: () -> Unit) 
 }
 
 @Composable
-private fun SwipeableRow(
+internal fun SwipeableRow(
     enabled: Boolean,
     start: SwipeAction,
     end: SwipeAction,
@@ -409,6 +409,8 @@ private fun SwipeableRow(
         enableDismissFromStartToEnd = start != SwipeAction.NONE,
         enableDismissFromEndToStart = end != SwipeAction.NONE,
         backgroundContent = {
+            // Only paint the action colour while a swipe is in progress, never behind a resting row.
+            if (state.dismissDirection == SwipeToDismissBoxValue.Settled) return@SwipeToDismissBox
             val fromStart = state.dismissDirection == SwipeToDismissBoxValue.StartToEnd
             val action = if (fromStart) start else end
             val (icon, color) = swipeVisual(action, archived)
@@ -416,8 +418,8 @@ private fun SwipeableRow(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .padding(vertical = 2.dp)
-                    .clip(RoundedCornerShape(22.dp))
+                    .padding(horizontal = 8.dp)
+                    .clip(RoundedCornerShape(18.dp))
                     .background(color)
                     .padding(horizontal = 28.dp),
                 contentAlignment = if (fromStart) Alignment.CenterStart else Alignment.CenterEnd,
