@@ -100,11 +100,12 @@ fun Avatar(
         modifier
             .size(size)
             .clip(CircleShape)
-            .background(if (photoUri != null) Color.Transparent else accent.copy(alpha = if (dark) 0.28f else 0.16f))
+            .background(if (photoUri != null) Color.Transparent else if (dark) accent.mix(Color.White, 0.45f) else accent.mix(Color.White, 0.78f))
             .clearAndSetSemantics { },
         contentAlignment = Alignment.Center,
     ) {
-        val tint = if (dark) accent.copy(alpha = 1f).lighten() else accent
+        // Solid pastel circle with a deep-toned glyph: high contrast in both themes, like Google Messages.
+        val tint = if (dark) accent.mix(Color.Black, 0.62f) else accent.mix(Color.Black, 0.35f)
         when {
             photoUri != null -> AsyncImage(model = photoUri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size))
             isGroup -> androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Groups, null, tint = tint, modifier = Modifier.size(size * 0.5f))
@@ -114,7 +115,7 @@ fun Avatar(
     }
 }
 
-private fun Color.lighten(): Color = Color(red + (1 - red) * 0.35f, green + (1 - green) * 0.35f, blue + (1 - blue) * 0.35f, alpha)
+private fun Color.mix(other: Color, t: Float): Color = Color(red + (other.red - red) * t, green + (other.green - green) * t, blue + (other.blue - blue) * t, 1f)
 
 object CategoryUi {
     fun label(c: Category): String = when (c) {
