@@ -24,7 +24,6 @@ mlkitTranslate = "17.0.3"
 mlkitLanguageId = "17.0.6"
 mlkitGenAi = "1.0.0-beta1"
 mlkitGenAiPrompt = "1.0.0-beta4"
-haze = "1.6.10"
 mediapipeGenAi = "0.10.27"
 playAppUpdate = "2.1.0"
 playServicesAuth = "21.5.1"
@@ -76,8 +75,6 @@ mlkit-language-id = { module = "com.google.mlkit:language-id", version.ref = "ml
 mlkit-genai-summarization = { module = "com.google.mlkit:genai-summarization", version.ref = "mlkitGenAi" }
 mlkit-genai-rewriting = { module = "com.google.mlkit:genai-rewriting", version.ref = "mlkitGenAi" }
 mlkit-genai-prompt = { module = "com.google.mlkit:genai-prompt", version.ref = "mlkitGenAiPrompt" }
-haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
-haze-materials = { module = "dev.chrisbanes.haze:haze-materials", version.ref = "haze" }
 mediapipe-genai = { module = "com.google.mediapipe:tasks-genai", version.ref = "mediapipeGenAi" }
 play-app-update = { module = "com.google.android.play:app-update-ktx", version.ref = "playAppUpdate" }
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }

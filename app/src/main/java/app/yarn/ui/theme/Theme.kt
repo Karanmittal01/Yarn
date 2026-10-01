@@ -16,7 +16,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import app.yarn.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.yarn.data.prefs.ThemeMode
@@ -78,9 +81,9 @@ private val DarkColors = darkColorScheme(
     error = Color(0xFFFFB4AB),
     errorContainer = Color(0xFF5C1714),
     onErrorContainer = Color(0xFFFFDAD6),
-    background = Color(0xFF0E0F11),
+    background = Color(0xFF000000),
     onBackground = Color(0xFFF2F3F5),
-    surface = Color(0xFF0E0F11),
+    surface = Color(0xFF000000),
     onSurface = Color(0xFFF2F3F5),
     onSurfaceVariant = Color(0xFFC6C8CE),
     surfaceVariant = Color(0xFF2E3036),
@@ -101,21 +104,23 @@ private val YarnShapes = Shapes(
     extraLarge = RoundedCornerShape(32.dp),
 )
 
-private val base = Typography()
+/** Google Sans (SIL Open Font License), bundled as a Latin subset; other scripts fall back to the system font. */
+val GoogleSans = FontFamily(
+    Font(R.font.google_sans_regular, FontWeight.Normal),
+    Font(R.font.google_sans_medium, FontWeight.Medium),
+    Font(R.font.google_sans_semibold, FontWeight.SemiBold),
+    Font(R.font.google_sans_bold, FontWeight.Bold),
+)
+
+private fun t(size: Float, line: Float, weight: FontWeight = FontWeight.Normal, spacing: Float = 0f) =
+    TextStyle(fontFamily = GoogleSans, fontSize = size.sp, lineHeight = line.sp, fontWeight = weight, letterSpacing = spacing.sp)
+
 private val YarnTypography = Typography(
-    displaySmall = base.displaySmall.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp),
-    headlineLarge = base.headlineLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp),
-    headlineMedium = base.headlineMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.25).sp),
-    headlineSmall = base.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
-    titleLarge = TextStyle(fontSize = 21.sp, lineHeight = 28.sp, fontWeight = FontWeight.SemiBold),
-    titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.sp),
-    titleSmall = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.sp),
-    bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 23.sp, letterSpacing = 0.15.sp),
-    bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.15.sp),
-    bodySmall = TextStyle(fontSize = 12.5.sp, lineHeight = 17.sp, letterSpacing = 0.2.sp),
-    labelLarge = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.1.sp),
-    labelMedium = TextStyle(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.3.sp),
-    labelSmall = TextStyle(fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.4.sp),
+    displayLarge = t(57f, 64f), displayMedium = t(45f, 52f), displaySmall = t(36f, 44f, FontWeight.Medium),
+    headlineLarge = t(32f, 40f, FontWeight.Medium), headlineMedium = t(28f, 36f, FontWeight.Medium), headlineSmall = t(24f, 32f, FontWeight.Medium),
+    titleLarge = t(22f, 28f), titleMedium = t(16f, 22f, FontWeight.Medium, 0.1f), titleSmall = t(14f, 20f, FontWeight.Medium, 0.1f),
+    bodyLarge = t(16f, 23f, spacing = 0.1f), bodyMedium = t(14f, 20f, spacing = 0.15f), bodySmall = t(12.5f, 17f, spacing = 0.2f),
+    labelLarge = t(14f, 20f, FontWeight.Medium, 0.1f), labelMedium = t(12f, 16f, FontWeight.Medium, 0.3f), labelSmall = t(11f, 15f, FontWeight.Medium, 0.4f),
 )
 
 val LocalDarkTheme = staticCompositionLocalOf { false }

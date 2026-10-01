@@ -104,11 +104,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
-import dev.chrisbanes.haze.rememberHazeState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.yarn.data.db.MessageStatus
 import app.yarn.data.prefs.SwipeAction
@@ -131,7 +126,6 @@ sealed interface InboxDestination {
     data object Settings : InboxDestination
 }
 
-@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun InboxScreen(
     vm: InboxViewModel,
@@ -178,15 +172,15 @@ fun InboxScreen(
         )
     }
 
-    val hazeState = rememberHazeState()
-    val glass = HazeMaterials.thin(MaterialTheme.colorScheme.surface)
     val scrolled by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 } }
-    val glassModifier = Modifier.hazeEffect(state = hazeState, style = glass)
+    // Google Messages-style two-tone layout: a soft header band, the list on a rounded sheet.
+    val header = inboxHeaderColor()
+    val sheet = MaterialTheme.colorScheme.surface
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = header,
         topBar = {
-            Box(if (scrolled) glassModifier else Modifier.background(MaterialTheme.colorScheme.surface)) {
+            Column(Modifier.background(header)) {
                 when {
                     selecting -> SelectionTopBar(
                         count = selection.size,
@@ -218,79 +212,86 @@ fun InboxScreen(
                         onNavigate = onNavigate,
                     )
                 }
+                if (showChips && chips.size > 1) {
+                    LazyRow(
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(chips, key = { it.label }) { chip ->
+                            GroupChip(chip, selected = chip.filter == filter) { vm.setFilter(chip.filter) }
+                        }
+                    }
+                } else {
+                    Spacer(Modifier.height(6.dp))
+                }
             }
         },
         floatingActionButton = {
             if (onNewMessage != null && !selecting) {
                 ExtendedFloatingActionButton(
                     onClick = onNewMessage,
-                    icon = { Icon(Icons.Outlined.Edit, null, Modifier.size(20.dp)) },
-                    text = { Text("Start chat", style = MaterialTheme.typography.labelLarge) },
+                    icon = { Icon(Icons.Outlined.Edit, null, Modifier.size(22.dp)) },
+                    text = { Text("Start chat", style = MaterialTheme.typography.titleMedium) },
                     expanded = !scrolled,
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    shape = RoundedCornerShape(18.dp),
-                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 4.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 3.dp, pressedElevation = 6.dp),
                 )
             }
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         val list = items
-        // Content runs underneath the header so it can be seen through the frosted glass while scrolling.
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().hazeSource(hazeState),
-            contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 96.dp),
+        Box(
+            Modifier
+                .padding(top = padding.calculateTopPadding())
+                .fillMaxSize()
+                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .background(sheet),
         ) {
-            item(key = "banners", contentType = "banners") {
-                StatusBanners(status, onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } })
-            }
-            if (showChips && chips.size > 1) {
-                item(key = "chips", contentType = "chips") {
-                    LazyRow(
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        items(chips, key = { it.label }) { chip ->
-                            GroupChip(chip, selected = chip.filter == filter) { vm.setFilter(chip.filter) }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(top = 10.dp, bottom = padding.calculateBottomPadding() + 110.dp),
+            ) {
+                item(key = "banners", contentType = "banners") {
+                    StatusBanners(status, onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } })
+                }
+                when {
+                    list == null -> Unit
+                    list.isEmpty() -> item(key = "empty") { EmptyInbox(filter.view, status.sync.running) }
+                    else -> items(list, key = { it.conversation.id }, contentType = { "row" }) { item ->
+                        val id = item.conversation.id
+                        SwipeableRow(
+                            enabled = !selecting && filter.view != InboxView.BLOCKED,
+                            start = settings.swipeStart,
+                            end = settings.swipeEnd,
+                            archived = item.conversation.archived,
+                            onAction = { action ->
+                                when (action) {
+                                    SwipeAction.ARCHIVE -> vm.archive(setOf(id), archived = !item.conversation.archived)
+                                    SwipeAction.DELETE -> confirmDelete = setOf(id)
+                                    SwipeAction.READ -> vm.toggleRead(id)
+                                    SwipeAction.PIN -> vm.togglePin(id)
+                                    SwipeAction.NONE -> Unit
+                                }
+                            },
+                        ) {
+                            ConversationRow(
+                                item = item,
+                                selected = id in selection,
+                                highlighted = id == selectedConversation,
+                                onClick = { if (selecting) vm.toggle(id) else onOpen(id) },
+                                onLongClick = { vm.toggle(id) },
+                                onCopyCode = vm::copyCode,
+                            )
                         }
                     }
                 }
-            }
-            when {
-                list == null -> Unit
-                list.isEmpty() -> item(key = "empty") { EmptyInbox(filter.view, status.sync.running) }
-                else -> items(list, key = { it.conversation.id }, contentType = { "row" }) { item ->
-                    val id = item.conversation.id
-                    SwipeableRow(
-                        enabled = !selecting && filter.view != InboxView.BLOCKED,
-                        start = settings.swipeStart,
-                        end = settings.swipeEnd,
-                        archived = item.conversation.archived,
-                        onAction = { action ->
-                            when (action) {
-                                SwipeAction.ARCHIVE -> vm.archive(setOf(id), archived = !item.conversation.archived)
-                                SwipeAction.DELETE -> confirmDelete = setOf(id)
-                                SwipeAction.READ -> vm.toggleRead(id)
-                                SwipeAction.PIN -> vm.togglePin(id)
-                                SwipeAction.NONE -> Unit
-                            }
-                        },
-                    ) {
-                        ConversationRow(
-                            item = item,
-                            selected = id in selection,
-                            highlighted = id == selectedConversation,
-                            onClick = { if (selecting) vm.toggle(id) else onOpen(id) },
-                            onLongClick = { vm.toggle(id) },
-                            onCopyCode = vm::copyCode,
-                        )
-                    }
+                if (!list.isNullOrEmpty()) {
+                    item(key = "count", contentType = "count") { InboxCount(list) }
                 }
-            }
-            if (!list.isNullOrEmpty()) {
-                item(key = "count", contentType = "count") { InboxCount(list) }
             }
         }
     }
@@ -332,7 +333,7 @@ internal fun InboxHeader(
         Spacer(Modifier.width(14.dp))
         Text(
             title,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Normal, fontSize = 25.sp),
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f).semantics { heading() },
         )
@@ -365,15 +366,16 @@ internal fun InboxHeader(
 
 @Composable
 internal fun GroupChip(chip: InboxChip, selected: Boolean, onClick: () -> Unit) {
-    val bg by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh, label = "chipBg")
+    val idle = if (app.yarn.ui.theme.LocalDarkTheme.current) Color(0xFF3D3E43) else Color.White
+    val bg by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else idle, label = "chipBg")
     val fg by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, label = "chipFg")
     Row(
         Modifier
-            .height(32.dp)
+            .height(36.dp)
             .clip(CircleShape)
             .background(bg)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp)
+            .padding(horizontal = 16.dp)
             .semantics(mergeDescendants = true) {
                 stateDescription = if (selected) "Selected" else "Not selected"
                 if (chip.unread > 0) contentDescription = "${chip.label}, ${chip.unread} unread"
@@ -486,87 +488,89 @@ fun ConversationRow(
     }
     val strong = MaterialTheme.colorScheme.onSurface
     val quiet = MaterialTheme.colorScheme.onSurfaceVariant
+    val nameStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp, lineHeight = 24.sp)
+    val previewStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.5.sp, lineHeight = 21.sp)
     Row(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(bg)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = "Select")
-            .padding(horizontal = 10.dp, vertical = 9.dp)
+            .padding(start = 12.dp, end = 14.dp, top = 14.dp, bottom = 14.dp)
             .semantics(mergeDescendants = true) { contentDescription = a11y; stateDescription = if (selected) "Selected" else "" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
             if (selected) {
-                Box(Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Check, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Box(Modifier.size(52.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Check, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onPrimary)
                 }
             } else {
                 Avatar(
-                    c.title, item.photoUri, size = 44.dp, isGroup = c.isGroup,
+                    c.title, item.photoUri, size = 52.dp, isGroup = c.isGroup,
                     icon = if (item.isBusiness) item.group?.let(CategoryUi::groupIcon) ?: CategoryUi.default else null,
+                    neutral = item.isBusiness,
                 )
             }
         }
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     c.title,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = nameStyle,
                     color = strong,
                     fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
-                if (c.pinned) Icon(Icons.Filled.PushPin, null, Modifier.padding(start = 5.dp).size(13.dp), tint = quiet)
-                if (c.muted) Icon(Icons.Outlined.NotificationsOff, null, Modifier.padding(start = 5.dp).size(13.dp), tint = quiet)
-                }
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    time, style = MaterialTheme.typography.labelMedium,
-                    color = if (unread) strong else quiet,
-                    fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1,
-                )
+                if (c.pinned) Icon(Icons.Filled.PushPin, null, Modifier.padding(start = 6.dp).size(15.dp), tint = quiet)
+                if (c.muted) Icon(Icons.Outlined.NotificationsOff, null, Modifier.padding(start = 6.dp).size(15.dp), tint = quiet)
             }
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 when {
-                    c.hasFailed -> Icon(Icons.Outlined.ErrorOutline, null, Modifier.padding(end = 4.dp).size(15.dp), tint = MaterialTheme.colorScheme.error)
-                    !c.draft.isNullOrBlank() -> Icon(Icons.Outlined.Drafts, null, Modifier.padding(end = 4.dp).size(15.dp), tint = MaterialTheme.colorScheme.tertiary)
-                    c.snippetFromMe && c.snippetStatus in MessageStatus.OUTGOING_PENDING -> Icon(Icons.Outlined.Schedule, null, Modifier.padding(end = 4.dp).size(15.dp), tint = quiet)
+                    c.hasFailed -> Icon(Icons.Outlined.ErrorOutline, null, Modifier.padding(end = 6.dp).size(17.dp), tint = MaterialTheme.colorScheme.error)
+                    !c.draft.isNullOrBlank() -> Icon(Icons.Outlined.Drafts, null, Modifier.padding(end = 6.dp).size(17.dp), tint = MaterialTheme.colorScheme.tertiary)
+                    c.snippetFromMe && c.snippetStatus in MessageStatus.OUTGOING_PENDING -> Icon(Icons.Outlined.Schedule, null, Modifier.padding(end = 6.dp).size(17.dp), tint = quiet)
                 }
                 Text(
                     preview,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = previewStyle,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     color = if (unread) strong else quiet,
                     fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
-                    modifier = Modifier.weight(1f),
                 )
-                if (unread) {
-                    Spacer(Modifier.width(10.dp))
-                    Box(Modifier.size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
-                }
             }
             item.otpCode?.let { code ->
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 Row(
                     Modifier
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
                         .clickable { onCopyCode(code) }
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                         .semantics(mergeDescendants = true) { contentDescription = "Copy code $code" },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Outlined.ContentCopy, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(6.dp))
-                    Text(code, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.5.sp)
+                    Icon(Icons.Outlined.ContentCopy, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    Text(code, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.5.sp)
                 }
+            }
+        }
+        // Time sits in its own column, so previews never run underneath it.
+        Column(Modifier.padding(start = 16.dp).align(Alignment.Top).padding(top = 3.dp), horizontalAlignment = Alignment.End) {
+            Text(
+                time, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                color = if (unread) strong else quiet,
+                fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
+                maxLines = 1,
+            )
+            if (unread) {
+                Spacer(Modifier.height(12.dp))
+                Box(Modifier.size(9.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
             }
         }
     }
@@ -717,3 +721,8 @@ internal fun InboxCount(list: List<InboxItem>) {
         modifier = Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 8.dp),
     )
 }
+
+/** Soft band behind the inbox title and chips; the conversation sheet sits on top of it. */
+@Composable
+fun inboxHeaderColor(): Color =
+    if (app.yarn.ui.theme.LocalDarkTheme.current) Color(0xFF2B2C30) else Color(0xFFEDF1F8)

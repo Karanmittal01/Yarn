@@ -152,8 +152,6 @@ dependencies {
     implementation(libs.mlkit.translate)
     implementation(libs.mlkit.language.id)
     implementation(libs.mlkit.genai.prompt)
-    implementation(libs.haze)
-    implementation(libs.haze.materials)
     implementation(libs.mediapipe.genai)
     implementation(libs.play.app.update)
 

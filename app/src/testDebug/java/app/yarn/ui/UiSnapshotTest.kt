@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -75,32 +76,40 @@ class UiSnapshotTest {
 
     @androidx.compose.runtime.Composable
     private fun InboxMock() {
+        val header = app.yarn.ui.inbox.inboxHeaderColor()
         androidx.compose.material3.Scaffold(
-            containerColor = MaterialTheme.colorScheme.surface,
-            topBar = { app.yarn.ui.inbox.InboxHeader("Messages", {}, 0, true, {}, {}) },
+            containerColor = header,
+            topBar = {
+                Column(Modifier.background(header)) {
+                    app.yarn.ui.inbox.InboxHeader("Messages", {}, 0, true, {}, {})
+                    androidx.compose.foundation.lazy.LazyRow(
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
+                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                    ) { items(chips.size) { i -> app.yarn.ui.inbox.GroupChip(chips[i], selected = i == 0) {} } }
+                }
+            },
             floatingActionButton = {
                 androidx.compose.material3.ExtendedFloatingActionButton(
-                    onClick = {}, icon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Edit, null, Modifier.size(20.dp)) },
-                    text = { androidx.compose.material3.Text("Start chat", style = MaterialTheme.typography.labelLarge) },
+                    onClick = {}, icon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Edit, null, Modifier.size(22.dp)) },
+                    text = { androidx.compose.material3.Text("Start chat", style = MaterialTheme.typography.titleMedium) },
                     containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
-                    elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
                 )
             },
         ) { p ->
-            androidx.compose.foundation.lazy.LazyColumn(contentPadding = p) {
-                item {
-                    androidx.compose.foundation.lazy.LazyRow(
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 6.dp),
-                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
-                    ) { items(chips.size) { i -> app.yarn.ui.inbox.GroupChip(chips[i], selected = i == 0) {} } }
-                }
-                items(inbox.size) { i ->
-                    app.yarn.ui.inbox.SwipeableRow(true, app.yarn.data.prefs.SwipeAction.ARCHIVE, app.yarn.data.prefs.SwipeAction.DELETE, false, {}) {
-                        ConversationRow(inbox[i], false, false, {}, {})
+            androidx.compose.foundation.layout.Box(
+                Modifier.padding(top = p.calculateTopPadding()).fillMaxSize()
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .background(MaterialTheme.colorScheme.surface),
+            ) {
+                androidx.compose.foundation.lazy.LazyColumn(contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 10.dp)) {
+                    items(inbox.size) { i ->
+                        app.yarn.ui.inbox.SwipeableRow(true, app.yarn.data.prefs.SwipeAction.ARCHIVE, app.yarn.data.prefs.SwipeAction.DELETE, false, {}) {
+                            ConversationRow(inbox[i], false, false, {}, {})
+                        }
                     }
+                    item { app.yarn.ui.inbox.InboxCount(inbox) }
                 }
-                item { app.yarn.ui.inbox.InboxCount(inbox) }
             }
         }
     }

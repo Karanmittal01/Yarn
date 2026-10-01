@@ -93,19 +93,31 @@ fun Avatar(
     modifier: Modifier = Modifier,
     isGroup: Boolean = false,
     icon: ImageVector? = null,
+    /** Quiet grey circle (used for businesses), like Google Messages' unknown senders. */
+    neutral: Boolean = false,
 ) {
     val accent = Color(Avatars.colorFor(name))
     val dark = app.yarn.ui.theme.LocalDarkTheme.current
+    val fill = when {
+        photoUri != null -> Color.Transparent
+        neutral -> if (dark) Color(0xFF3A3B3F) else Color(0xFFE4E7EE)
+        dark -> accent.mix(Color.White, 0.45f)
+        else -> accent.mix(Color.White, 0.78f)
+    }
     Box(
         modifier
             .size(size)
             .clip(CircleShape)
-            .background(if (photoUri != null) Color.Transparent else if (dark) accent.mix(Color.White, 0.45f) else accent.mix(Color.White, 0.78f))
+            .background(fill)
             .clearAndSetSemantics { },
         contentAlignment = Alignment.Center,
     ) {
         // Solid pastel circle with a deep-toned glyph: high contrast in both themes, like Google Messages.
-        val tint = if (dark) accent.mix(Color.Black, 0.62f) else accent.mix(Color.Black, 0.35f)
+        val tint = when {
+            neutral -> if (dark) Color(0xFFC4C7CD) else Color(0xFF5F6368)
+            dark -> accent.mix(Color.Black, 0.62f)
+            else -> accent.mix(Color.Black, 0.35f)
+        }
         when {
             photoUri != null -> AsyncImage(model = photoUri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size))
             isGroup -> androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Groups, null, tint = tint, modifier = Modifier.size(size * 0.5f))
