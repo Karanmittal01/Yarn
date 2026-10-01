@@ -178,13 +178,7 @@ class Notifier(
             .setShowsUserInterface(false)
             .build()
         if (otp != null && s.otpCopyAction) {
-            // Codes: copy, copy & delete, mark read. (Android shows at most three actions.)
-            builder.addAction(
-                NotificationCompat.Action.Builder(
-                    R.drawable.ic_copy, "Copy ${otp.value}",
-                    actionIntent(NotificationActionReceiver.ACTION_COPY_OTP, conversationId, { putExtra(NotificationActionReceiver.EXTRA_TEXT, otp.value) }),
-                ).setShowsUserInterface(false).build(),
-            )
+            // Codes: copy & delete, mark read.
             builder.addAction(
                 NotificationCompat.Action.Builder(
                     R.drawable.ic_delete, "Copy & delete",
