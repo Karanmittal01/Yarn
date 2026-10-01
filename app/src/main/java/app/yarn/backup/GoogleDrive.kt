@@ -55,7 +55,7 @@ class GoogleDrive(private val context: Context) {
 
     /** Plain-language reason for a failed Google sign-in. */
     private fun explain(reason: String): String = when {
-        reason.contains("UNREGISTERED_ON_API_CONSOLE", true) || reason.contains("INVALID_CLIENT", true) ->
+        reason.replace("_", "").contains("UNREGISTEREDONAPICONSOLE", true) || reason.contains("INVALID_CLIENT", true) ->
             "Google doesn't recognise this copy of Yarn. In Google Cloud → Clients, add an Android client for package " +
                 "${context.packageName} with SHA-1 ${signingSha1() ?: "(unknown)"}"
         reason.contains("NetworkError", true) -> "No internet connection."
