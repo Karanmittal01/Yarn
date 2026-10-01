@@ -98,51 +98,61 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, onOpen: (SettingsP
     val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { context.container.refreshPlatformState() }
 
     SettingsScaffold("Settings", onBack) {
-        item {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(settingsCardColor())
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                YarnLogo(size = 44.dp)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Yarn", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        if (isDefault) "Default messaging app" else "Not your default SMS app",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (!isDefault) FilledTonalButton(onClick = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } }) { Text("Set") }
+        settingsHubItems(s, isDefault, onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } }, onOpen = onOpen)
+    }
+}
+
+/** The settings hub rows, split out so they can be rendered in previews and screenshot tests. */
+internal fun androidx.compose.foundation.lazy.LazyListScope.settingsHubItems(
+    s: app.yarn.data.prefs.AppSettings,
+    isDefault: Boolean,
+    onSetDefault: () -> Unit,
+    onOpen: (SettingsPage) -> Unit,
+) {
+    item {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(settingsCardColor())
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            YarnLogo(size = 44.dp)
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Yarn", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    if (isDefault) "Default messaging app" else "Not your default SMS app",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
+            if (!isDefault) FilledTonalButton(onClick = onSetDefault) { Text("Set") }
         }
-        item { Spacer(Modifier.height(10.dp)) }
-        item {
-            SettingsGroup {
-                NavRow(Icons.Outlined.Palette, "Appearance", themeLabel(s.theme), Color(0xFF7C5CFF)) { onOpen(SettingsPage.APPEARANCE) }
-                NavRow(Icons.Outlined.Notifications, "Notifications", null, Color(0xFFF2453D)) { onOpen(SettingsPage.NOTIFICATIONS) }
-                NavRow(Icons.Outlined.Sms, "Messaging", null, Color(0xFF34C759)) { onOpen(SettingsPage.MESSAGING) }
-            }
+    }
+    item { Spacer(Modifier.height(10.dp)) }
+    item {
+        SettingsGroup {
+            NavRow(Icons.Outlined.Palette, "Appearance", themeLabel(s.theme), Color(0xFF7C5CFF)) { onOpen(SettingsPage.APPEARANCE) }
+            NavRow(Icons.Outlined.Notifications, "Notifications", null, Color(0xFFF2453D)) { onOpen(SettingsPage.NOTIFICATIONS) }
+            NavRow(Icons.Outlined.Sms, "Messaging", null, Color(0xFF34C759)) { onOpen(SettingsPage.MESSAGING) }
         }
-        item { Spacer(Modifier.height(10.dp)) }
-        item {
-            SettingsGroup {
-                NavRow(Icons.Outlined.AutoAwesome, "Smart features", if (s.aiEnabled) "On" else "Off", Color(0xFF1466F0)) { onOpen(SettingsPage.AI) }
-                NavRow(Icons.Outlined.Lock, "Privacy & security", null, Color(0xFF0FA3B1)) { onOpen(SettingsPage.PRIVACY) }
-                NavRow(Icons.Outlined.Block, "Blocked", null, Color(0xFF8E8E93)) { onOpen(SettingsPage.BLOCKED) }
-            }
+    }
+    item { Spacer(Modifier.height(10.dp)) }
+    item {
+        SettingsGroup {
+            NavRow(Icons.Outlined.AutoAwesome, "Smart features", if (s.aiEnabled) "On" else "Off", Color(0xFF1466F0)) { onOpen(SettingsPage.AI) }
+            NavRow(Icons.Outlined.Lock, "Privacy & security", null, Color(0xFF0FA3B1)) { onOpen(SettingsPage.PRIVACY) }
+            NavRow(Icons.Outlined.Block, "Blocked", null, Color(0xFF8E8E93)) { onOpen(SettingsPage.BLOCKED) }
         }
-        item { Spacer(Modifier.height(10.dp)) }
-        item {
-            SettingsGroup {
-                NavRow(Icons.Outlined.Backup, "Backup & restore", null, Color(0xFFFF9500)) { onOpen(SettingsPage.BACKUP) }
-                NavRow(Icons.Outlined.Info, "About", BuildConfig.VERSION_NAME, Color(0xFF636366)) { onOpen(SettingsPage.ABOUT) }
-            }
+    }
+    item { Spacer(Modifier.height(10.dp)) }
+    item {
+        SettingsGroup {
+            NavRow(Icons.Outlined.Backup, "Backup & restore", null, Color(0xFFFF9500)) { onOpen(SettingsPage.BACKUP) }
+            NavRow(Icons.Outlined.Info, "About", BuildConfig.VERSION_NAME, Color(0xFF636366)) { onOpen(SettingsPage.ABOUT) }
         }
     }
 }

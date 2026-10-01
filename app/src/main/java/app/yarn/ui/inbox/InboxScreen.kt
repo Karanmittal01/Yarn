@@ -304,7 +304,7 @@ fun InboxScreen(
 }
 
 @Composable
-private fun InboxHeader(
+internal fun InboxHeader(
     title: String,
     onSearch: (() -> Unit)?,
     spamUnread: Int,
@@ -353,7 +353,7 @@ private fun InboxHeader(
 }
 
 @Composable
-private fun GroupChip(chip: InboxChip, selected: Boolean, onClick: () -> Unit) {
+internal fun GroupChip(chip: InboxChip, selected: Boolean, onClick: () -> Unit) {
     val bg by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh, label = "chipBg")
     val fg by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, label = "chipFg")
     Row(
