@@ -195,7 +195,7 @@ class GoogleBackupWorker(context: Context, params: WorkerParameters) : Coroutine
         val s = c.settings.current()
         if (s.googleAccount == null || !s.autoBackup) return Result.success()
         // Only works silently when access was granted before; otherwise wait for the user.
-        val token = runCatching { c.drive.token() }.getOrElse { return Result.success() }
+        val token = runCatching { c.drive.token(s.googleAccount) }.getOrElse { return Result.success() }
         val result = c.backup.backupToGoogle(c.drive, token, s.backupMedia) ?: return if (runAttemptCount < 3) Result.retry() else Result.success()
         c.settings.update { it.copy(lastBackupAt = System.currentTimeMillis(), lastBackupBytes = result.first) }
         c.backup.reset()

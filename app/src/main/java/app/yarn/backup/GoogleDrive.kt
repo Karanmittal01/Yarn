@@ -1,15 +1,9 @@
 package app.yarn.backup
 
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.util.Base64
-import com.google.android.gms.auth.api.identity.AuthorizationRequest
-import com.google.android.gms.auth.api.identity.AuthorizationResult
-import com.google.android.gms.auth.api.identity.Identity
-import com.google.android.gms.common.api.Scope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
@@ -22,8 +16,8 @@ import java.security.SecureRandom
 /** A backup stored in the user's Google Drive. */
 data class DriveBackup(val id: String, val modifiedAt: Long, val sizeBytes: Long, val messageCount: Int)
 
-/** Thrown when Google needs the user to pick an account or grant access on screen. */
-class NeedsConsentException(val pendingIntent: PendingIntent) : Exception("Google sign-in needed")
+/** Thrown when Google needs the user to allow access on screen; launch [intent], then try again. */
+class ConsentNeededException(val intent: Intent) : Exception("Allow Yarn to use Google Drive to continue")
 
 /**
  * Backs up to the hidden, app-only folder of the user's own Google Drive (the `drive.appdata`
@@ -31,74 +25,43 @@ class NeedsConsentException(val pendingIntent: PendingIntent) : Exception("Googl
  * and can only be read by Yarn. The Drive API is free, so this costs neither the user nor us.
  */
 class GoogleDrive(private val context: Context) {
-    private val request = AuthorizationRequest.builder()
-        // Only the private app folder. Asking for extra scopes (e.g. "email") alongside it is a known
-        // trigger for Google's internal error 8; the account email comes from the result instead.
-        .setRequestedScopes(listOf(Scope(SCOPE_APPDATA)))
-        .build()
+    /** Intent for the standard Google account picker. */
+    fun accountPickerIntent(): Intent = com.google.android.gms.common.AccountPicker.newChooseAccountIntent(
+        com.google.android.gms.common.AccountPicker.AccountChooserOptions.Builder()
+            .setAllowableAccountsTypes(listOf(GOOGLE_ACCOUNT_TYPE))
+            .build(),
+    )
 
     /**
-     * Returns an access token. When the user hasn't granted access yet (or must choose an account)
-     * this throws [NeedsConsentException]; the UI launches its intent and calls [tokenFrom].
+     * Access token for [email]'s Drive app folder, using Android's account system. The first time,
+     * Google shows a one-off "Allow Yarn…" screen: that surfaces as [ConsentNeededException], whose
+     * intent the UI launches before calling this again. Later calls (and the daily backup) are silent.
      */
-    /** Email of the account that granted access, when Google reports it. */
-    @Volatile var lastEmail: String? = null
-        private set
-
-    suspend fun token(): String {
-        var attempt = 0
-        while (true) {
-            val result = try {
-                Identity.getAuthorizationClient(context).authorize(request).await()
-            } catch (e: com.google.android.gms.common.api.ApiException) {
-                // Error 8 is often a one-off right after install or consent; try once more.
-                if (e.statusCode == com.google.android.gms.common.api.CommonStatusCodes.INTERNAL_ERROR && attempt++ == 0) {
-                    kotlinx.coroutines.delay(800)
-                    continue
-                }
-                throw IOException(explain(e.statusCode), e)
-            }
-            if (result.hasResolution()) throw NeedsConsentException(requireNotNull(result.pendingIntent))
-            remember(result)
-            return result.accessToken ?: throw IOException("Google didn't return access")
-        }
-    }
-
-    /** Token after the consent screen; falls back to a silent request if Google glitched on return. */
-    suspend fun tokenFrom(data: Intent?): String {
+    suspend fun token(email: String): String = withContext(Dispatchers.IO) {
+        val account = android.accounts.Account(email, GOOGLE_ACCOUNT_TYPE)
         try {
-            val result: AuthorizationResult = Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(data)
-            remember(result)
-            result.accessToken?.let { return it }
-        } catch (e: com.google.android.gms.common.api.ApiException) {
-            if (e.statusCode != com.google.android.gms.common.api.CommonStatusCodes.INTERNAL_ERROR) throw IOException(explain(e.statusCode), e)
+            com.google.android.gms.auth.GoogleAuthUtil.getToken(context, account, "oauth2:$SCOPE_APPDATA")
+        } catch (e: com.google.android.gms.auth.UserRecoverableAuthException) {
+            throw ConsentNeededException(e.intent ?: throw IOException("Google needs you to sign in again."))
+        } catch (e: com.google.android.gms.auth.GoogleAuthException) {
+            throw IOException(explain(e.message.orEmpty()), e)
         }
-        // Access was usually granted even when the result came back empty or with error 8.
-        return token()
     }
 
-    private fun remember(result: AuthorizationResult) {
-        runCatching { result.toGoogleSignInAccount()?.email }.getOrNull()?.let { lastEmail = it }
+    /** Drops a stale token so the next [token] call fetches a fresh one (after a 401). */
+    suspend fun invalidate(token: String) = withContext(Dispatchers.IO) {
+        runCatching { com.google.android.gms.auth.GoogleAuthUtil.clearToken(context, token) }
     }
 
-    /** Plain-language reason for a failed Google sign-in, with the code for troubleshooting. */
-    fun explain(statusCode: Int): String = when (statusCode) {
-        com.google.android.gms.common.api.CommonStatusCodes.DEVELOPER_ERROR ->
-            "Google doesn't recognise this copy of Yarn (code 10). In Google Cloud → Clients, add an Android client for " +
-                "package ${context.packageName} with SHA-1 ${signingSha1() ?: "(unknown)"}"
-        com.google.android.gms.common.api.CommonStatusCodes.CANCELED, 12501 -> "Sign-in was cancelled."
-        com.google.android.gms.common.api.CommonStatusCodes.NETWORK_ERROR -> "No internet connection."
-        com.google.android.gms.common.api.CommonStatusCodes.SIGN_IN_REQUIRED -> "Please choose a Google account."
-        com.google.android.gms.common.api.CommonStatusCodes.INTERNAL_ERROR ->
-            "Google couldn't finish signing in (code 8). Check that the Google Drive API is enabled in Google Cloud and try again."
-        else -> "Google sign-in failed (code $statusCode)."
-    }
-
-    suspend fun accountEmail(token: String): String = withContext(Dispatchers.IO) {
-        lastEmail ?: runCatching {
-            val body = request("GET", "$API/about?fields=user(emailAddress)", token)
-            JSONObject(body).getJSONObject("user").getString("emailAddress")
-        }.getOrDefault("Google account")
+    /** Plain-language reason for a failed Google sign-in. */
+    private fun explain(reason: String): String = when {
+        reason.contains("UNREGISTERED_ON_API_CONSOLE", true) || reason.contains("INVALID_CLIENT", true) ->
+            "Google doesn't recognise this copy of Yarn. In Google Cloud → Clients, add an Android client for package " +
+                "${context.packageName} with SHA-1 ${signingSha1() ?: "(unknown)"}"
+        reason.contains("NetworkError", true) -> "No internet connection."
+        reason.contains("BadAuthentication", true) -> "Please sign in to this Google account again in your phone's settings."
+        reason.contains("ServiceDisabled", true) -> "Google Drive access is turned off for this account."
+        else -> "Google sign-in failed: $reason"
     }
 
     /** The random key that encrypts this account's backups, created on first use. */
@@ -228,6 +191,7 @@ class GoogleDrive(private val context: Context) {
         private const val API = "https://www.googleapis.com/drive/v3"
         private const val UPLOAD = "https://www.googleapis.com/upload/drive/v3/files"
         private const val SCOPE_APPDATA = "https://www.googleapis.com/auth/drive.appdata"
+        const val GOOGLE_ACCOUNT_TYPE = "com.google"
         private const val BACKUP_NAME = "yarn-backup.yarnbak"
         private const val KEY_NAME = "yarn-backup-key"
     }

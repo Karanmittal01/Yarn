@@ -14,9 +14,8 @@ import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.CloudDone
 import androidx.compose.material.icons.outlined.CloudUpload
 import app.yarn.work.GoogleBackupWorker
-import app.yarn.backup.NeedsConsentException
+import app.yarn.backup.ConsentNeededException
 import app.yarn.backup.DriveBackup
-import androidx.activity.result.IntentSenderRequest
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
@@ -168,61 +167,77 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     var checking by remember { mutableStateOf(false) }
     var confirmRestore by remember { mutableStateOf<DriveBackup?>(null) }
     var confirmOff by remember { mutableStateOf(false) }
-    var pending by remember { mutableStateOf<(suspend (String) -> Unit)?>(null) }
+    var pending by remember { mutableStateOf<Pair<String, suspend (String) -> Unit>?>(null) }
     val running = state is BackupState.Running || checking
 
-    val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-        val action = pending
+    /** Runs [action] with a Drive token for [email]; shows Google's one-time "Allow" screen when needed. */
+    val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val p = pending
         pending = null
-        if (action == null) { checking = false; return@rememberLauncherForActivityResult }
+        if (p == null) { checking = false; return@rememberLauncherForActivityResult }
+        if (result.resultCode != android.app.Activity.RESULT_OK) { checking = false; error = "Access wasn't allowed."; return@rememberLauncherForActivityResult }
         scope.launch {
-            // Even a "cancelled" result usually carries Google's real reason; show it instead of failing silently.
-            runCatching { action(c.drive.tokenFrom(result.data)) }.onFailure { e ->
-                error = if (result.resultCode == android.app.Activity.RESULT_OK || result.data != null) e.message ?: "Google sign-in failed." else "Sign-in was cancelled."
+            runCatching { p.second(c.drive.token(p.first)) }.onFailure { error = it.message ?: "Google sign-in failed." }
+            checking = false
+        }
+    }
+
+    fun runWithGoogle(email: String, action: suspend (String) -> Unit) {
+        error = null
+        checking = true
+        scope.launch {
+            try {
+                val token = c.drive.token(email)
+                try {
+                    action(token)
+                } catch (e: java.io.IOException) {
+                    // A cached token can expire; refresh once and retry.
+                    if (e.message?.contains("expired") != true) throw e
+                    c.drive.invalidate(token)
+                    action(c.drive.token(email))
+                }
+            } catch (e: ConsentNeededException) {
+                pending = email to action
+                consent.launch(e.intent)
+                return@launch
+            } catch (e: Exception) {
+                error = e.message ?: "Couldn't reach Google"
             }
             checking = false
         }
     }
 
-    /** Runs [action] with a Google access token, asking the user to sign in first when needed. */
-    fun withGoogle(action: suspend (String) -> Unit) {
-        error = null
-        checking = true
-        scope.launch {
-            try {
-                action(c.drive.token())
-                checking = false
-            } catch (e: NeedsConsentException) {
-                pending = action
-                consent.launch(IntentSenderRequest.Builder(e.pendingIntent).build())
-            } catch (e: Exception) {
-                error = e.message ?: "Couldn't reach Google"
-                checking = false
-            }
-        }
-    }
-
     suspend fun refreshLatest(token: String) { latest = c.drive.latest(token) }
 
+    fun connect(email: String) = runWithGoogle(email) { token ->
+        c.settings.update { it.copy(googleAccount = email) }
+        GoogleBackupWorker.schedule(context, s.autoBackup)
+        refreshLatest(token)
+        // Coming from another phone: offer to bring the messages back straight away.
+        latest?.let { confirmRestore = it }
+    }
+
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val email = result.data?.getStringExtra(android.accounts.AccountManager.KEY_ACCOUNT_NAME)
+        if (result.resultCode == android.app.Activity.RESULT_OK && email != null) connect(email)
+    }
+
+    fun withAccount(action: suspend (String) -> Unit) {
+        val email = s.googleAccount ?: run { picker.launch(c.drive.accountPickerIntent()); return }
+        runWithGoogle(email, action)
+    }
+
     LaunchedEffect(s.googleAccount) {
-        if (s.googleAccount != null) runCatching { refreshLatest(c.drive.token()) }
+        val email = s.googleAccount ?: return@LaunchedEffect
+        runCatching { refreshLatest(c.drive.token(email)) }
     }
 
     SettingsScaffold("Backup", onBack) {
         backupItems(
             s, latest, state, checking, error, running,
-            onSignIn = {
-                withGoogle { token ->
-                    val email = c.drive.accountEmail(token)
-                    c.settings.update { it.copy(googleAccount = email) }
-                    GoogleBackupWorker.schedule(context, s.autoBackup)
-                    refreshLatest(token)
-                    // Coming from another phone: offer to bring the messages back straight away.
-                    latest?.let { confirmRestore = it }
-                }
-            },
+            onSignIn = { error = null; picker.launch(c.drive.accountPickerIntent()) },
             onBackupNow = {
-                withGoogle { token ->
+                withAccount { token ->
                     c.backup.backupToGoogle(c.drive, token, s.backupMedia)?.let { (bytes, _) ->
                         c.settings.update { it.copy(lastBackupAt = System.currentTimeMillis(), lastBackupBytes = bytes) }
                     }
@@ -235,7 +250,7 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             },
             onMedia = { v -> vm.update { it.copy(backupMedia = v) } },
             onRestore = {
-                withGoogle { token ->
+                withAccount { token ->
                     refreshLatest(token)
                     if (latest == null) error = "No backup found in this Google account." else confirmRestore = latest
                 }
@@ -252,7 +267,7 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                 ". Messages already on this phone are kept; duplicates are skipped.",
             "Restore",
             onConfirm = {
-                withGoogle { token ->
+                withAccount { token ->
                     c.backup.restoreFromGoogle(c.drive, token, b)
                     ReanalyzeWorker.enqueue(context)
                 }
