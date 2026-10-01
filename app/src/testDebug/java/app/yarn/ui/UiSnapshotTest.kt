@@ -134,4 +134,18 @@ class UiSnapshotTest {
             )
         }
     }
+    private fun animatedShot(dark: Boolean, name: String, content: @androidx.compose.runtime.Composable () -> Unit) {
+        // Infinite animations never go idle, so drive the clock by hand.
+        compose.mainClock.autoAdvance = false
+        compose.setContent { YarnTheme(mode = if (dark) ThemeMode.DARK else ThemeMode.LIGHT) { content() } }
+        compose.mainClock.advanceTimeBy(1_500)
+        val view = compose.activity.window.decorView
+        val bmp = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+        view.draw(android.graphics.Canvas(bmp))
+        val out = File("build/ui-snapshots").apply { mkdirs() }
+        File(out, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+
+    @Test fun defaultPromptLight() = animatedShot(false, "9_default_prompt_light") { app.yarn.ui.inbox.DefaultAppPromptContent({}, {}) }
+    @Test fun defaultPromptDark() = animatedShot(true, "10_default_prompt_dark") { app.yarn.ui.inbox.DefaultAppPromptContent({}, {}) }
 }

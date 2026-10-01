@@ -168,7 +168,15 @@ fun InboxScreen(
         }
     }
 
-    val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
+    val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { vm.refreshPlatformState() }
+    // Asked once per app launch; "Not now" keeps the small banner as a way back.
+    var defaultPromptDismissed by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    if (onBack == null && !status.isDefault && !defaultPromptDismissed) {
+        DefaultAppPrompt(
+            onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) }; defaultPromptDismissed = true },
+            onDismiss = { defaultPromptDismissed = true },
+        )
+    }
 
     val hazeState = rememberHazeState()
     val glass = HazeMaterials.thin(MaterialTheme.colorScheme.surface)
@@ -636,9 +644,6 @@ private fun StatusBanners(status: InboxStatus, onSetDefault: () -> Unit) {
                 else -> "Airplane mode is on · messages will queue"
             },
         )
-    }
-    AnimatedVisibility(status.failed > 0) {
-        Banner(icon = Icons.Outlined.ErrorOutline, text = "${status.failed} message(s) not sent · open the chat to retry")
     }
     AnimatedVisibility(status.sync.running) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)) {

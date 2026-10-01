@@ -213,6 +213,24 @@ abstract class MessageDao {
     @Query("SELECT * FROM messages WHERE kind = :kind AND providerId = :providerId")
     abstract suspend fun byProviderId(kind: Int, providerId: Long): MessageEntity?
 
+    /** A message Yarn itself sent (it has send attempts) with this text, near this time, in this thread. */
+    @Query(
+        "SELECT * FROM messages WHERE conversationId = :conversationId AND outgoing = 1 AND attempts > 0 AND kind = 0 " +
+            "AND body = :body AND date BETWEEN :from AND :to AND (providerId IS NULL OR providerId != :providerId) LIMIT 1",
+    )
+    abstract suspend fun ownSendNear(conversationId: Long, body: String, from: Long, to: Long, providerId: Long): MessageEntity?
+
+    /**
+     * Imported copies of SMS that Yarn sent itself. Some phones (notably Samsung) save their own
+     * copy of every sent SMS on top of ours; those must not show up as a second message.
+     */
+    @Query(
+        "SELECT d.* FROM messages d WHERE d.kind = 0 AND d.outgoing = 1 AND d.attempts = 0 AND d.providerId IS NOT NULL " +
+            "AND EXISTS (SELECT 1 FROM messages o WHERE o.conversationId = d.conversationId AND o.outgoing = 1 AND o.attempts > 0 " +
+            "AND o.kind = 0 AND o.id != d.id AND o.body = d.body AND ABS(o.date - d.date) < 180000)",
+    )
+    abstract suspend fun duplicatesOfOwnSends(): List<MessageEntity>
+
     @Query("SELECT * FROM messages WHERE mmsContentLocation = :location LIMIT 1")
     abstract suspend fun byContentLocation(location: String): MessageEntity?
 

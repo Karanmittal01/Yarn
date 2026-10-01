@@ -76,8 +76,9 @@ class NewConversationViewModel(private val c: AppContainer, initialRecipients: L
     val recipients: StateFlow<List<Recipient>> = _recipients
     private val permissionTick = MutableStateFlow(0)
 
+    // Contacts appear only once you start typing, like Google Messages.
     val results: StateFlow<List<ContactPhone>> = combine(query.debounce(150), permissionTick) { q, _ -> q }
-        .map { c.contacts.search(it) }
+        .map { q -> if (q.isBlank()) emptyList() else c.contacts.search(q) }
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -94,7 +95,11 @@ class NewConversationViewModel(private val c: AppContainer, initialRecipients: L
     fun remove(r: Recipient) { _recipients.value = _recipients.value - r }
 
     /** Typed text that looks like a number or email can be used directly. */
-    fun typedAddress(): String? = query.value.trim().takeIf { PhoneNumbers.isDialable(it) || PhoneNumbers.isEmail(it) }
+    fun typedAddress(): String? = addressFrom(query.value)
+
+    companion object {
+        fun addressFrom(text: String): String? = text.trim().takeIf { PhoneNumbers.isDialable(it) || PhoneNumbers.isEmail(it) }
+    }
 
     fun start(onReady: (Long) -> Unit) {
         val typed = typedAddress()
@@ -113,6 +118,8 @@ fun NewConversationScreen(vm: NewConversationViewModel, onBack: () -> Unit, onOp
     val query by vm.query.collectAsStateWithLifecycle()
     val recipients by vm.recipients.collectAsStateWithLifecycle()
     val results by vm.results.collectAsStateWithLifecycle()
+    // Derived from the live text so the "Send to" row always shows (and uses) exactly what was typed.
+    val typedAddress = NewConversationViewModel.addressFrom(query)
     var dialpad by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) vm.onPermission() }
@@ -157,8 +164,8 @@ fun NewConversationScreen(vm: NewConversationViewModel, onBack: () -> Unit, onOp
                 colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent),
             )
             LazyColumn(Modifier.fillMaxSize()) {
-                vm.typedAddress()?.let { typed ->
-                    item {
+                typedAddress?.let { typed ->
+                    item(key = "typed") {
                         ListItem(
                             headlineContent = { Text("Send to $typed") },
                             supportingContent = { Text("Tap to start, or add more people") },
@@ -168,7 +175,7 @@ fun NewConversationScreen(vm: NewConversationViewModel, onBack: () -> Unit, onOp
                         )
                     }
                 }
-                if (!vm.hasContacts()) {
+                if (!vm.hasContacts() && query.isNotBlank()) {
                     item {
                         ListItem(
                             headlineContent = { Text("Show your contacts") },
@@ -180,7 +187,7 @@ fun NewConversationScreen(vm: NewConversationViewModel, onBack: () -> Unit, onOp
                 items(results, key = { "${it.contactId}-${it.number}" }) { contact ->
                     ListItem(
                         headlineContent = { Text(contact.name) },
-                        supportingContent = { Text("${contact.typeLabel} · ${contact.number}") },
+                        supportingContent = { Text(contact.number) },
                         leadingContent = { Avatar(contact.name, contact.photoUri, size = 40.dp) },
                         trailingContent = { TextButton(onClick = { vm.add(contact.name, contact.number) }) { Text("Add to group") } },
                         modifier = Modifier.clickable {

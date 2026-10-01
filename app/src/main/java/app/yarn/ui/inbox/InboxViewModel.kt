@@ -188,6 +188,8 @@ class InboxViewModel(private val c: AppContainer, initial: InboxFilter) : ViewMo
         _events.tryEmit(UndoEvent("Code $code copied", null))
     }
 
+    fun refreshPlatformState() = c.refreshPlatformState()
+
     fun runUndo(e: UndoEvent) { e.undo?.let { u -> viewModelScope.launch { u() } } }
 
     companion object {

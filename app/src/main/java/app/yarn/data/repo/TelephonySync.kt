@@ -75,8 +75,16 @@ class TelephonySync(
                 // when new messages arrive before the first import finishes.
                 var lastSms = cursors.getLong(KEY_SMS, 0L)
                 store.forEachSms(lastSms) { row ->
-                    buffer += row.toEntity()
                     lastSms = maxOf(lastSms, row.id)
+                    if (row.type != Telephony.Sms.MESSAGE_TYPE_INBOX &&
+                        db.messages().byProviderId(MessageKind.SMS, row.id) == null &&
+                        db.messages().ownSendNear(row.threadId, row.body, row.date - DUPLICATE_WINDOW_MS, row.date + DUPLICATE_WINDOW_MS, row.id) != null
+                    ) {
+                        // The phone saved its own copy of a message Yarn sent: drop it, keep ours.
+                        store.deleteSms(row.id)
+                        return@forEachSms
+                    }
+                    buffer += row.toEntity()
                     if (buffer.size >= BATCH) { flush(); cursors.edit().putLong(KEY_SMS, lastSms).apply() }
                 }
                 flush()
@@ -96,6 +104,12 @@ class TelephonySync(
                 }
                 flush()
                 cursors.edit().putLong(KEY_MMS, lastMms).apply()
+                // Clean up copies imported before this check existed.
+                for (dup in db.messages().duplicatesOfOwnSends()) {
+                    dup.providerId?.let { store.deleteSms(it) }
+                    db.messages().delete(listOf(dup.id))
+                    touched += dup.conversationId
+                }
                 touched.forEach { db.conversations().refresh(it) }
             }
         } catch (e: SecurityException) {
@@ -166,5 +180,6 @@ class TelephonySync(
         private const val BATCH = 400
         private const val KEY_SMS = "sms"
         private const val KEY_MMS = "mms"
+        private const val DUPLICATE_WINDOW_MS = 180_000L
     }
 }
