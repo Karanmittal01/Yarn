@@ -12,6 +12,8 @@ import app.yarn.data.db.MessageKind
 import app.yarn.data.db.MessageSearchResult
 import app.yarn.data.db.YarnDatabase
 import app.yarn.intelligence.Category
+import app.yarn.intelligence.group
+import app.yarn.intelligence.CategoryGroup
 import app.yarn.intelligence.PriorityContext
 import app.yarn.messaging.MessageSender
 import app.yarn.notifications.Notifier
@@ -32,19 +34,22 @@ enum class InboxView { ALL, IMPORTANT, UNREAD, CATEGORY, ARCHIVED, SPAM, BLOCKED
 data class InboxFilter(val view: InboxView = InboxView.ALL, val categories: Set<Category> = emptySet())
 
 /**
- * The four inbox groups people see. The analyser still works with finer categories internally
+ * The six inbox groups people see. The analyser still works with finer categories internally
  * (useful for priority and notifications), but the UI keeps choices simple.
  */
-enum class InboxGroup(val label: String, val categories: Set<Category>, val representative: Category) {
-    PERSONAL("Personal", setOf(Category.PERSONAL, Category.WORK), Category.PERSONAL),
-    TRANSACTIONS("Transactions", setOf(Category.OTP, Category.BANKING, Category.PAYMENTS, Category.BILLS), Category.BANKING),
-    UPDATES("Updates", setOf(Category.DELIVERY, Category.SHOPPING, Category.TRAVEL, Category.UPDATES), Category.UPDATES),
-    OFFERS("Offers", setOf(Category.PROMOTIONS), Category.PROMOTIONS);
+enum class InboxGroup(val label: String, val kind: CategoryGroup, val representative: Category) {
+    PERSONAL("Personal", CategoryGroup.PERSONAL, Category.PERSONAL),
+    OTP("OTP", CategoryGroup.OTP, Category.OTP),
+    TRANSACTIONS("Transactions", CategoryGroup.TRANSACTIONS, Category.BANKING),
+    SHOPPING("Shopping", CategoryGroup.SHOPPING, Category.SHOPPING),
+    UPDATES("Updates", CategoryGroup.UPDATES, Category.UPDATES),
+    OFFERS("Offers", CategoryGroup.OFFERS, Category.PROMOTIONS);
 
+    val categories: Set<Category> get() = Category.entries.filter { it.group == kind }.toSet()
     val filter: InboxFilter get() = InboxFilter(InboxView.CATEGORY, categories)
 
     companion object {
-        fun of(category: Category?): InboxGroup? = entries.firstOrNull { category in it.categories }
+        fun of(category: Category?): InboxGroup? = category?.group?.let { k -> entries.firstOrNull { it.kind == k } }
     }
 }
 

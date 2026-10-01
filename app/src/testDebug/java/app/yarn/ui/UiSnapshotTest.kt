@@ -50,22 +50,18 @@ class UiSnapshotTest {
 
     private val inbox = listOf(
         item(1, "Priya Sharma", "Are we still on for dinner tonight?", "PERSONAL", 2, "+919812345678", false, InboxGroup.PERSONAL, pinned = true),
-        item(2, "SBI", "123190 is OTP for online purchase of Rs. 50000.00 at DREAMPLUG", "OTP", 1, "AD-SBIOTP-S", true, InboxGroup.TRANSACTIONS, "123190"),
-        item(3, "Rahul", "Sent you the photos from Goa 📸", "PERSONAL", 0, "+919800000001", false, InboxGroup.PERSONAL),
-        item(4, "HDFC Bank", "Amt Deducted! Rs.35000 from your HDFC Bank A/c XX2626 for NEFT txn", "BANKING", 0, "AD-HDFCBK-S", true, InboxGroup.TRANSACTIONS),
-        item(5, "Amazon", "Your package will be delivered today by 9 PM", "DELIVERY", 0, "AX-AMAZON-S", true, InboxGroup.UPDATES),
+        item(2, "SBI Card", "423378 is the OTP for Trxn. of INR 375.00 at AMAZON with your SBI Card", "OTP", 1, "AD-SBICRD-T", true, InboxGroup.OTP, "423378"),
+        item(3, "HDFC Bank", "Rs.2,500.00 debited from A/c XX1234 to VPA swiggy@icici", "BANKING", 1, "VM-HDFCBK-S", true, InboxGroup.TRANSACTIONS),
+        item(4, "Zepto", "Thank you for ordering from Zepto. Your order is about to be delivered.", "SHOPPING", 0, "JM-ZEPTON-S", true, InboxGroup.SHOPPING),
+        item(5, "Swiggy", "Your Swiggy order from Behrouz Biryani is on the way!", "SHOPPING", 0, "AD-SWIGGY-S", true, InboxGroup.SHOPPING),
         item(6, "Mom", "Call me when you're free", "PERSONAL", 0, "+919800000002", false, InboxGroup.PERSONAL),
-        item(7, "Zepto", "Flat 50% off on your next 3 orders. Use code ZEP50", "PROMOTIONS", 0, "JM-ZEPTON-S", true, InboxGroup.OFFERS),
-        item(8, "Jio", "Your plan expires in 2 days. Recharge now to continue enjoying benefits.", "UPDATES", 0, "JK-JIOINF-S", true, InboxGroup.UPDATES),
+        item(7, "Zepto", "Sale is LIVE! Get flat 50% off on fruits & veggies. Order now", "PROMOTIONS", 0, "JM-ZEPTON-P", true, InboxGroup.OFFERS),
+        item(8, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.UPDATES),
         item(9, "CDSL", "Credit in a/c *89040843 through IPO/FPO for 107 shares", "BANKING", 0, "JX-CDSLTX-S", true, InboxGroup.TRANSACTIONS),
     )
-    private val chips = listOf(
-        app.yarn.ui.inbox.InboxChip("All", app.yarn.data.repo.InboxFilter(), unread = 3),
-        app.yarn.ui.inbox.InboxChip("Personal", app.yarn.data.repo.InboxFilter(categories = setOf(app.yarn.intelligence.Category.PERSONAL)), unread = 2),
-        app.yarn.ui.inbox.InboxChip("Transactions", app.yarn.data.repo.InboxFilter(categories = setOf(app.yarn.intelligence.Category.BANKING)), unread = 1),
-        app.yarn.ui.inbox.InboxChip("Updates", app.yarn.data.repo.InboxFilter(categories = setOf(app.yarn.intelligence.Category.UPDATES))),
-        app.yarn.ui.inbox.InboxChip("Offers", app.yarn.data.repo.InboxFilter(categories = setOf(app.yarn.intelligence.Category.PROMOTIONS))),
-    )
+    private val chips = listOf(app.yarn.ui.inbox.InboxChip("All", app.yarn.data.repo.InboxFilter(), unread = 4)) +
+        listOf(InboxGroup.PERSONAL to 2, InboxGroup.OTP to 1, InboxGroup.TRANSACTIONS to 1, InboxGroup.SHOPPING to 0, InboxGroup.UPDATES to 0, InboxGroup.OFFERS to 0)
+            .map { (g, n) -> app.yarn.ui.inbox.InboxChip(g.label, g.filter, g, n) }
 
     private fun shot(dark: Boolean, name: String, content: @androidx.compose.runtime.Composable () -> Unit) {
         compose.setContent { YarnTheme(mode = if (dark) ThemeMode.DARK else ThemeMode.LIGHT) { content() } }

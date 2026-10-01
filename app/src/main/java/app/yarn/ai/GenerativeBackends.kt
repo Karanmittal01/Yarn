@@ -102,19 +102,22 @@ class GeminiNanoService(@Suppress("unused") private val context: Context) {
      * Sorts an SMS into one of Yarn's four inbox groups. Used only for messages the built-in
      * rules are unsure about. Returns null when the model is unavailable or answers unclearly.
      */
-    suspend fun classify(sender: String, text: String): String? {
+    suspend fun classify(sender: String, header: String, text: String): String? {
         val prompt = """
-            Classify this SMS into exactly one group.
-            PERSONAL: written by a person (friends, family, colleagues).
-            TRANSACTIONS: OTPs, bank debits or credits, cards, UPI, payments, bills, investments.
-            UPDATES: orders, deliveries, bookings, travel, service or account notices.
-            OFFERS: promotions, sales, discounts, marketing.
-            Sender: $sender
+            You sort SMS for an Indian messaging app. Pick exactly one group for the message.
+            PERSONAL: written by a person to you (friends, family, colleagues, a neighbour).
+            OTP: contains a one-time password or verification/login code.
+            TRANSACTIONS: money actually moved or is owed: bank debit/credit, card spend, UPI payment, balance, card or account service notice from a bank, bill or premium due, investments.
+            SHOPPING: an order you placed: confirmed, packed, shipped, out for delivery, delivered, returned, refunded. Includes groceries, food delivery, medicines and couriers.
+            UPDATES: travel bookings, rides, appointments, government notices, telecom or app service notices.
+            OFFERS: advertising: sales, discounts, coupons, cashback offers, loan or card offers, new plans, "order now", "shop now". A shop or bank sending an advert is OFFERS, not SHOPPING or TRANSACTIONS.
+            The sender header ends in -P for promotional, -S for service, -T for transactional, -G for government.
+            Sender: $sender ($header)
             Message: ${text.take(600)}
-            Answer with one word: PERSONAL, TRANSACTIONS, UPDATES or OFFERS.
+            Answer with one word: PERSONAL, OTP, TRANSACTIONS, SHOPPING, UPDATES or OFFERS.
         """.trimIndent()
         val answer = generate(prompt, maxTokens = 4, temperature = 0f)?.uppercase() ?: return null
-        return listOf("PERSONAL", "TRANSACTIONS", "UPDATES", "OFFERS").firstOrNull { answer.contains(it) }
+        return listOf("TRANSACTIONS", "SHOPPING", "PERSONAL", "UPDATES", "OFFERS", "OTP").firstOrNull { answer.contains(it) }
     }
 
     companion object {

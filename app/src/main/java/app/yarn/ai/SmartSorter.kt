@@ -5,6 +5,8 @@ import app.yarn.data.db.YarnDatabase
 import app.yarn.data.prefs.SettingsRepository
 import app.yarn.data.repo.InboxGroup
 import app.yarn.intelligence.Category
+import app.yarn.intelligence.CommercialSuffix
+import app.yarn.intelligence.SenderAnalyzer
 import app.yarn.intelligence.SenderNames
 
 /**
@@ -43,10 +45,16 @@ class SmartSorter(
     }
 
     private suspend fun sort(m: MessageEntity): Boolean {
-        val sender = SenderNames.pretty(m.address) ?: m.address
-        val answer = nano.classify(sender, m.body)
-        val group = answer?.let { runCatching { InboxGroup.valueOf(it) }.getOrNull() }
         val current = Category.fromName(m.category)
+        // Certain signals are never second-guessed: a real one-time code, and promotional (-P)
+        // headers, which Indian operators only allow for advertising.
+        if (current == Category.OTP) return false
+        if (SenderAnalyzer.commercialSuffix(m.address) == CommercialSuffix.PROMOTIONAL) return false
+        val sender = SenderNames.pretty(m.address) ?: m.address
+        val answer = nano.classify(sender, m.address, m.body)
+        val group = answer?.let { runCatching { InboxGroup.valueOf(it) }.getOrNull() }
+            // The model may only call something an OTP when the extractor found a code.
+            ?.takeUnless { it == InboxGroup.OTP }
         val newCategory = when {
             group == null -> current ?: Category.PERSONAL
             InboxGroup.of(current) == group -> current!!

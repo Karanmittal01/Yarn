@@ -293,6 +293,10 @@ abstract class MessageDao {
     )
     abstract suspend fun uncertain(threshold: Float, since: Long, limit: Int): List<MessageEntity>
 
+    /** Lets automatic decisions be recomputed after the sorting rules change; user choices stay. */
+    @Query("UPDATE messages SET categorySource = 'RULES' WHERE categorySource = 'LLM'")
+    abstract suspend fun resetModelCategories()
+
     @Query("SELECT id FROM conversations WHERE unreadCount > 0 AND blocked = 0 AND spam = 0")
     abstract suspend fun unreadConversationIds(): List<Long>
 

@@ -109,3 +109,17 @@ data class Analysis(
     val otp: Entity? get() = entities.firstOrNull { it.type == EntityType.OTP }
     val category: Category get() = if (spam.verdict.isFiltered) Category.SPAM else classification.category
 }
+
+/** The six groups people see in the inbox; each fine-grained [Category] belongs to one. */
+enum class CategoryGroup { PERSONAL, OTP, TRANSACTIONS, SHOPPING, UPDATES, OFFERS }
+
+val Category.group: CategoryGroup?
+    get() = when (this) {
+        Category.PERSONAL, Category.WORK -> CategoryGroup.PERSONAL
+        Category.OTP -> CategoryGroup.OTP
+        Category.BANKING, Category.PAYMENTS, Category.BILLS -> CategoryGroup.TRANSACTIONS
+        Category.SHOPPING, Category.DELIVERY -> CategoryGroup.SHOPPING
+        Category.TRAVEL, Category.UPDATES -> CategoryGroup.UPDATES
+        Category.PROMOTIONS -> CategoryGroup.OFFERS
+        Category.SPAM -> null
+    }

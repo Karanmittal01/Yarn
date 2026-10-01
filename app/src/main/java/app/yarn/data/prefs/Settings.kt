@@ -58,6 +58,8 @@ data class AppSettings(
     val backupMedia: Boolean = true,
     val lastBackupAt: Long = 0,
     val lastBackupBytes: Long = 0,
+    /** Version of the sorting rules the stored categories were computed with. */
+    val rulesVersion: Int = 0,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore("settings")
@@ -102,6 +104,7 @@ class SettingsRepository(private val context: Context) {
         val backupMedia = booleanPreferencesKey("backup_media")
         val lastBackupAt = longPreferencesKey("last_backup_at")
         val lastBackupBytes = longPreferencesKey("last_backup_bytes")
+        val rulesVersion = intPreferencesKey("rules_version")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { readFrom(it, AppSettings()) }
@@ -150,6 +153,7 @@ class SettingsRepository(private val context: Context) {
             p[K.backupMedia] = s.backupMedia
             p[K.lastBackupAt] = s.lastBackupAt
             p[K.lastBackupBytes] = s.lastBackupBytes
+            p[K.rulesVersion] = s.rulesVersion
         }
     }
 
@@ -192,5 +196,6 @@ class SettingsRepository(private val context: Context) {
         backupMedia = p[K.backupMedia] ?: d.backupMedia,
         lastBackupAt = p[K.lastBackupAt] ?: d.lastBackupAt,
         lastBackupBytes = p[K.lastBackupBytes] ?: d.lastBackupBytes,
+        rulesVersion = p[K.rulesVersion] ?: d.rulesVersion,
     )
 }

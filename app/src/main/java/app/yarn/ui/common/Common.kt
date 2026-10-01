@@ -152,7 +152,9 @@ object CategoryUi {
 
     fun groupIcon(g: InboxGroup): ImageVector = when (g) {
         InboxGroup.PERSONAL -> Icons.Outlined.Person
+        InboxGroup.OTP -> Icons.Outlined.Password
         InboxGroup.TRANSACTIONS -> Icons.Outlined.AccountBalance
+        InboxGroup.SHOPPING -> Icons.Outlined.ShoppingBag
         InboxGroup.UPDATES -> Icons.Outlined.Inventory2
         InboxGroup.OFFERS -> Icons.Outlined.LocalOffer
     }

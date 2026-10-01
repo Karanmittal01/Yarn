@@ -3,6 +3,7 @@ package app.yarn
 import app.yarn.ai.SmartSorter
 import app.yarn.backup.GoogleDrive
 import app.yarn.work.GoogleBackupWorker
+import app.yarn.work.ReanalyzeWorker
 import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -96,6 +97,12 @@ class AppContainer(val app: Application) {
         scope.launch {
             val s = settings.current()
             GoogleBackupWorker.schedule(app, s.googleAccount != null && s.autoBackup)
+            // Sorting rules improved since these messages were filed: re-sort once.
+            if (s.initialImportDone && s.rulesVersion < YarnApplication.RULES_VERSION) {
+                db.messages().resetModelCategories()
+                ReanalyzeWorker.enqueue(app)
+            }
+            if (s.rulesVersion < YarnApplication.RULES_VERSION) settings.update { it.copy(rulesVersion = YarnApplication.RULES_VERSION) }
         }
         // Prepare the free on-device models in the background (no-ops when unsupported).
         scope.launch {
@@ -165,5 +172,10 @@ class YarnApplication : Application() {
         super.onCreate()
         container = AppContainer(this)
         container.start()
+    }
+
+    companion object {
+        /** Bump when categorisation changes enough that existing messages should be re-sorted. */
+        const val RULES_VERSION = 2
     }
 }

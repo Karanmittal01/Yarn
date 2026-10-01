@@ -105,6 +105,10 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
         }
         if (sender.commercialSuffix == CommercialSuffix.TRANSACTIONAL || sender.commercialSuffix == CommercialSuffix.GOVERNMENT) {
             if (risky.isEmpty()) { notSpam = 1f - (1f - notSpam) * 0.5f; notScam = 1f - (1f - notScam) * 0.5f }
+        } else if (sender.commercialSuffix != null && risky.isEmpty()) {
+            // A DLT-registered header (-P/-S) is a verified business: marketing pressure ("apply now",
+            // "pre-approved loan") makes it an offer, not junk. Scam wording still counts in full.
+            notSpam = 1f - (1f - notSpam) * 0.5f
         }
 
         var spamScore = 1f - notSpam

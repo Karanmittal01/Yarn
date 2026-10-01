@@ -140,6 +140,8 @@ class ReanalyzeWorker(context: Context, params: WorkerParameters) : CoroutineWor
             offset += page.size
         }
         touched.forEach { c.db.conversations().refresh(it) }
+        // Let the on-device model take a second look at whatever the rules were unsure about.
+        if (!isStopped) runCatching { c.smartSorter.sortRecent(limit = 150) }
         return Result.success()
     }
 
