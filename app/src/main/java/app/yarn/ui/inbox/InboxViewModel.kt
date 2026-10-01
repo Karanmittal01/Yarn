@@ -6,9 +6,12 @@ import app.yarn.AppContainer
 import app.yarn.data.db.ConversationEntity
 import app.yarn.data.prefs.AppSettings
 import app.yarn.data.repo.InboxFilter
+import app.yarn.data.repo.InboxGroup
 import app.yarn.data.repo.InboxView
 import app.yarn.data.repo.SyncProgress
 import app.yarn.intelligence.Category
+import app.yarn.intelligence.EntityType
+import app.yarn.intelligence.SenderNames
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -23,9 +26,17 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-data class InboxItem(val conversation: ConversationEntity, val photoUri: String?)
+data class InboxItem(
+    val conversation: ConversationEntity,
+    val photoUri: String?,
+    /** Business sender (bank, shop, service) rather than a person. */
+    val isBusiness: Boolean,
+    val group: InboxGroup?,
+    /** A fresh one-time code from the latest message, offered as a one-tap copy on the row. */
+    val otpCode: String?,
+)
 
-data class InboxChip(val label: String, val filter: InboxFilter, val icon: Category? = null)
+data class InboxChip(val label: String, val filter: InboxFilter, val group: InboxGroup? = null, val unread: Int = 0)
 
 data class InboxStatus(
     val isDefault: Boolean = true,
@@ -45,38 +56,40 @@ class InboxViewModel(private val c: AppContainer, initial: InboxFilter) : ViewMo
     val items: StateFlow<List<InboxItem>?> = _filter
         .flatMapLatest { c.conversations.observe(it) }
         .combine(c.contacts.version) { list, _ -> list }
-        .map { list -> list.map { InboxItem(it, if (it.isGroup) null else c.contacts.lookup(it.addresses.firstOrNull().orEmpty())?.photoUri) } }
+        .map { list -> list.map(::toItem) }
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val chips: List<InboxChip> = listOf(
-        InboxChip("All", InboxFilter()),
-        InboxChip("Important", InboxFilter(InboxView.IMPORTANT)),
-        InboxChip("Unread", InboxFilter(InboxView.UNREAD)),
-        InboxChip("Personal", InboxFilter(InboxView.CATEGORY, setOf(Category.PERSONAL)), Category.PERSONAL),
-        InboxChip("OTP", InboxFilter(InboxView.CATEGORY, setOf(Category.OTP)), Category.OTP),
-        InboxChip("Transactions", InboxFilter(InboxView.CATEGORY, InboxFilter.TRANSACTIONS - Category.OTP), Category.BANKING),
-        InboxChip("Orders", InboxFilter(InboxView.CATEGORY, InboxFilter.ORDERS), Category.DELIVERY),
-        InboxChip("Travel", InboxFilter(InboxView.CATEGORY, setOf(Category.TRAVEL)), Category.TRAVEL),
-        InboxChip("Work", InboxFilter(InboxView.CATEGORY, setOf(Category.WORK)), Category.WORK),
-        InboxChip("Updates", InboxFilter(InboxView.CATEGORY, setOf(Category.UPDATES)), Category.UPDATES),
-        InboxChip("Promotions", InboxFilter(InboxView.CATEGORY, setOf(Category.PROMOTIONS)), Category.PROMOTIONS),
-    )
+    private fun toItem(c0: ConversationEntity): InboxItem {
+        val address = c0.addresses.firstOrNull().orEmpty()
+        val category = Category.fromName(c0.category)
+        val business = !c0.isGroup && SenderNames.isBusiness(address)
+        val otp = if (category == Category.OTP && !c0.snippetFromMe && System.currentTimeMillis() - c0.lastMessageAt < OTP_FRESH_MS) {
+            c.engine.extract(c0.snippet, c0.lastMessageAt).firstOrNull { it.type == EntityType.OTP }?.value
+        } else null
+        return InboxItem(
+            conversation = c0,
+            photoUri = if (c0.isGroup || business) null else c.contacts.lookup(address)?.photoUri,
+            isBusiness = business,
+            group = InboxGroup.of(category),
+            otpCode = otp,
+        )
+    }
 
-    /** Unread count per chip label. */
-    val chipCounts: StateFlow<Map<String, Int>> = combine(
-        c.db.conversations().unreadByCategory(), c.db.conversations().importantUnread(),
-    ) { byCategory, important ->
-        val map = byCategory.associate { it.category to it.unread }
-        chips.associate { chip ->
-            chip.label to when (chip.filter.view) {
-                InboxView.CATEGORY -> chip.filter.categories.sumOf { map[it.name] ?: 0 }
-                InboxView.IMPORTANT -> important
-                InboxView.UNREAD, InboxView.ALL -> map.values.sum()
-                else -> 0
+    /** Only groups that actually contain conversations are offered as filters. */
+    val chips: StateFlow<List<InboxChip>> = combine(c.db.conversations().totalsByCategory(), _filter) { totals, current ->
+        val byName = totals.associateBy { it.category }
+        val unreadAll = totals.sumOf { it.unread }
+        buildList {
+            add(InboxChip("All", InboxFilter()))
+            if (unreadAll > 0 || current.view == InboxView.UNREAD) add(InboxChip("Unread", InboxFilter(InboxView.UNREAD), unread = unreadAll))
+            InboxGroup.entries.forEach { g ->
+                val total = g.categories.sumOf { byName[it.name]?.total ?: 0 }
+                val unread = g.categories.sumOf { byName[it.name]?.unread ?: 0 }
+                if (total > 0 || current == g.filter) add(InboxChip(g.label, g.filter, g, unread))
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), listOf(InboxChip("All", InboxFilter())))
 
     val spamUnread = c.db.conversations().unreadSpam().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
@@ -140,12 +153,32 @@ class InboxViewModel(private val c: AppContainer, initial: InboxFilter) : ViewMo
 
     fun setCategory(category: Category, always: Boolean, ids: Set<Long> = selected()) = act(ids) {
         c.conversations.setCategory(it, category, always)
-        _events.tryEmit(UndoEvent("Moved to ${app.yarn.ui.common.CategoryUi.label(category)}. Yarn will learn from this.", null))
+        _events.tryEmit(UndoEvent("Moved to ${InboxGroup.of(category)?.label ?: "category"}. Yarn will learn from this.", null))
     }
 
     suspend fun transcript(ids: Set<Long>): String = buildString {
         ids.forEach { append(c.conversations.transcript(it)).append("\n\n") }
     }.trim()
 
+    /** Swipe action: decides read/unread from the *current* row state, never a stale snapshot. */
+    fun toggleRead(id: Long) {
+        val current = items.value?.firstOrNull { it.conversation.id == id }?.conversation ?: return
+        if (current.unreadCount > 0) markRead(setOf(id)) else markUnread(setOf(id))
+    }
+
+    fun togglePin(id: Long) {
+        val current = items.value?.firstOrNull { it.conversation.id == id }?.conversation ?: return
+        pin(!current.pinned, setOf(id))
+    }
+
+    fun copyCode(code: String) {
+        app.yarn.notifications.NotificationActionReceiver.copySensitive(c.app, code)
+        _events.tryEmit(UndoEvent("Code $code copied", null))
+    }
+
     fun runUndo(e: UndoEvent) { e.undo?.let { u -> viewModelScope.launch { u() } } }
+
+    companion object {
+        private const val OTP_FRESH_MS = 30 * 60_000L
+    }
 }

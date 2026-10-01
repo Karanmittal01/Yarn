@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.Flow
 
 data class CategoryCount(val category: String, val unread: Int)
 
+data class CategoryTotal(val category: String, val total: Int, val unread: Int)
+
 @Dao
 abstract class ConversationDao {
     @RawQuery(observedEntities = [ConversationEntity::class])
@@ -88,6 +90,12 @@ abstract class ConversationDao {
 
     @Query("SELECT category, SUM(unreadCount) AS unread FROM conversations WHERE archived = 0 AND spam = 0 AND blocked = 0 GROUP BY category")
     abstract fun unreadByCategory(): Flow<List<CategoryCount>>
+
+    @Query(
+        "SELECT category, COUNT(*) AS total, SUM(CASE WHEN unreadCount > 0 THEN 1 ELSE 0 END) AS unread FROM conversations " +
+            "WHERE archived = 0 AND spam = 0 AND blocked = 0 AND messageCount > 0 GROUP BY category",
+    )
+    abstract fun totalsByCategory(): Flow<List<CategoryTotal>>
 
     @Query("SELECT COUNT(*) FROM conversations WHERE archived = 0 AND spam = 0 AND blocked = 0 AND unreadCount > 0 AND importance >= 65")
     abstract fun importantUnread(): Flow<Int>

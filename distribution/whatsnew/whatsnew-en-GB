@@ -1,1 +1,8 @@
-Automated test build. Updates now arrive through Google Play automatically after each change.
+New look for Yarn:
+• New app icon
+• Modern, cleaner design with Yarn blue
+• Simpler inbox: Personal, Transactions, Updates and Offers – only shown when they have messages
+• One-tap copy for fresh OTP codes right in the inbox
+• Readable sender names (e.g. "HDFC Bank" instead of "AD-HDFCBK-S")
+• Reorganised settings
+• Fixed: swiping now correctly toggles read/unread

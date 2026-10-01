@@ -77,10 +77,7 @@ fun AiSettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
         }
     }
 
-    Scaffold(
-        topBar = { TopAppBar(title = { Text("AI & learning") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }) },
-    ) { padding ->
-        LazyColumn(Modifier.padding(padding).fillMaxSize()) {
+    SettingsScaffold("Smart features", onBack) {
             item {
                 Text(
                     "All smart features run on your phone by default. Nothing you write is sent to a server unless you set up your own AI server below.",
@@ -211,7 +208,6 @@ fun AiSettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             }
             item { ClickRow("Re-check all messages", "Re-run categories and spam checks with what Yarn knows now") { ReanalyzeWorker.enqueue(context) } }
             item { ClickRow("Reset learning", "Forget all corrections and sender rules") { confirmReset = true } }
-        }
     }
 
     if (confirmReset) {

@@ -29,10 +29,22 @@ import java.util.Date
 
 enum class InboxView { ALL, IMPORTANT, UNREAD, CATEGORY, ARCHIVED, SPAM, BLOCKED, STARRED }
 
-data class InboxFilter(val view: InboxView = InboxView.ALL, val categories: Set<Category> = emptySet()) {
+data class InboxFilter(val view: InboxView = InboxView.ALL, val categories: Set<Category> = emptySet())
+
+/**
+ * The four inbox groups people see. The analyser still works with finer categories internally
+ * (useful for priority and notifications), but the UI keeps choices simple.
+ */
+enum class InboxGroup(val label: String, val categories: Set<Category>, val representative: Category) {
+    PERSONAL("Personal", setOf(Category.PERSONAL, Category.WORK), Category.PERSONAL),
+    TRANSACTIONS("Transactions", setOf(Category.OTP, Category.BANKING, Category.PAYMENTS, Category.BILLS), Category.BANKING),
+    UPDATES("Updates", setOf(Category.DELIVERY, Category.SHOPPING, Category.TRAVEL, Category.UPDATES), Category.UPDATES),
+    OFFERS("Offers", setOf(Category.PROMOTIONS), Category.PROMOTIONS);
+
+    val filter: InboxFilter get() = InboxFilter(InboxView.CATEGORY, categories)
+
     companion object {
-        val TRANSACTIONS = setOf(Category.OTP, Category.BANKING, Category.PAYMENTS, Category.BILLS)
-        val ORDERS = setOf(Category.DELIVERY, Category.SHOPPING)
+        fun of(category: Category?): InboxGroup? = entries.firstOrNull { category in it.categories }
     }
 }
 

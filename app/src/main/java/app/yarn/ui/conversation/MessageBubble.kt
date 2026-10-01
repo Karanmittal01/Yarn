@@ -105,18 +105,19 @@ fun MessageBubble(
     val container = when {
         selected -> colors.tertiaryContainer
         m.status == MessageStatus.FAILED -> colors.errorContainer
-        outgoing -> colors.primaryContainer
-        else -> colors.surfaceContainerHighest
+        outgoing -> androidx.compose.ui.graphics.Color.Transparent // painted with the brand gradient below
+        else -> colors.surfaceContainerHigh
     }
+    val gradient = outgoing && !selected && m.status != MessageStatus.FAILED
     val content = when {
         selected -> colors.onTertiaryContainer
         m.status == MessageStatus.FAILED -> colors.onErrorContainer
-        outgoing -> colors.onPrimaryContainer
+        outgoing -> androidx.compose.ui.graphics.Color.White
         else -> colors.onSurface
     }
     val risky = remember(m.riskyUrls) { m.riskyUrls.lines().filter { it.isNotBlank() }.toSet() }
     var pendingRiskyUrl by remember { mutableStateOf<String?>(null) }
-    val shape = RoundedCornerShape(20.dp, 20.dp, if (outgoing) 6.dp else 20.dp, if (outgoing) 20.dp else 6.dp)
+    val shape = RoundedCornerShape(22.dp, 22.dp, if (outgoing) 6.dp else 22.dp, if (outgoing) 22.dp else 6.dp)
     val statusText = statusLabel(m.status, m.errorCode)
     val a11y = buildString {
         append(if (outgoing) "You" else senderLabel ?: "Message")
@@ -142,8 +143,9 @@ fun MessageBubble(
             contentColor = content,
             shape = shape,
             modifier = Modifier
-                .widthIn(max = 340.dp)
+                .widthIn(max = 320.dp)
                 .clip(shape)
+                .then(if (gradient) Modifier.background(app.yarn.ui.theme.Brand.bubble, shape) else Modifier)
                 .combinedClickable(onClick = { callbacks.onClick(item) }, onLongClick = { callbacks.onLongClick(item) }, onLongClickLabel = "Select message")
                 .semantics(mergeDescendants = false) { contentDescription = a11y },
         ) {
@@ -157,7 +159,7 @@ fun MessageBubble(
                 }
                 if (m.body.isNotBlank()) {
                     Text(
-                        linkify(m.body, item.entities, risky, colors.primary) { url -> if (url in risky) pendingRiskyUrl = url else Actions.openUrl(context, url) },
+                        linkify(m.body, item.entities, risky, if (gradient) androidx.compose.ui.graphics.Color.White else colors.primary) { url -> if (url in risky) pendingRiskyUrl = url else Actions.openUrl(context, url) },
                         style = MaterialTheme.typography.bodyLarge,
                     )
                 }

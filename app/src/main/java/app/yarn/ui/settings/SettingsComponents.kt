@@ -1,7 +1,12 @@
 package app.yarn.ui.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -40,9 +45,39 @@ class SettingsViewModel(val c: AppContainer) : ViewModel() {
 
 @Composable
 fun SectionHeader(text: String) = Text(
-    text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
-    modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 4.dp),
+    text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
+    modifier = Modifier.padding(start = 32.dp, top = 20.dp, bottom = 8.dp),
 )
+
+/** A rounded card grouping related rows, as in modern Android settings. */
+@Composable
+fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
+    androidx.compose.material3.Surface(
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+    ) { Column(Modifier.padding(vertical = 4.dp), content = content) }
+}
+
+private val rowColors @Composable get() = androidx.compose.material3.ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+
+/** Navigation row with a tinted icon, used on the settings hub. */
+@Composable
+fun NavRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, summary: String?, tint: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(title, style = MaterialTheme.typography.titleMedium) },
+        supportingContent = summary?.let { { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) } },
+        leadingContent = {
+            androidx.compose.foundation.layout.Box(
+                Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).background(tint.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center,
+            ) { androidx.compose.material3.Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp)) }
+        },
+        trailingContent = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+        colors = rowColors,
+        modifier = Modifier.clickable(onClick = onClick),
+    )
+}
 
 @Composable
 fun SwitchRow(title: String, summary: String? = null, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
@@ -50,6 +85,7 @@ fun SwitchRow(title: String, summary: String? = null, checked: Boolean, enabled:
         headlineContent = { Text(title) },
         supportingContent = summary?.let { { Text(it) } },
         trailingContent = { Switch(checked = checked, onCheckedChange = null, enabled = enabled) },
+        colors = rowColors,
         modifier = Modifier.toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange),
     )
 }
@@ -59,6 +95,7 @@ fun ClickRow(title: String, summary: String? = null, onClick: () -> Unit) {
     ListItem(
         headlineContent = { Text(title) },
         supportingContent = summary?.let { { Text(it) } },
+        colors = rowColors,
         modifier = Modifier.clickable(onClick = onClick),
     )
 }

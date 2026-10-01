@@ -6,133 +6,304 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Backup
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Sms
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.yarn.BuildConfig
 import app.yarn.data.prefs.SwipeAction
 import app.yarn.data.prefs.ThemeMode
 import app.yarn.telephony.DefaultSmsApp
+import app.yarn.ui.common.YarnLogo
 import app.yarn.ui.common.container
 
-enum class SettingsPage { AI, BLOCKED, BACKUP }
+enum class SettingsPage(val title: String) {
+    APPEARANCE("Appearance"),
+    NOTIFICATIONS("Notifications"),
+    MESSAGING("Messaging"),
+    AI("Smart features"),
+    PRIVACY("Privacy & security"),
+    BLOCKED("Blocked & filters"),
+    BACKUP("Backup & restore"),
+    ABOUT("About Yarn"),
+}
+
+/** Collapsing large-title scaffold shared by every settings page. */
+@Composable
+fun SettingsScaffold(title: String, onBack: () -> Unit, content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
+    val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    Scaffold(
+        modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.surface,
+        topBar = {
+            LargeTopAppBar(
+                title = { Text(title) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                scrollBehavior = scroll,
+                colors = TopAppBarDefaults.largeTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface, scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer),
+            )
+        },
+    ) { padding ->
+        LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp), content = content)
+    }
+}
 
 @Composable
 fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, onOpen: (SettingsPage) -> Unit) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val isDefault by vm.c.isDefaultSmsApp.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val sims = vm.c.sims.current()
     val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { context.container.refreshPlatformState() }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Settings") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } })
-        },
-    ) { padding ->
-        LazyColumn(Modifier.padding(padding).fillMaxSize()) {
-            item {
-                ListItem(
-                    headlineContent = { Text("Default SMS app") },
-                    supportingContent = { Text(if (isDefault) "Yarn is your default messaging app" else "Required to send and receive messages") },
-                    trailingContent = {
-                        if (!isDefault) TextButton(onClick = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } }) { Text("Set default") }
-                    },
-                )
-            }
-            item { SectionHeader("Appearance") }
-            item {
-                ChoiceRow("Theme", listOf(ThemeMode.SYSTEM to "System default", ThemeMode.LIGHT to "Light", ThemeMode.DARK to "Dark"), s.theme) { v -> vm.update { it.copy(theme = v) } }
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) item {
-                SwitchRow("Dynamic colour", "Match your wallpaper colours", s.dynamicColor) { v -> vm.update { it.copy(dynamicColor = v) } }
-            }
-            item {
-                ChoiceRow("Swipe right", swipeOptions, s.swipeStart) { v -> vm.update { it.copy(swipeStart = v) } }
-            }
-            item {
-                ChoiceRow("Swipe left", swipeOptions, s.swipeEnd) { v -> vm.update { it.copy(swipeEnd = v) } }
-            }
-
-            item { SectionHeader("Notifications") }
-            item { SwitchRow("Show message previews", "Turn off to show only “New message”", s.showNotificationPreviews) { v -> vm.update { it.copy(showNotificationPreviews = v) } } }
-            item { SwitchRow("Copy-code button for OTPs", "Adds “Copy 123456” to verification code notifications", s.otpCopyAction) { v -> vm.update { it.copy(otpCopyAction = v) } } }
-            item { SwitchRow("Notify for promotions", "Promotions arrive silently when on", s.notifyPromotions) { v -> vm.update { it.copy(notifyPromotions = v) } } }
-            item { SwitchRow("Notify for suspected spam", null, s.notifySpam) { v -> vm.update { it.copy(notifySpam = v) } } }
-            item {
-                ClickRow("System notification settings", "Sounds, vibration and per-category channels") {
-                    context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
-                }
-            }
-
-            item { SectionHeader("Sending") }
-            item {
-                ChoiceRow("Undo send", listOf(0 to "Off", 3 to "3 seconds", 5 to "5 seconds", 10 to "10 seconds"), s.sendDelaySeconds) { v -> vm.update { it.copy(sendDelaySeconds = v) } }
-            }
-            item { SwitchRow("Delivery reports", "Ask the network to confirm delivery (carrier dependent)", s.deliveryReports) { v -> vm.update { it.copy(deliveryReports = v) } } }
-            item { SwitchRow("Group messaging (MMS)", "Send one group message everyone can reply to. Off sends individual texts.", s.groupMms) { v -> vm.update { it.copy(groupMms = v) } } }
-            item { SwitchRow("Auto-download MMS", "Multimedia messages need mobile data", s.autoDownloadMms) { v -> vm.update { it.copy(autoDownloadMms = v) } } }
-            item { SwitchRow("Auto-download while roaming", "May incur roaming charges", s.autoDownloadMmsRoaming, enabled = s.autoDownloadMms) { v -> vm.update { it.copy(autoDownloadMmsRoaming = v) } } }
-            if (sims.isNotEmpty()) item {
-                ListItem(headlineContent = { Text("SIM cards") }, supportingContent = { Text(sims.joinToString("\n") { it.label + (it.number?.let { n -> " · $n" } ?: "") }) })
-            }
-            item {
-                ClickRow("Exact scheduled sending", "Allow alarms so scheduled messages go out on time") {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))
-                    }
-                }
-            }
-
-            item { SectionHeader("Smart features") }
-            item { ClickRow("AI & learning", "On-device categories, spam protection, summaries, replies and what Yarn has learned") { onOpen(SettingsPage.AI) } }
-
-            item { SectionHeader("Privacy & security") }
-            item { SwitchRow("App lock", "Require fingerprint, face or screen lock to open Yarn", s.appLock) { v -> vm.update { it.copy(appLock = v) } } }
-            if (s.appLock) item {
-                ChoiceRow("Lock after", listOf(0 to "Immediately", 60 to "1 minute", 300 to "5 minutes", 1800 to "30 minutes"), s.lockTimeoutSeconds) { v -> vm.update { it.copy(lockTimeoutSeconds = v) } }
-            }
-            item { SwitchRow("Block screenshots", "Also hides Yarn's content in Recents", s.secureScreen) { v -> vm.update { it.copy(secureScreen = v) } } }
-            item {
-                ChoiceRow("Auto-delete old OTP messages", listOf(0 to "Never", 24 to "After 1 day", 168 to "After 7 days", 720 to "After 30 days"), s.otpAutoDeleteHours) { v -> vm.update { it.copy(otpAutoDeleteHours = v) } }
-            }
-            item {
-                ChoiceRow("Auto-delete spam", listOf(0 to "Never", 7 to "After 7 days", 30 to "After 30 days", 90 to "After 90 days"), s.spamAutoDeleteDays) { v -> vm.update { it.copy(spamAutoDeleteDays = v) } }
-            }
-            item { ClickRow("Blocked numbers & filters", null) { onOpen(SettingsPage.BLOCKED) } }
-            item { ClickRow("Backup & restore", "Encrypted, saved wherever you choose") { onOpen(SettingsPage.BACKUP) } }
-
-            item { SectionHeader("About") }
-            item {
-                ListItem(
-                    headlineContent = { Text("Yarn ${BuildConfig.VERSION_NAME}") },
-                    supportingContent = {
+    SettingsScaffold("Settings", onBack) {
+        item {
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                    YarnLogo(size = 56.dp)
+                    Spacer(Modifier.width(16.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Yarn", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         Text(
-                            "Messages are stored on your phone in an encrypted database. Core messaging never uses the internet. " +
-                                "RCS isn't available to third-party apps on Android, so Yarn uses SMS and MMS.",
+                            if (isDefault) "Your default messaging app" else "Not your default SMS app yet",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
                         )
-                    },
-                )
+                    }
+                    if (!isDefault) FilledTonalButton(onClick = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } }) { Text("Set") }
+                }
+            }
+        }
+        item { Spacer(Modifier.height(8.dp)) }
+        item {
+            SettingsGroup {
+                NavRow(Icons.Outlined.Palette, "Appearance", themeLabel(s.theme) + " · swipe gestures", Color(0xFF7C4DFF)) { onOpen(SettingsPage.APPEARANCE) }
+                NavRow(Icons.Outlined.Notifications, "Notifications", if (s.showNotificationPreviews) "Previews on" else "Previews hidden", Color(0xFFE5533D)) { onOpen(SettingsPage.NOTIFICATIONS) }
+                NavRow(Icons.Outlined.Sms, "Messaging", "Delivery reports, group MMS, undo send", Color(0xFF1466F0)) { onOpen(SettingsPage.MESSAGING) }
+            }
+        }
+        item {
+            SettingsGroup {
+                NavRow(Icons.Outlined.AutoAwesome, "Smart features", if (s.aiEnabled) "On-device AI, spam protection, learning" else "Off", Color(0xFF0B8FCB)) { onOpen(SettingsPage.AI) }
+                NavRow(Icons.Outlined.Lock, "Privacy & security", if (s.appLock) "App lock on" else "App lock, auto-delete", Color(0xFF1E9E6A)) { onOpen(SettingsPage.PRIVACY) }
+                NavRow(Icons.Outlined.Block, "Blocked & filters", null, Color(0xFF5B6476)) { onOpen(SettingsPage.BLOCKED) }
+            }
+        }
+        item {
+            SettingsGroup {
+                NavRow(Icons.Outlined.Backup, "Backup & restore", "Encrypted, stored where you choose", Color(0xFFE08A1E)) { onOpen(SettingsPage.BACKUP) }
+                NavRow(Icons.Outlined.Info, "About", "Version ${BuildConfig.VERSION_NAME}", Color(0xFF5B6476)) { onOpen(SettingsPage.ABOUT) }
             }
         }
     }
+}
+
+private fun themeLabel(t: ThemeMode) = when (t) {
+    ThemeMode.SYSTEM -> "System theme"
+    ThemeMode.LIGHT -> "Light"
+    ThemeMode.DARK -> "Dark"
 }
 
 private val swipeOptions = listOf(
     SwipeAction.NONE to "Nothing", SwipeAction.ARCHIVE to "Archive", SwipeAction.DELETE to "Delete",
     SwipeAction.READ to "Read / unread", SwipeAction.PIN to "Pin",
 )
+
+@Composable
+fun AppearanceScreen(vm: SettingsViewModel, onBack: () -> Unit) {
+    val s by vm.settings.collectAsStateWithLifecycle()
+    SettingsScaffold("Appearance", onBack) {
+        item { SectionHeader("Theme") }
+        item {
+            SettingsGroup {
+                ChoiceRow("Theme", listOf(ThemeMode.SYSTEM to "System default", ThemeMode.LIGHT to "Light", ThemeMode.DARK to "Dark"), s.theme) { v -> vm.update { it.copy(theme = v) } }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    SwitchRow("Wallpaper colours", "Use your wallpaper's colours instead of Yarn blue", s.dynamicColor) { v -> vm.update { it.copy(dynamicColor = v) } }
+                }
+            }
+        }
+        item { SectionHeader("Inbox gestures") }
+        item {
+            SettingsGroup {
+                ChoiceRow("Swipe right", swipeOptions, s.swipeStart) { v -> vm.update { it.copy(swipeStart = v) } }
+                ChoiceRow("Swipe left", swipeOptions, s.swipeEnd) { v -> vm.update { it.copy(swipeEnd = v) } }
+            }
+        }
+    }
+}
+
+@Composable
+fun NotificationsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
+    val s by vm.settings.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    SettingsScaffold("Notifications", onBack) {
+        item { SectionHeader("Content") }
+        item {
+            SettingsGroup {
+                SwitchRow("Show message previews", "Off shows only “New message”", s.showNotificationPreviews) { v -> vm.update { it.copy(showNotificationPreviews = v) } }
+                SwitchRow("Copy button for codes", "Adds “Copy 123456” to OTP notifications", s.otpCopyAction) { v -> vm.update { it.copy(otpCopyAction = v) } }
+            }
+        }
+        item { SectionHeader("Which messages notify") }
+        item {
+            SettingsGroup {
+                SwitchRow("Offers & promotions", "Delivered silently when on", s.notifyPromotions) { v -> vm.update { it.copy(notifyPromotions = v) } }
+                SwitchRow("Suspected spam", null, s.notifySpam) { v -> vm.update { it.copy(notifySpam = v) } }
+            }
+        }
+        item { Spacer(Modifier.height(8.dp)) }
+        item {
+            SettingsGroup {
+                ClickRow("Sounds & vibration", "Open Android notification settings") {
+                    context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MessagingScreen(vm: SettingsViewModel, onBack: () -> Unit) {
+    val s by vm.settings.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val sims = vm.c.sims.current()
+    SettingsScaffold("Messaging", onBack) {
+        item { SectionHeader("Sending") }
+        item {
+            SettingsGroup {
+                ChoiceRow("Undo send", listOf(0 to "Off", 3 to "3 seconds", 5 to "5 seconds", 10 to "10 seconds"), s.sendDelaySeconds) { v -> vm.update { it.copy(sendDelaySeconds = v) } }
+                SwitchRow("Delivery reports", "Ask the network to confirm delivery", s.deliveryReports) { v -> vm.update { it.copy(deliveryReports = v) } }
+                SwitchRow("Group messaging", "One group thread everyone can reply to (MMS)", s.groupMms) { v -> vm.update { it.copy(groupMms = v) } }
+                ClickRow("On-time scheduled messages", "Allow exact alarms for scheduled sends") {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))
+                    }
+                }
+            }
+        }
+        item { SectionHeader("Multimedia (MMS)") }
+        item {
+            SettingsGroup {
+                SwitchRow("Auto-download", "MMS uses mobile data", s.autoDownloadMms) { v -> vm.update { it.copy(autoDownloadMms = v) } }
+                SwitchRow("Auto-download while roaming", "May cost extra", s.autoDownloadMmsRoaming, enabled = s.autoDownloadMms) { v -> vm.update { it.copy(autoDownloadMmsRoaming = v) } }
+            }
+        }
+        if (sims.isNotEmpty()) {
+            item { SectionHeader("SIM cards") }
+            item {
+                SettingsGroup {
+                    sims.forEach { sim ->
+                        ListItem(
+                            headlineContent = { Text(sim.label) },
+                            supportingContent = sim.number?.let { { Text(it) } },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PrivacyScreen(vm: SettingsViewModel, onBack: () -> Unit) {
+    val s by vm.settings.collectAsStateWithLifecycle()
+    SettingsScaffold("Privacy & security", onBack) {
+        item { SectionHeader("Protection") }
+        item {
+            SettingsGroup {
+                SwitchRow("App lock", "Fingerprint, face or screen lock to open Yarn", s.appLock) { v -> vm.update { it.copy(appLock = v) } }
+                if (s.appLock) {
+                    ChoiceRow("Lock after", listOf(0 to "Immediately", 60 to "1 minute", 300 to "5 minutes", 1800 to "30 minutes"), s.lockTimeoutSeconds) { v -> vm.update { it.copy(lockTimeoutSeconds = v) } }
+                }
+                SwitchRow("Block screenshots", "Also hides Yarn in Recents", s.secureScreen) { v -> vm.update { it.copy(secureScreen = v) } }
+            }
+        }
+        item { SectionHeader("Clean-up") }
+        item {
+            SettingsGroup {
+                ChoiceRow("Delete old OTP messages", listOf(0 to "Never", 24 to "After 1 day", 168 to "After 7 days", 720 to "After 30 days"), s.otpAutoDeleteHours) { v -> vm.update { it.copy(otpAutoDeleteHours = v) } }
+                ChoiceRow("Delete old spam", listOf(0 to "Never", 7 to "After 7 days", 30 to "After 30 days", 90 to "After 90 days"), s.spamAutoDeleteDays) { v -> vm.update { it.copy(spamAutoDeleteDays = v) } }
+            }
+        }
+        item {
+            Text(
+                "Your messages are stored in an encrypted database whose key never leaves this phone. Yarn has no servers and no analytics.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp),
+            )
+        }
+    }
+}
+
+@Composable
+fun AboutScreen(onBack: () -> Unit) {
+    SettingsScaffold("About", onBack) {
+        item {
+            Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                YarnLogo(size = 88.dp)
+                Spacer(Modifier.height(4.dp))
+                Text("Yarn", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text("Version ${BuildConfig.VERSION_NAME}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        item {
+            SettingsGroup {
+                ListItem(
+                    headlineContent = { Text("Private by design") },
+                    supportingContent = { Text("Messages and AI stay on your phone. Core messaging never uses the internet.") },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+                ListItem(
+                    headlineContent = { Text("SMS & MMS") },
+                    supportingContent = { Text("Android doesn't offer RCS to third-party apps, so Yarn uses SMS and MMS.") },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+            }
+        }
+    }
+}

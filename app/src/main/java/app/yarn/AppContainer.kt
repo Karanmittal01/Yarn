@@ -88,6 +88,8 @@ class AppContainer(val app: Application) {
         notifier.createChannels()
         refreshPlatformState()
         MaintenanceWorker.schedule(app)
+        // Refresh cached names once per launch (contact edits, better sender-name mapping in updates).
+        scope.launch { runCatching { conversations.refreshDisplayNames() } }
         scope.launch {
             // Rename conversations when the address book changes.
             contacts.version.drop(1).collect { conversations.refreshDisplayNames() }

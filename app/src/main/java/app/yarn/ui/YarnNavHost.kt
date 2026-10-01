@@ -39,7 +39,12 @@ import app.yarn.ui.newchat.NewConversationScreen
 import app.yarn.ui.newchat.NewConversationViewModel
 import app.yarn.ui.search.SearchScreen
 import app.yarn.ui.search.SearchViewModel
+import app.yarn.ui.settings.AboutScreen
 import app.yarn.ui.settings.AiSettingsScreen
+import app.yarn.ui.settings.AppearanceScreen
+import app.yarn.ui.settings.MessagingScreen
+import app.yarn.ui.settings.NotificationsScreen
+import app.yarn.ui.settings.PrivacyScreen
 import app.yarn.ui.settings.BackupScreen
 import app.yarn.ui.settings.BlockedScreen
 import app.yarn.ui.settings.SettingsPage
@@ -107,10 +112,16 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
         }
         composable<SettingsSubRoute> { entry ->
             val vm = yarnViewModel { SettingsViewModel(it) }
+            val back = { nav.popBackStack(); Unit }
             when (SettingsPage.valueOf(entry.toRoute<SettingsSubRoute>().page)) {
-                SettingsPage.AI -> AiSettingsScreen(vm, onBack = { nav.popBackStack() })
-                SettingsPage.BLOCKED -> BlockedScreen(vm, onBack = { nav.popBackStack() }) { nav.navigate(FolderRoute(InboxView.BLOCKED.name)) }
-                SettingsPage.BACKUP -> BackupScreen(vm, onBack = { nav.popBackStack() })
+                SettingsPage.APPEARANCE -> AppearanceScreen(vm, back)
+                SettingsPage.NOTIFICATIONS -> NotificationsScreen(vm, back)
+                SettingsPage.MESSAGING -> MessagingScreen(vm, back)
+                SettingsPage.AI -> AiSettingsScreen(vm, back)
+                SettingsPage.PRIVACY -> PrivacyScreen(vm, back)
+                SettingsPage.BLOCKED -> BlockedScreen(vm, back) { nav.navigate(FolderRoute(InboxView.BLOCKED.name)) }
+                SettingsPage.BACKUP -> BackupScreen(vm, back)
+                SettingsPage.ABOUT -> AboutScreen(back)
             }
         }
         composable<FolderRoute> { entry ->

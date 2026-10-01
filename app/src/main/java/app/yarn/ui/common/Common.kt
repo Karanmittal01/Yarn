@@ -4,6 +4,7 @@ import android.content.Context
 import android.text.format.DateFormat
 import android.text.format.DateUtils
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,7 +20,10 @@ import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.Flight
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.Password
 import androidx.compose.material.icons.outlined.Payments
@@ -40,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -55,6 +60,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.yarn.AppContainer
 import app.yarn.YarnApplication
+import app.yarn.data.repo.InboxGroup
 import app.yarn.intelligence.Category
 import app.yarn.notifications.Avatars
 import coil3.compose.AsyncImage
@@ -75,25 +81,40 @@ inline fun <reified VM : ViewModel> yarnViewModel(key: String? = null, crossinli
     )
 }
 
+/**
+ * Tonal avatar: soft tinted circle with a coloured initial (or icon for businesses and groups).
+ * Contact photos are shown as-is.
+ */
 @Composable
-fun Avatar(name: String, photoUri: String?, size: Dp = 48.dp, modifier: Modifier = Modifier, isGroup: Boolean = false) {
+fun Avatar(
+    name: String,
+    photoUri: String?,
+    size: Dp = 48.dp,
+    modifier: Modifier = Modifier,
+    isGroup: Boolean = false,
+    icon: ImageVector? = null,
+) {
+    val accent = Color(Avatars.colorFor(name))
+    val dark = app.yarn.ui.theme.LocalDarkTheme.current
     Box(
         modifier
             .size(size)
             .clip(CircleShape)
-            .background(Color(Avatars.colorFor(name)))
+            .background(if (photoUri != null) Color.Transparent else accent.copy(alpha = if (dark) 0.28f else 0.16f))
             .clearAndSetSemantics { },
         contentAlignment = Alignment.Center,
     ) {
-        if (photoUri != null) {
-            AsyncImage(model = photoUri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size))
-        } else if (isGroup) {
-            Text("👥", fontSize = (size.value * 0.4f).sp)
-        } else {
-            Text(Avatars.initial(name), color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = (size.value * 0.42f).sp)
+        val tint = if (dark) accent.copy(alpha = 1f).lighten() else accent
+        when {
+            photoUri != null -> AsyncImage(model = photoUri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size))
+            isGroup -> androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Groups, null, tint = tint, modifier = Modifier.size(size * 0.5f))
+            icon != null -> androidx.compose.material3.Icon(icon, null, tint = tint, modifier = Modifier.size(size * 0.46f))
+            else -> Text(Avatars.initial(name), color = tint, fontWeight = FontWeight.SemiBold, fontSize = (size.value * 0.4f).sp)
         }
     }
 }
+
+private fun Color.lighten(): Color = Color(red + (1 - red) * 0.35f, green + (1 - green) * 0.35f, blue + (1 - blue) * 0.35f, alpha)
 
 object CategoryUi {
     fun label(c: Category): String = when (c) {
@@ -127,6 +148,13 @@ object CategoryUi {
     }
 
     val default: ImageVector get() = Icons.AutoMirrored.Outlined.Message
+
+    fun groupIcon(g: InboxGroup): ImageVector = when (g) {
+        InboxGroup.PERSONAL -> Icons.Outlined.Person
+        InboxGroup.TRANSACTIONS -> Icons.Outlined.AccountBalance
+        InboxGroup.UPDATES -> Icons.Outlined.Inventory2
+        InboxGroup.OFFERS -> Icons.Outlined.LocalOffer
+    }
 }
 
 object Format {
@@ -193,37 +221,63 @@ fun ConfirmDialog(
     )
 }
 
-/** Category picker used for corrections; lets the user make the choice sticky for the sender. */
+/** Group picker used for corrections; lets the user make the choice sticky for the sender. */
 @Composable
 fun CategoryPickerDialog(current: Category?, onPick: (Category, Boolean) -> Unit, onDismiss: () -> Unit) {
-    var always by remember { mutableStateOf(false) }
+    var always by remember { mutableStateOf(true) }
+    val currentGroup = InboxGroup.of(current)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Move to category") },
+        title = { Text("Move to") },
         text = {
             Column {
-                Category.entries.filter { it != Category.SPAM }.forEach { c ->
+                InboxGroup.entries.forEach { g ->
+                    val selected = g == currentGroup
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .clip(MaterialTheme.shapes.small)
-                            .padding(vertical = 2.dp),
+                            .clip(MaterialTheme.shapes.medium)
+                            .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+                            .clickable { onPick(g.representative, always); onDismiss() }
+                            .padding(horizontal = 14.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        TextButton(onClick = { onPick(c, always); onDismiss() }, modifier = Modifier.fillMaxWidth()) {
-                            androidx.compose.material3.Icon(CategoryUi.icon(c), contentDescription = null)
-                            Spacer(Modifier.width(12.dp))
-                            Text(CategoryUi.label(c) + if (c == current) "  (current)" else "", modifier = Modifier.weight(1f))
-                        }
+                        androidx.compose.material3.Icon(CategoryUi.groupIcon(g), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(14.dp))
+                        Text(g.label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        if (selected) Text("Current", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.padding(top = 8.dp).clickable { always = !always }, verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = always, onCheckedChange = { always = it })
-                    Text("Always use for these senders", style = MaterialTheme.typography.bodyMedium)
+                    Text("Always do this for this sender", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         },
         confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+}
+
+/** The Yarn app icon, drawn from the same vector layers as the launcher icon. */
+@Composable
+fun YarnLogo(size: Dp, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(size)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(size * 0.3f))
+            .clearAndSetSemantics { },
+    ) {
+        // The adaptive-icon artwork is designed for a 108dp canvas with a 72dp safe zone; scale it to fill.
+        val zoom = 1.5f
+        androidx.compose.foundation.Image(
+            androidx.compose.ui.res.painterResource(app.yarn.R.drawable.ic_launcher_background), null,
+            modifier = Modifier.size(size),
+            contentScale = ContentScale.Crop,
+        )
+        androidx.compose.foundation.Image(
+            androidx.compose.ui.res.painterResource(app.yarn.R.drawable.ic_launcher_foreground), null,
+            modifier = Modifier.size(size).graphicsLayer(scaleX = zoom, scaleY = zoom),
+        )
+    }
 }

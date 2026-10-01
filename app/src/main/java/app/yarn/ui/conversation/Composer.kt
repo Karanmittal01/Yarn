@@ -99,7 +99,7 @@ fun Composer(
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { if (it.isNotEmpty()) onAddAttachments(it) }
     val canSend = text.isNotBlank() || attachments.isNotEmpty()
 
-    Surface(tonalElevation = 2.dp) {
+    Surface(color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
             if (smartReplies.isNotEmpty() && text.isEmpty()) {
                 LazyRow(contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -149,6 +149,8 @@ fun Composer(
                     colors = TextFieldDefaults.colors(
                         focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
                         disabledIndicatorColor = Color.Transparent,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     ),
                     trailingIcon = if (text.isNotBlank()) ({
                         Box {

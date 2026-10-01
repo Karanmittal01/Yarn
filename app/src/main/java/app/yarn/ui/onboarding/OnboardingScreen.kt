@@ -74,13 +74,14 @@ fun OnboardingScreen(onDone: () -> Unit) {
             Spacer(Modifier.height(24.dp))
             when (step) {
                 0 -> {
+                    app.yarn.ui.common.YarnLogo(size = 80.dp)
                     Text("Welcome to Yarn", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
                     Text("Text messaging that organises itself — privately, on your phone.", style = MaterialTheme.typography.titleMedium)
                     Feature(Icons.Outlined.CloudOff, "Works without internet", "SMS and MMS go over your mobile network. No account, no servers.")
                     Feature(Icons.Outlined.AutoAwesome, "On-device intelligence", "Automatic categories, OTP copy, summaries and smart replies run on your phone.")
                     Feature(Icons.Outlined.Shield, "Scam protection", "Phishing links and impersonation attempts are flagged before you tap.")
                     Feature(Icons.Outlined.Lock, "Encrypted storage", "Yarn's database is encrypted with a key that never leaves this device.")
-                    Button(onClick = { step = 1 }, modifier = Modifier.fillMaxWidth()) { Text("Get started") }
+                    Button(onClick = { step = 1 }, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("Get started", style = MaterialTheme.typography.titleMedium) }
                 }
                 1 -> {
                     Text("Make Yarn your SMS app", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)

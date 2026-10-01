@@ -10,6 +10,7 @@ import android.os.Looper
 import android.provider.ContactsContract
 import android.util.LruCache
 import androidx.core.content.ContextCompat
+import app.yarn.intelligence.SenderNames
 import app.yarn.telephony.PhoneNumbers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -97,7 +98,9 @@ class ContactsRepository(private val context: Context) {
     }.getOrNull()
 
     fun displayName(addresses: List<String>, iso: String): String =
-        addresses.joinToString(", ") { a -> lookup(a)?.name?.takeIf { it.isNotBlank() } ?: PhoneNumbers.format(a, iso) }
+        addresses.joinToString(", ") { a ->
+            lookup(a)?.name?.takeIf { it.isNotBlank() } ?: SenderNames.pretty(a) ?: PhoneNumbers.format(a, iso)
+        }
 
     /** Phone numbers matching [query] by name or number, starred first. */
     fun search(query: String, limit: Int = 60): List<ContactPhone> {

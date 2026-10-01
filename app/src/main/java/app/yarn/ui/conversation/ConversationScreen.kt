@@ -163,7 +163,7 @@ fun ConversationScreen(
         topBar = {
             if (selecting) {
                 TopAppBar(
-                    title = { Text("${selection.size} selected") },
+                    title = { Text("${selection.size}", style = MaterialTheme.typography.titleLarge, maxLines = 1) },
                     navigationIcon = { IconButton(onClick = vm::clearSelection) { Icon(Icons.Filled.Close, "Clear selection") } },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                     actions = {

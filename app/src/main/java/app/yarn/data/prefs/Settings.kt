@@ -20,7 +20,7 @@ enum class SwipeAction { NONE, ARCHIVE, DELETE, READ, PIN }
 data class AppSettings(
     val onboardingDone: Boolean = false,
     val theme: ThemeMode = ThemeMode.SYSTEM,
-    val dynamicColor: Boolean = true,
+    val dynamicColor: Boolean = false,
     val deliveryReports: Boolean = false,
     val groupMms: Boolean = true,
     val autoDownloadMms: Boolean = true,
