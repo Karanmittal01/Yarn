@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_message"
+        android:enabled="true"
+        android:icon="@drawable/ic_compose"
+        android:shortcutShortLabel="@string/shortcut_new_message">
+        <intent
+            android:action="android.intent.action.SENDTO"
+            android:data="smsto:"
+            android:targetPackage="app.yarn.messages"
+            android:targetClass="app.yarn.MainActivity" />
+    </shortcut>
+</shortcuts>
