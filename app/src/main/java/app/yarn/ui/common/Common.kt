@@ -5,6 +5,8 @@ import android.text.format.DateFormat
 import android.text.format.DateUtils
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -296,3 +298,37 @@ fun YarnLogo(size: Dp, modifier: Modifier = Modifier) {
         )
     }
 }
+
+/** Roomy, readable pop-up menu used across the app. */
+@Composable
+fun YarnMenu(expanded: Boolean, onDismissRequest: () -> Unit, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    val dark = app.yarn.ui.theme.LocalDarkTheme.current
+    androidx.compose.material3.DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        modifier = Modifier.widthIn(min = 240.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+        containerColor = if (dark) Color(0xFF2B2C30) else Color.White,
+        shadowElevation = 10.dp,
+        content = content,
+    )
+}
+
+@Composable
+fun YarnMenuItem(text: String, icon: ImageVector?, onClick: () -> Unit, enabled: Boolean = true, destructive: Boolean = false) {
+    val tint = if (destructive) androidx.compose.material3.MaterialTheme.colorScheme.error else androidx.compose.material3.MaterialTheme.colorScheme.onSurface
+    androidx.compose.material3.DropdownMenuItem(
+        text = { Text(text, style = androidx.compose.material3.MaterialTheme.typography.bodyLarge, color = if (enabled) tint else tint.copy(alpha = 0.38f)) },
+        leadingIcon = icon?.let { { androidx.compose.material3.Icon(it, null, Modifier.size(22.dp), tint = if (enabled) tint.copy(alpha = 0.85f) else tint.copy(alpha = 0.38f)) } },
+        onClick = onClick,
+        enabled = enabled,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
+        modifier = Modifier.heightIn(min = 52.dp),
+    )
+}
+
+@Composable
+fun YarnMenuDivider() = androidx.compose.material3.HorizontalDivider(
+    Modifier.padding(vertical = 6.dp, horizontal = 16.dp),
+    color = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+)

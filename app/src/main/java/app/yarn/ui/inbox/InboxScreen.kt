@@ -41,6 +41,12 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.GppGood
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.DriveFileMove
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Report
 import androidx.compose.material.icons.outlined.StarOutline
@@ -116,6 +122,9 @@ import app.yarn.ui.common.CategoryUi
 import app.yarn.ui.common.ConfirmDialog
 import app.yarn.ui.common.Format
 import app.yarn.ui.common.YarnLogo
+import app.yarn.ui.common.YarnMenu
+import app.yarn.ui.common.YarnMenuDivider
+import app.yarn.ui.common.YarnMenuItem
 import kotlinx.coroutines.launch
 
 sealed interface InboxDestination {
@@ -342,23 +351,14 @@ internal fun InboxHeader(
         }
         Box {
             IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "More options", Modifier.size(22.dp)) }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, shape = RoundedCornerShape(18.dp)) {
-                DropdownMenuItem(
-                    text = { Text("Mark all as read") },
-                    leadingIcon = { Icon(Icons.Outlined.DoneAll, null) },
-                    enabled = hasUnread,
-                    onClick = { menu = false; onMarkAllRead() },
-                )
-                HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                DropdownMenuItem(text = { Text("Starred") }, leadingIcon = { Icon(Icons.Outlined.StarOutline, null) }, onClick = { menu = false; onNavigate(InboxDestination.Starred) })
-                DropdownMenuItem(text = { Text("Archived") }, leadingIcon = { Icon(Icons.Outlined.Archive, null) }, onClick = { menu = false; onNavigate(InboxDestination.Archived) })
-                DropdownMenuItem(
-                    text = { Text(if (spamUnread > 0) "Spam & blocked · $spamUnread" else "Spam & blocked") },
-                    leadingIcon = { Icon(Icons.Outlined.Report, null) },
-                    onClick = { menu = false; onNavigate(InboxDestination.Spam) },
-                )
-                HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(Icons.Outlined.Settings, null) }, onClick = { menu = false; onNavigate(InboxDestination.Settings) })
+            YarnMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                YarnMenuItem("Mark all as read", Icons.Outlined.DoneAll, { menu = false; onMarkAllRead() }, enabled = hasUnread)
+                YarnMenuDivider()
+                YarnMenuItem("Starred", Icons.Outlined.StarOutline, { menu = false; onNavigate(InboxDestination.Starred) })
+                YarnMenuItem("Archived", Icons.Outlined.Archive, { menu = false; onNavigate(InboxDestination.Archived) })
+                YarnMenuItem(if (spamUnread > 0) "Spam & blocked · $spamUnread" else "Spam & blocked", Icons.Outlined.Report, { menu = false; onNavigate(InboxDestination.Spam) })
+                YarnMenuDivider()
+                YarnMenuItem("Settings", Icons.Outlined.Settings, { menu = false; onNavigate(InboxDestination.Settings) })
             }
         }
     }
@@ -488,60 +488,76 @@ fun ConversationRow(
     }
     val strong = MaterialTheme.colorScheme.onSurface
     val quiet = MaterialTheme.colorScheme.onSurfaceVariant
-    val nameStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp, lineHeight = 24.sp)
-    val previewStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.5.sp, lineHeight = 21.sp)
+    val nameStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.5.sp, lineHeight = 22.sp)
+    val previewStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.5.sp, lineHeight = 20.sp)
     Row(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(bg)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = "Select")
-            .padding(start = 12.dp, end = 14.dp, top = 14.dp, bottom = 14.dp)
+            .padding(start = 10.dp, end = 12.dp, top = 11.dp, bottom = 11.dp)
             .semantics(mergeDescendants = true) { contentDescription = a11y; stateDescription = if (selected) "Selected" else "" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) {
             if (selected) {
-                Box(Modifier.size(52.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Check, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Box(Modifier.size(46.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Check, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onPrimary)
                 }
             } else {
                 Avatar(
-                    c.title, item.photoUri, size = 52.dp, isGroup = c.isGroup,
+                    c.title, item.photoUri, size = 46.dp, isGroup = c.isGroup,
                     icon = if (item.isBusiness) item.group?.let(CategoryUi::groupIcon) ?: CategoryUi.default else null,
                     neutral = item.isBusiness,
                 )
             }
         }
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
+            // Name and time share the first line; the preview gets the full width below.
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        c.title,
+                        style = nameStyle,
+                        color = strong,
+                        fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (c.pinned) Icon(Icons.Filled.PushPin, null, Modifier.padding(start = 5.dp).size(14.dp), tint = quiet)
+                    if (c.muted) Icon(Icons.Outlined.NotificationsOff, null, Modifier.padding(start = 5.dp).size(14.dp), tint = quiet)
+                }
+                Spacer(Modifier.width(10.dp))
                 Text(
-                    c.title,
-                    style = nameStyle,
-                    color = strong,
-                    fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
+                    time, style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                    color = if (unread) MaterialTheme.colorScheme.primary else quiet,
+                    fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
+                    maxLines = 1,
                 )
-                if (c.pinned) Icon(Icons.Filled.PushPin, null, Modifier.padding(start = 6.dp).size(15.dp), tint = quiet)
-                if (c.muted) Icon(Icons.Outlined.NotificationsOff, null, Modifier.padding(start = 6.dp).size(15.dp), tint = quiet)
             }
-            Spacer(Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.height(2.dp))
+            Row(verticalAlignment = Alignment.Top) {
                 when {
-                    c.hasFailed -> Icon(Icons.Outlined.ErrorOutline, null, Modifier.padding(end = 6.dp).size(17.dp), tint = MaterialTheme.colorScheme.error)
-                    !c.draft.isNullOrBlank() -> Icon(Icons.Outlined.Drafts, null, Modifier.padding(end = 6.dp).size(17.dp), tint = MaterialTheme.colorScheme.tertiary)
-                    c.snippetFromMe && c.snippetStatus in MessageStatus.OUTGOING_PENDING -> Icon(Icons.Outlined.Schedule, null, Modifier.padding(end = 6.dp).size(17.dp), tint = quiet)
+                    c.hasFailed -> Icon(Icons.Outlined.ErrorOutline, null, Modifier.padding(top = 2.dp, end = 5.dp).size(16.dp), tint = MaterialTheme.colorScheme.error)
+                    !c.draft.isNullOrBlank() -> Icon(Icons.Outlined.Drafts, null, Modifier.padding(top = 2.dp, end = 5.dp).size(16.dp), tint = MaterialTheme.colorScheme.tertiary)
+                    c.snippetFromMe && c.snippetStatus in MessageStatus.OUTGOING_PENDING -> Icon(Icons.Outlined.Schedule, null, Modifier.padding(top = 2.dp, end = 5.dp).size(16.dp), tint = quiet)
                 }
                 Text(
                     preview,
                     style = previewStyle,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    // Two lines, so the start of a long bank or order message is actually readable.
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
                     color = if (unread) strong else quiet,
-                    fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
+                    fontWeight = if (unread) FontWeight.Medium else FontWeight.Normal,
+                    modifier = Modifier.weight(1f),
                 )
+                if (unread) {
+                    Spacer(Modifier.width(10.dp))
+                    Box(Modifier.padding(top = 6.dp).size(9.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
+                }
             }
             item.otpCode?.let { code ->
                 Spacer(Modifier.height(8.dp))
@@ -550,27 +566,14 @@ fun ConversationRow(
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
                         .clickable { onCopyCode(code) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .padding(horizontal = 12.dp, vertical = 5.dp)
                         .semantics(mergeDescendants = true) { contentDescription = "Copy code $code" },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Outlined.ContentCopy, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Outlined.ContentCopy, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(8.dp))
-                    Text(code, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.5.sp)
+                    Text(code, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.5.sp)
                 }
-            }
-        }
-        // Time sits in its own column, so previews never run underneath it.
-        Column(Modifier.padding(start = 16.dp).align(Alignment.Top).padding(top = 3.dp), horizontalAlignment = Alignment.End) {
-            Text(
-                time, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                color = if (unread) strong else quiet,
-                fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
-                maxLines = 1,
-            )
-            if (unread) {
-                Spacer(Modifier.height(12.dp))
-                Box(Modifier.size(9.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
             }
         }
     }
@@ -610,20 +613,20 @@ private fun SelectionTopBar(
             IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, "Delete") }
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "More actions") }
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, shape = RoundedCornerShape(16.dp)) {
-                    DropdownMenuItem(text = { Text("Select all") }, onClick = { menu = false; vm.selectAll() })
-                    DropdownMenuItem(text = { Text(if (allPinned) "Unpin" else "Pin") }, onClick = { menu = false; vm.pin(!allPinned) })
-                    DropdownMenuItem(text = { Text(if (allStarred) "Unstar" else "Star") }, onClick = { menu = false; vm.star(!allStarred) })
-                    DropdownMenuItem(text = { Text(if (allMuted) "Unmute" else "Mute") }, onClick = { menu = false; vm.mute(!allMuted) })
-                    DropdownMenuItem(text = { Text("Move to…") }, onClick = { menu = false; onCategory() })
-                    HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                YarnMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    YarnMenuItem("Select all", Icons.Outlined.SelectAll, { menu = false; vm.selectAll() })
+                    YarnMenuItem(if (allPinned) "Unpin" else "Pin", Icons.Outlined.PushPin, { menu = false; vm.pin(!allPinned) })
+                    YarnMenuItem(if (allStarred) "Unstar" else "Star", Icons.Outlined.StarOutline, { menu = false; vm.star(!allStarred) })
+                    YarnMenuItem(if (allMuted) "Unmute" else "Mute", if (allMuted) Icons.Outlined.Notifications else Icons.Outlined.NotificationsOff, { menu = false; vm.mute(!allMuted) })
+                    YarnMenuItem("Move to…", Icons.Outlined.DriveFileMove, { menu = false; onCategory() })
+                    YarnMenuItem("Share as text", Icons.Outlined.Share, { menu = false; onShare() })
+                    YarnMenuDivider()
                     if (view == InboxView.SPAM) {
-                        DropdownMenuItem(text = { Text("Not spam") }, onClick = { menu = false; vm.spam(false) })
+                        YarnMenuItem("Not spam", Icons.Outlined.GppGood, { menu = false; vm.spam(false) })
                     } else {
-                        DropdownMenuItem(text = { Text("Report spam") }, onClick = { menu = false; vm.spam(true) })
+                        YarnMenuItem("Report spam", Icons.Outlined.Report, { menu = false; vm.spam(true) })
                     }
-                    DropdownMenuItem(text = { Text("Block") }, onClick = { menu = false; vm.block() })
-                    DropdownMenuItem(text = { Text("Share as text") }, onClick = { menu = false; onShare() })
+                    YarnMenuItem("Block", Icons.Outlined.Block, { menu = false; vm.block() }, destructive = true)
                 }
             }
         },

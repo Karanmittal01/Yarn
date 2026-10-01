@@ -170,4 +170,9 @@ class UiSnapshotTest {
 
     @Test fun newChatEmpty() = newChat("")
     @Test fun newChatTyping() = newChat("9818716240")
+    @Test fun inboxDarkLargeText() {
+        // Like a phone set to a bigger font size.
+        org.robolectric.RuntimeEnvironment.setFontScale(1.3f)
+        shot(true, "13_inbox_dark_large_text") { InboxMock() }
+    }
 }

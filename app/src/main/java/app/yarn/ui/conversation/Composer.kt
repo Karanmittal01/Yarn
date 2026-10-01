@@ -127,7 +127,7 @@ fun Composer(
             Row(Modifier.padding(horizontal = 6.dp), verticalAlignment = Alignment.Bottom) {
                 Box {
                     IconButton(onClick = { attachMenu = true }) { Icon(Icons.Outlined.AddCircleOutline, "Attach") }
-                    DropdownMenu(expanded = attachMenu, onDismissRequest = { attachMenu = false }) {
+                    app.yarn.ui.common.YarnMenu(expanded = attachMenu, onDismissRequest = { attachMenu = false }) {
                         DropdownMenuItem(
                             text = { Text("Photos & videos") }, leadingIcon = { Icon(Icons.Outlined.Image, null) },
                             onClick = { attachMenu = false; pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
@@ -155,7 +155,7 @@ fun Composer(
                     trailingIcon = if (text.isNotBlank()) ({
                         Box {
                             IconButton(onClick = { aiMenu = true }) { Icon(Icons.Outlined.AutoAwesome, "Rewrite with AI") }
-                            DropdownMenu(expanded = aiMenu, onDismissRequest = { aiMenu = false }) {
+                            app.yarn.ui.common.YarnMenu(expanded = aiMenu, onDismissRequest = { aiMenu = false }) {
                                 listOf(
                                     RewriteStyle.REPHRASE to "Rephrase", RewriteStyle.SHORTEN to "Shorten", RewriteStyle.ELABORATE to "Elaborate",
                                     RewriteStyle.FRIENDLY to "Friendlier", RewriteStyle.PROFESSIONAL to "More professional", RewriteStyle.EMOJIFY to "Add emoji",
@@ -174,7 +174,7 @@ fun Composer(
                                 Text("${(sim?.slotIndex ?: 0) + 1}", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 2.dp))
                             }
                         }
-                        DropdownMenu(expanded = simMenu, onDismissRequest = { simMenu = false }) {
+                        app.yarn.ui.common.YarnMenu(expanded = simMenu, onDismissRequest = { simMenu = false }) {
                             sims.forEach { s ->
                                 DropdownMenuItem(text = { Text(s.label + (s.number?.let { "  $it" } ?: "")) }, onClick = { simMenu = false; onSim(s.subId) })
                             }

@@ -184,7 +184,7 @@ fun ConversationScreen(
                         var more by remember { mutableStateOf(false) }
                         Box {
                             IconButton(onClick = { more = true }) { Icon(Icons.Outlined.MoreVert, "More actions") }
-                            DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
+                            app.yarn.ui.common.YarnMenu(expanded = more, onDismissRequest = { more = false }) {
                                 DropdownMenuItem(text = { Text("Star") }, leadingIcon = { Icon(Icons.Outlined.Star, null) }, onClick = { more = false; vm.starSelected(true) })
                                 DropdownMenuItem(text = { Text("Unstar") }, onClick = { more = false; vm.starSelected(false) })
                                 DropdownMenuItem(text = { Text("Share") }, leadingIcon = { Icon(Icons.Outlined.Share, null) }, onClick = {
@@ -245,7 +245,7 @@ fun ConversationScreen(
                         }
                         Box {
                             IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "More options") }
-                            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            app.yarn.ui.common.YarnMenu(expanded = menu, onDismissRequest = { menu = false }) {
                                 DropdownMenuItem(text = { Text("Summarise") }, onClick = { menu = false; vm.summarize() })
                                 DropdownMenuItem(text = { Text(if (conv.pinned) "Unpin" else "Pin") }, onClick = { menu = false; vm.pin(!conv.pinned) })
                                 DropdownMenuItem(text = { Text(if (conv.muted) "Unmute" else "Mute notifications") }, onClick = { menu = false; vm.mute(!conv.muted) })
