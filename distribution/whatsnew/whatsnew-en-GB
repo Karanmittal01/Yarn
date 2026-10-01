@@ -1,4 +1,3 @@
-Smarter sorting into Personal, OTP, Transactions, Shopping, Updates and Offers, tuned for Indian banks and brands.
-Back up to Google Drive and restore with your Google account.
-Higher-contrast design, message totals and full sender IDs.
-OTP notifications: Copy & delete or Mark read.
+Fixed sent messages showing twice as "Not sent" on Samsung phones.
+Fixed long phone numbers getting cut off when starting a new chat.
+Cleaner new-chat screen and a new prompt to set Yarn as your SMS app.
