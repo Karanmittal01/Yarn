@@ -339,10 +339,10 @@ fun TextSizeCard(value: Float, onChange: (Float) -> Unit) {
             androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density, base.fontScale / value * current.first),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                app.yarn.ui.common.Avatar("Priya", null, size = 40.dp)
+                app.yarn.ui.common.Avatar("Kavya Mittal", null, size = 40.dp)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Priya Sharma", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                    Text("Kavya Mittal", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                     Text("Are we still on for dinner tonight?", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
