@@ -122,6 +122,8 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     private var smartJob: Job? = null
 
     init {
+        // Mark read as soon as the chat opens, before any transition animation finishes.
+        markReadNow()
         viewModelScope.launch {
             val conv = conversation.filterNotNull().first()
             _subId.value = c.sims.resolveSubId(conv.preferredSubId)
@@ -147,10 +149,21 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
 
     fun onVisible(isVisible: Boolean) {
         visible = isVisible
-        if (isVisible) viewModelScope.launch {
+        // Opening a chat (or leaving it) counts as reading it. This runs in the app's scope, not the
+        // screen's, so pressing back right away can't cancel it half-way.
+        markReadNow()
+    }
+
+    private fun markReadNow() {
+        c.scope.launch {
             c.conversations.markRead(listOf(conversationId))
             c.notifier.cancel(conversationId)
         }
+    }
+
+    override fun onCleared() {
+        markReadNow()
+        super.onCleared()
     }
 
     private fun refreshInsights() {
