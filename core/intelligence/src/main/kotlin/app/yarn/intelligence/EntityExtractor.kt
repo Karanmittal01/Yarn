@@ -235,18 +235,39 @@ class EntityExtractor(
         Entity(EntityType.ADDRESS, it.value.trim(), it.value.trim(), it.range.first, it.range.last + 1, confidence = 0.7f)
     }.toList()
 
-    private fun phones(text: String): List<Entity> = PHONE.findAll(text).mapNotNull { m ->
-        val digits = m.value.filter { it.isDigit() }
-        if (digits.length !in 8..15) return@mapNotNull null
-        // Reference numbers are not phone numbers: "UPI: 664017641271", "Ref No 512…", "UTR …", "AWB …".
-        val before = text.substring(maxOf(0, m.range.first - 24), m.range.first).lowercase()
-        if (REFERENCE_BEFORE.containsMatchIn(before)) return@mapNotNull null
-        // A long unbroken digit run is an ID unless it carries a country code (+…, 91…, 0…) or is toll-free.
-        val plain = m.value.trim()
-        if (plain.all { it.isDigit() } && digits.length >= 12 && !digits.startsWith("91") && !digits.startsWith("0")) return@mapNotNull null
-        val value = (if (m.value.trim().startsWith("+")) "+" else "") + digits
-        Entity(EntityType.PHONE, m.value.trim(), value, m.range.first, m.range.first + m.value.trimEnd().length)
-    }.toList()
+    /**
+     * Only numbers shaped like real phone numbers count: Indian mobiles (10 digits from 6-9, with an
+     * optional +91/91/0), toll-free 1800/1860, landlines with a 0 trunk prefix, +country numbers, and
+     * short helplines (e.g. 1930) when the text says call/dial/helpline. Transaction numbers, terminal
+     * IDs and references stay plain text.
+     */
+    private fun phones(text: String): List<Entity> {
+        val out = ArrayList<Entity>()
+        for (m in PHONE.findAll(text)) {
+            val raw = m.value.trim()
+            val digits = raw.filter { it.isDigit() }
+            val before = text.substring(maxOf(0, m.range.first - 24), m.range.first).lowercase()
+            if (REFERENCE_BEFORE.containsMatchIn(before)) continue
+            if (!looksLikePhone(raw, digits)) continue
+            val value = (if (raw.startsWith("+")) "+" else "") + digits
+            out += Entity(EntityType.PHONE, raw, value, m.range.first, m.range.first + raw.length)
+        }
+        for (m in HELPLINE.findAll(text)) {
+            val g = m.groups[1] ?: continue
+            out += Entity(EntityType.PHONE, g.value, g.value, g.range.first, g.range.last + 1)
+        }
+        return out
+    }
+
+    private fun looksLikePhone(raw: String, digits: String): Boolean = when {
+        raw.startsWith("+91") -> digits.length == 12 && (digits[2] in '6'..'9' || digits[2] in '1'..'5')
+        raw.startsWith("+") -> digits.length in 9..15
+        digits.length == 10 && digits[0] in '6'..'9' -> true
+        digits.length == 12 && digits.startsWith("91") && digits[2] in '6'..'9' -> true
+        digits.length == 11 && digits.startsWith("0") && digits[1] != '0' -> true
+        digits.length in 10..11 && (digits.startsWith("1800") || digits.startsWith("1860")) -> true
+        else -> false
+    }
 
     // ---- Dates ------------------------------------------------------------------------------
 
@@ -371,7 +392,7 @@ class EntityExtractor(
         private val PRIORITY = listOf(
             EntityType.URL, EntityType.EMAIL, EntityType.UPI_ID, EntityType.OTP, EntityType.TRACKING_NUMBER,
             EntityType.AMOUNT, EntityType.ACCOUNT_REF, EntityType.BOOKING_REF, EntityType.ORDER_ID,
-            EntityType.FLIGHT, EntityType.DATE_TIME, EntityType.ADDRESS, EntityType.PHONE,
+            EntityType.FLIGHT, EntityType.PHONE, EntityType.DATE_TIME, EntityType.ADDRESS,
         )
 
         private val BARE_TLDS = setOf(
@@ -404,7 +425,7 @@ class EntityExtractor(
         private val ACCOUNT_BEFORE = Regex("(a/c|acct|account|card|ending|xx|\\*\\*|no\\.)\\s*[:#]?\\s*$")
 
         private const val NUM = "(\\d{1,3}(?:,\\d{2,3})+(?:\\.\\d{1,2})?|\\d+(?:\\.\\d{1,2})?)"
-        private val AMOUNT_PREFIX = Regex("(?i)(₹|rs\\.?|inr|us\\$|usd|\\$|€|eur|£|gbp|¥|jpy|aed|sgd|s\\$|cad|c\\$|aud|a\\$)\\s?$NUM(?![\\d])")
+        private val AMOUNT_PREFIX = Regex("(?i)(₹|(?<![a-z])(?:rs\\.?|inr|us\\$|usd|eur|gbp|jpy|aed|sgd|s\\$|cad|c\\$|aud|a\\$)|\\$|€|£|¥)\\s?$NUM(?![\\d])")
         private val AMOUNT_SUFFIX = Regex("(?i)(?<![\\w.])$NUM\\s?(inr|usd|eur|gbp|rupees?|dollars?|euros?)\\b")
         private val DEBIT = Regex("\\b(debited|spent|paid|sent|withdrawn|purchase|charged|deducted|txn of|payment of|transferred)\\b")
         private val CREDIT = Regex("\\b(credited|received|refund(?:ed)?|deposited|cashback|reversed)\\b")
@@ -429,7 +450,8 @@ class EntityExtractor(
                 "(?:,?\\s+(?:Apt|Suite|Ste|Unit|#)\\s*[\\w-]+)?(?:,\\s*[A-Z][A-Za-z .]+)?(?:,\\s*[A-Z]{2}(?:\\s+\\d{5}(?:-\\d{4})?)?)?",
         )
         private val REFERENCE_BEFORE = Regex("(?:upi|ref|utr|rrn|txn|trxn|transaction|a/c|acct|account|awb|order|pnr|folio|policy|id|no\\.?)\\s*(?:no\\.?|id|number|#)?\\s*[:#-]?\\s*$")
-        private val PHONE = Regex("(?<![\\w+/])\\+?\\d[\\d\\s().-]{6,18}\\d(?![\\w/])")
+        private val PHONE = Regex("(?<![\\w+])\\+?\\d[\\d\\s().-]{6,18}\\d(?![\\w])")
+        private val HELPLINE = Regex("(?i)(?:call|dial|helpline|toll[- ]free)(?:\\s+[a-z.]+){0,4}\\s*[:\\-]?\\s*\\b(\\d{3,4})(?![\\d/.,]\\d|\\d)")
 
         private val ISO_DATE = Regex("\\b(\\d{4})-(\\d{1,2})-(\\d{1,2})\\b")
         private val NUMERIC_DATE = Regex("\\b(\\d{1,2})[/.-](\\d{1,2})(?:[/.-](\\d{4}|\\d{2}))?\\b")

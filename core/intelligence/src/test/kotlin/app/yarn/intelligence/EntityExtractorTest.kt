@@ -84,4 +84,19 @@ class EntityExtractorTest {
             .filter { it.type == EntityType.PHONE }.map { it.value }
         com.google.common.truth.Truth.assertThat(ref).containsExactly("+914065118002")
     }
+
+    @Test
+    fun onlyRealPhoneNumbersAreCallable() {
+        val sbi = "Dear Customer, transaction number 627444052564 for Rs.50000.00 by SBI Debit Card X9832 done at 70068011 on 01Oct26 at 15:05:55. " +
+            "Your updated available balance is Rs.123212.99. If not done by you, forward this SMS to 7400165218/ call 1800111109/9449112211 to block card. " +
+            "GOI helpline for cyber fraud 1930."
+        val phones = EntityExtractor().extract(sbi, 0L).filter { it.type == EntityType.PHONE }.map { it.value }
+        com.google.common.truth.Truth.assertThat(phones).containsExactly("7400165218", "1800111109", "9449112211", "1930")
+
+        fun phonesIn(t: String) = EntityExtractor().extract(t, 0L).filter { it.type == EntityType.PHONE }.map { it.value }
+        com.google.common.truth.Truth.assertThat(phonesIn("Your order 40512345678 is confirmed. Track AWB 1234567890123.")).isEmpty()
+        com.google.common.truth.Truth.assertThat(phonesIn("Terminal ID 12345678, batch 004512 approved.")).isEmpty()
+        com.google.common.truth.Truth.assertThat(phonesIn("Call us on 022-61606161 or +44 20 7946 0958")).containsExactly("02261606161", "+442079460958")
+        com.google.common.truth.Truth.assertThat(phonesIn("Reach me at 98111 22233 tonight")).containsExactly("9811122233")
+    }
 }
