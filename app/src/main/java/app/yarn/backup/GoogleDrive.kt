@@ -32,32 +32,53 @@ class NeedsConsentException(val pendingIntent: PendingIntent) : Exception("Googl
  */
 class GoogleDrive(private val context: Context) {
     private val request = AuthorizationRequest.builder()
-        .setRequestedScopes(listOf(Scope(SCOPE_APPDATA), Scope(SCOPE_EMAIL)))
+        // Only the private app folder. Asking for extra scopes (e.g. "email") alongside it is a known
+        // trigger for Google's internal error 8; the account email comes from the result instead.
+        .setRequestedScopes(listOf(Scope(SCOPE_APPDATA)))
         .build()
 
     /**
      * Returns an access token. When the user hasn't granted access yet (or must choose an account)
      * this throws [NeedsConsentException]; the UI launches its intent and calls [tokenFrom].
      */
+    /** Email of the account that granted access, when Google reports it. */
+    @Volatile var lastEmail: String? = null
+        private set
+
     suspend fun token(): String {
-        val result = try {
-            Identity.getAuthorizationClient(context).authorize(request).await()
-        } catch (e: com.google.android.gms.common.api.ApiException) {
-            throw IOException(
-                explain(e.statusCode),
-            )
+        var attempt = 0
+        while (true) {
+            val result = try {
+                Identity.getAuthorizationClient(context).authorize(request).await()
+            } catch (e: com.google.android.gms.common.api.ApiException) {
+                // Error 8 is often a one-off right after install or consent; try once more.
+                if (e.statusCode == com.google.android.gms.common.api.CommonStatusCodes.INTERNAL_ERROR && attempt++ == 0) {
+                    kotlinx.coroutines.delay(800)
+                    continue
+                }
+                throw IOException(explain(e.statusCode), e)
+            }
+            if (result.hasResolution()) throw NeedsConsentException(requireNotNull(result.pendingIntent))
+            remember(result)
+            return result.accessToken ?: throw IOException("Google didn't return access")
         }
-        if (result.hasResolution()) throw NeedsConsentException(requireNotNull(result.pendingIntent))
-        return result.accessToken ?: throw IOException("Google didn't return access")
     }
 
-    fun tokenFrom(data: Intent?): String {
-        val result: AuthorizationResult = try {
-            Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(data)
+    /** Token after the consent screen; falls back to a silent request if Google glitched on return. */
+    suspend fun tokenFrom(data: Intent?): String {
+        try {
+            val result: AuthorizationResult = Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(data)
+            remember(result)
+            result.accessToken?.let { return it }
         } catch (e: com.google.android.gms.common.api.ApiException) {
-            throw IOException(explain(e.statusCode), e)
+            if (e.statusCode != com.google.android.gms.common.api.CommonStatusCodes.INTERNAL_ERROR) throw IOException(explain(e.statusCode), e)
         }
-        return result.accessToken ?: throw IOException("Google didn't return access")
+        // Access was usually granted even when the result came back empty or with error 8.
+        return token()
+    }
+
+    private fun remember(result: AuthorizationResult) {
+        runCatching { result.toGoogleSignInAccount()?.email }.getOrNull()?.let { lastEmail = it }
     }
 
     /** Plain-language reason for a failed Google sign-in, with the code for troubleshooting. */
@@ -68,12 +89,16 @@ class GoogleDrive(private val context: Context) {
         com.google.android.gms.common.api.CommonStatusCodes.CANCELED, 12501 -> "Sign-in was cancelled."
         com.google.android.gms.common.api.CommonStatusCodes.NETWORK_ERROR -> "No internet connection."
         com.google.android.gms.common.api.CommonStatusCodes.SIGN_IN_REQUIRED -> "Please choose a Google account."
+        com.google.android.gms.common.api.CommonStatusCodes.INTERNAL_ERROR ->
+            "Google couldn't finish signing in (code 8). Check that the Google Drive API is enabled in Google Cloud and try again."
         else -> "Google sign-in failed (code $statusCode)."
     }
 
     suspend fun accountEmail(token: String): String = withContext(Dispatchers.IO) {
-        val body = request("GET", "$API/about?fields=user(emailAddress)", token)
-        JSONObject(body).getJSONObject("user").getString("emailAddress")
+        lastEmail ?: runCatching {
+            val body = request("GET", "$API/about?fields=user(emailAddress)", token)
+            JSONObject(body).getJSONObject("user").getString("emailAddress")
+        }.getOrDefault("Google account")
     }
 
     /** The random key that encrypts this account's backups, created on first use. */
@@ -203,7 +228,6 @@ class GoogleDrive(private val context: Context) {
         private const val API = "https://www.googleapis.com/drive/v3"
         private const val UPLOAD = "https://www.googleapis.com/upload/drive/v3/files"
         private const val SCOPE_APPDATA = "https://www.googleapis.com/auth/drive.appdata"
-        private const val SCOPE_EMAIL = "email"
         private const val BACKUP_NAME = "yarn-backup.yarnbak"
         private const val KEY_NAME = "yarn-backup-key"
     }

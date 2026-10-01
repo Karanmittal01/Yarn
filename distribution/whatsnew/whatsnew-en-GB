@@ -1,3 +1,3 @@
-Only real phone numbers are callable now; transaction numbers and IDs stay plain text.
-Opening a chat always marks it as read, even if you go back straight away.
-Copy, call and open buttons appear only under messages from the last 24 hours.
+More reliable Google Drive sign-in for backups.
+Only real phone numbers are callable; transaction numbers stay plain text.
+Opening a chat always marks it as read.
