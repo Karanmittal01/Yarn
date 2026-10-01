@@ -231,6 +231,8 @@ fun ConversationScreen(
                                 val sub = when {
                                     conv.isGroup -> "${conv.addresses.size} people"
                                     conv.displayName != conv.addresses.firstOrNull() && PhoneNumbers.isDialable(conv.addresses.first()) -> PhoneNumbers.format(conv.addresses.first(), PhoneNumbers.countryIso(context))
+                                    // Business senders show their short brand name in the list; here, the full sender ID (e.g. AD-SBIOTP-S).
+                                    conv.addresses.firstOrNull()?.let { it.any(Char::isLetter) && it != conv.title } == true -> conv.addresses.first().uppercase()
                                     else -> Category.fromName(conv.category)?.let { CategoryUi.label(it) }
                                 }
                                 sub?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }

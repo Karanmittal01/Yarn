@@ -281,6 +281,9 @@ fun InboxScreen(
                     }
                 }
             }
+            if (!list.isNullOrEmpty()) {
+                item(key = "count", contentType = "count") { InboxCount(list) }
+            }
         }
     }
 
@@ -314,14 +317,14 @@ internal fun InboxHeader(
 ) {
     var menu by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().statusBarsPadding().height(60.dp).padding(start = 18.dp, end = 4.dp),
+        Modifier.fillMaxWidth().statusBarsPadding().padding(top = 20.dp, bottom = 8.dp).height(56.dp).padding(start = 20.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        YarnLogo(size = 26.dp)
-        Spacer(Modifier.width(12.dp))
+        YarnLogo(size = 30.dp)
+        Spacer(Modifier.width(14.dp))
         Text(
             title,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f).semantics { heading() },
         )
@@ -690,4 +693,22 @@ private fun EmptyInbox(view: InboxView, importing: Boolean) {
             )
         }
     }
+}
+
+/** Quiet total at the very end of the list, e.g. "48 conversations · 2,316 messages". */
+@Composable
+internal fun InboxCount(list: List<InboxItem>) {
+    val conversations = list.size
+    val messages = list.sumOf { it.conversation.messageCount }
+    val fmt = java.text.NumberFormat.getIntegerInstance()
+    Text(
+        buildString {
+            append(fmt.format(conversations)).append(if (conversations == 1) " conversation" else " conversations")
+            append(" · ").append(fmt.format(messages)).append(if (messages == 1) " message" else " messages")
+        },
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 8.dp),
+    )
 }

@@ -103,6 +103,7 @@ class UiSnapshotTest {
                         ConversationRow(inbox[i], false, false, {}, {})
                     }
                 }
+                item { app.yarn.ui.inbox.InboxCount(inbox) }
             }
         }
     }
