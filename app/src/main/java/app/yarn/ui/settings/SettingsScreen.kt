@@ -205,7 +205,6 @@ fun NotificationsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
         item {
             SettingsGroup {
                 SwitchRow("Show message previews", "Off shows only “New message”", s.showNotificationPreviews) { v -> vm.update { it.copy(showNotificationPreviews = v) } }
-                SwitchRow("Copy & delete for codes", "One tap copies the code and deletes the message", s.otpCopyAction) { v -> vm.update { it.copy(otpCopyAction = v) } }
             }
         }
         item { SectionHeader("Which messages notify") }

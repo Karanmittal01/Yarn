@@ -172,24 +172,13 @@ class Notifier(
             )
             .setDeleteIntent(actionIntent(NotificationActionReceiver.ACTION_DISMISSED, conversationId))
 
-        val otp = db.messages().entities(latest.id).firstOrNull { it.type == "OTP" }
         val markRead = NotificationCompat.Action.Builder(R.drawable.ic_done, "Mark read", actionIntent(NotificationActionReceiver.ACTION_MARK_READ, conversationId))
             .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ)
             .setShowsUserInterface(false)
             .build()
-        if (otp != null && s.otpCopyAction) {
-            // Codes: copy & delete, mark read.
-            builder.addAction(
-                NotificationCompat.Action.Builder(
-                    R.drawable.ic_delete, "Copy & delete",
-                    actionIntent(NotificationActionReceiver.ACTION_COPY_DELETE_OTP, conversationId, {
-                        putExtra(NotificationActionReceiver.EXTRA_TEXT, otp.value)
-                        putExtra(NotificationActionReceiver.EXTRA_MESSAGE_ID, latest.id)
-                    }),
-                ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_DELETE).setShowsUserInterface(false).build(),
-            )
-            builder.addAction(markRead)
-        } else {
+        // Codes get the same two actions as other alerts (Mark read, Delete); Android adds its own
+        // "Copy" shortcut for one-time codes, so Yarn doesn't duplicate it.
+        run {
             if (latest.body.isNotBlank() && !conversation.spam && conversation.addresses.all { PhoneNumbers.isDialable(it) || PhoneNumbers.isEmail(it) }) {
                 val remoteInput = RemoteInput.Builder(NotificationActionReceiver.KEY_REPLY).setLabel("Reply").build()
                 builder.addAction(
