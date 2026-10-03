@@ -103,6 +103,11 @@ class IncomingProcessor(
         db.conversations().refresh(conversationId)
         notifier.notifyConversation(conversationId)
         enrichWithMlKit(messageId)
+        // Short code lifetimes (e.g. 10 minutes) need their own timer; daily housekeeping is too slow.
+        if (updated.category == "OTP") {
+            val minutes = settings.current().otpAutoDeleteMinutes
+            if (minutes in 1 until 12 * 60) app.yarn.work.OtpCleanupWorker.schedule(context, minutes)
+        }
     }
 
     /** Adds ML Kit entities (addresses, precise dates) in the background when the model exists. */

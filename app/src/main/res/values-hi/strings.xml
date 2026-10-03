@@ -589,10 +589,10 @@
         <item quantity="other">%1$d दिन बाद मिटाएं</item>
     </plurals>
     <string name="clean_never_note">स्टार किए गए मैसेज, पिन की गई चैट और जिन चैट में आपने जवाब दिया है, उन्हें कभी नहीं मिटाया जाता।</string>
-    <string name="junk_codes">पुराने वेरिफ़िकेशन कोड</string>
+    <string name="junk_codes">वेरिफ़िकेशन कोड</string>
     <string name="junk_offers">पुराने ऑफ़र और प्रमोशन</string>
     <string name="junk_orders">पुराने ऑर्डर और डिलीवरी अपडेट</string>
-    <string name="junk_codes_sub">एक दिन से पुराने · कोड कुछ ही मिनट में एक्सपायर हो जाते हैं</string>
+    <string name="junk_codes_sub">पिछले 10 मिनट के अलावा सभी कोड · कोड कुछ ही मिनट में एक्सपायर हो जाते हैं</string>
     <string name="junk_offers_sub">एक हफ़्ते से पुराने</string>
     <string name="junk_spam_sub">स्पैम में सब कुछ</string>
     <string name="junk_orders_sub">एक महीने से पुराने</string>
@@ -724,4 +724,14 @@
     <string name="reason_imitates">डोमेन %1$s की नकल करता है, पर %2$s का असली डोमेन नहीं है</string>
     <string name="ai_off">सेटिंग में AI सुविधाएं बंद हैं।</string>
     <string name="rewrite_needs_model">दोबारा लिखने के लिए फ़ोन पर चलने वाला भाषा मॉडल चाहिए। यह फ़ोन Gemini Nano नहीं देता; आप सेटिंग › स्मार्ट सुविधाएं में कोई मुफ़्त ओपन मॉडल (जैसे Gemma या Qwen) इंपोर्ट कर सकते हैं।</string>
+    <string name="send_desc_sim">%1$s से भेजें। सिम बदलने या शेड्यूल करने के लिए दबाकर रखें</string>
+    <string name="change_sim_or_schedule">सिम बदलें या शेड्यूल करें</string>
+    <plurals name="delete_after_minutes">
+        <item quantity="one">%1$d मिनट बाद मिटाएं</item>
+        <item quantity="other">%1$d मिनट बाद मिटाएं</item>
+    </plurals>
+    <plurals name="delete_after_hours">
+        <item quantity="one">%1$d घंटे बाद मिटाएं</item>
+        <item quantity="other">%1$d घंटे बाद मिटाएं</item>
+    </plurals>
 </resources>

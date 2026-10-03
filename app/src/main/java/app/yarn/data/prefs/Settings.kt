@@ -48,7 +48,8 @@ data class AppSettings(
     val appLock: Boolean = false,
     val lockTimeoutSeconds: Int = 60,
     val secureScreen: Boolean = false,
-    val otpAutoDeleteHours: Int = 0,
+    /** Delete one-time codes older than this many minutes (0 = keep). */
+    val otpAutoDeleteMinutes: Int = 0,
     val spamAutoDeleteDays: Int = 30,
     /** Delete offers & promotions older than this many days (0 = keep). */
     val promoAutoDeleteDays: Int = 0,
@@ -104,6 +105,7 @@ class SettingsRepository(private val context: Context) {
         val lockTimeout = intPreferencesKey("lock_timeout")
         val secureScreen = booleanPreferencesKey("secure_screen")
         val otpAutoDelete = intPreferencesKey("otp_auto_delete_hours")
+        val otpAutoDeleteMinutes = intPreferencesKey("otp_auto_delete_minutes")
         val spamAutoDelete = intPreferencesKey("spam_auto_delete_days")
         val promoAutoDelete = intPreferencesKey("promo_auto_delete_days")
         val autoCleanReport = intPreferencesKey("auto_clean_report")
@@ -156,7 +158,8 @@ class SettingsRepository(private val context: Context) {
             p[K.appLock] = s.appLock
             p[K.lockTimeout] = s.lockTimeoutSeconds
             p[K.secureScreen] = s.secureScreen
-            p[K.otpAutoDelete] = s.otpAutoDeleteHours
+            p[K.otpAutoDeleteMinutes] = s.otpAutoDeleteMinutes
+            p.remove(K.otpAutoDelete)
             p[K.spamAutoDelete] = s.spamAutoDeleteDays
             p[K.promoAutoDelete] = s.promoAutoDeleteDays
             p[K.autoCleanReport] = s.autoCleanReport
@@ -203,7 +206,7 @@ class SettingsRepository(private val context: Context) {
         appLock = p[K.appLock] ?: d.appLock,
         lockTimeoutSeconds = p[K.lockTimeout] ?: d.lockTimeoutSeconds,
         secureScreen = p[K.secureScreen] ?: d.secureScreen,
-        otpAutoDeleteHours = p[K.otpAutoDelete] ?: d.otpAutoDeleteHours,
+        otpAutoDeleteMinutes = p[K.otpAutoDeleteMinutes] ?: p[K.otpAutoDelete]?.let { it * 60 } ?: d.otpAutoDeleteMinutes,
         spamAutoDeleteDays = p[K.spamAutoDelete] ?: d.spamAutoDeleteDays,
         promoAutoDeleteDays = p[K.promoAutoDelete] ?: d.promoAutoDeleteDays,
         autoCleanReport = p[K.autoCleanReport] ?: d.autoCleanReport,

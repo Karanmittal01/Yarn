@@ -73,7 +73,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.yarn.telephony.SimInfo
-import app.yarn.ui.common.SimTag
 import app.yarn.data.db.AttachmentEntity
 import app.yarn.data.db.ExtractedEntity
 import app.yarn.data.db.MessageStatus
@@ -187,13 +186,20 @@ fun MessageBubble(
                         style = MaterialTheme.typography.bodyLarge,
                     )
                 }
+                // Dual SIM: a tiny, quiet SIM number in the bubble's bottom-right corner.
+                sim?.let {
+                    val ink = LocalContentColor.current
+                    app.yarn.ui.common.SimBadge(
+                        it, Modifier.align(Alignment.End).padding(top = 2.dp), height = 11.dp,
+                        fill = ink.copy(alpha = 0.32f), ink = if (gradient) androidx.compose.ui.graphics.Color.White else colors.surface,
+                    )
+                }
             }
         }
         Row(Modifier.padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             if (m.starred) Icon(Icons.Outlined.Star, null, Modifier.size(12.dp), tint = colors.tertiary)
             Text(Format.time(context, if (m.status == MessageStatus.SCHEDULED) m.scheduledAt else m.date), style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
             if (outgoing) StatusIcon(m.status)
-            sim?.let { SimTag(it, Modifier.padding(start = 6.dp), badgeHeight = 12.dp, fontSize = 11.sp) }
             statusText?.let { Text("  $it", style = MaterialTheme.typography.labelSmall, color = if (m.status == MessageStatus.FAILED) colors.error else colors.onSurfaceVariant) }
             when (m.status) {
                 MessageStatus.FAILED -> TextButton(onClick = { callbacks.onRetry(m.id) }) { Text(stringResource(R.string.retry)) }

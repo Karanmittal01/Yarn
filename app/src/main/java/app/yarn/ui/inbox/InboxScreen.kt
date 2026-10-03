@@ -562,7 +562,6 @@ fun ConversationRow(
                     if (c.muted) Icon(Icons.Outlined.NotificationsOff, null, Modifier.padding(start = 5.dp).size(14.dp), tint = quiet)
                 }
                 Spacer(Modifier.width(10.dp))
-                item.sim?.let { app.yarn.ui.common.SimBadge(it, Modifier.padding(end = 6.dp), height = 15.dp) }
                 Text(
                     time, style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                     color = if (unread) MaterialTheme.colorScheme.primary else quiet,

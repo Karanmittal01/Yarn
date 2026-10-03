@@ -91,7 +91,7 @@ import app.yarn.R
 /** What the user picked on the stringResource(R.string.ob_clean) step. */
 data class AutoCleanChoice(val codes: Boolean = true, val offers: Boolean = true, val spam: Boolean = true) {
     fun applyTo(s: AppSettings) = s.copy(
-        otpAutoDeleteHours = if (codes) 24 else 0,
+        otpAutoDeleteMinutes = if (codes) 24 * 60 else 0,
         promoAutoDeleteDays = if (offers) 30 else 0,
         spamAutoDeleteDays = if (spam) 30 else 0,
     )

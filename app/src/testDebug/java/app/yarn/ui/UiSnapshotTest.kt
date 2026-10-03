@@ -241,7 +241,7 @@ class UiSnapshotTest {
     @Test fun cleanerDoneDark() = shot(true, "19_cleaner_done_dark") {
         app.yarn.ui.cleaner.CleanerContent(
             app.yarn.ui.cleaner.CleanerState(scanning = false, found = found.mapValues { 0 }, cleaned = 2089),
-            app.yarn.data.prefs.AppSettings(otpAutoDeleteHours = 24, promoAutoDeleteDays = 30), true, {}, {}, {}, {}, {},
+            app.yarn.data.prefs.AppSettings(otpAutoDeleteMinutes = 10, promoAutoDeleteDays = 30), true, {}, {}, {}, {}, {},
         )
     }
 

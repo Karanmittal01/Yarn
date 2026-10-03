@@ -186,6 +186,34 @@ class MaintenanceWorker(context: Context, params: WorkerParameters) : CoroutineW
     }
 }
 
+/** Deletes expired one-time codes shortly after they stop being useful. */
+class OtpCleanupWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result {
+        val c = applicationContext.container
+        if (!app.yarn.telephony.DefaultSmsApp.isDefault(applicationContext)) return Result.success()
+        val s = c.settings.current()
+        if (s.otpAutoDeleteMinutes <= 0) return Result.success()
+        val ids = c.db.messages().junkIds(listOf("OTP"), System.currentTimeMillis() - s.otpAutoDeleteMinutes * 60_000L)
+        if (ids.isNotEmpty()) {
+            val chats = c.db.messages().getAll(ids).map { it.conversationId }.distinct()
+            c.cleaner.clean(ids)
+            // Drop (or refresh) the code's notification once the code itself is gone.
+            chats.forEach { c.notifier.notifyConversation(it, alert = false) }
+        }
+        return Result.success()
+    }
+
+    companion object {
+        /** Runs once [minutes] (+1) after the latest code; a newer code pushes it back. */
+        fun schedule(context: Context, minutes: Int) {
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "otp-cleanup", ExistingWorkPolicy.REPLACE,
+                OneTimeWorkRequestBuilder<OtpCleanupWorker>().setInitialDelay(minutes + 1L, TimeUnit.MINUTES).build(),
+            )
+        }
+    }
+}
+
 /** Daily encrypted backup to the user's Google Drive, on Wi-Fi while charging. */
 class GoogleBackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {

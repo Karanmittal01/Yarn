@@ -205,9 +205,9 @@ fun CleanerContent(
             item {
                 SettingsGroup {
                     ChoiceRow(
-                        stringResource(R.string.verification_codes), listOf(0 to stringResource(R.string.keep), 24 to pluralStringResource(R.plurals.delete_after_days, 1, 1), 168 to pluralStringResource(R.plurals.delete_after_days, 7, 7), 720 to pluralStringResource(R.plurals.delete_after_days, 30, 30)),
-                        settings.otpAutoDeleteHours, icon = Icons.Outlined.Password, tint = Color(0xFF7C5CFF),
-                    ) { v -> onSettings { it.copy(otpAutoDeleteHours = v) } }
+                        stringResource(R.string.verification_codes), listOf(0 to stringResource(R.string.keep), 10 to pluralStringResource(R.plurals.delete_after_minutes, 10, 10), 60 to pluralStringResource(R.plurals.delete_after_hours, 1, 1), 1440 to pluralStringResource(R.plurals.delete_after_days, 1, 1), 10080 to pluralStringResource(R.plurals.delete_after_days, 7, 7)),
+                        settings.otpAutoDeleteMinutes, icon = Icons.Outlined.Password, tint = Color(0xFF7C5CFF),
+                    ) { v -> onSettings { it.copy(otpAutoDeleteMinutes = v) } }
                     ChoiceRow(
                         stringResource(R.string.offers_promotions), listOf(0 to stringResource(R.string.keep), 7 to pluralStringResource(R.plurals.delete_after_days, 7, 7), 30 to pluralStringResource(R.plurals.delete_after_days, 30, 30), 90 to pluralStringResource(R.plurals.delete_after_days, 90, 90)),
                         settings.promoAutoDeleteDays, icon = Icons.Outlined.LocalOffer, tint = Color(0xFFFF9500),

@@ -31,7 +31,7 @@ import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -133,43 +133,6 @@ fun Composer(
                 }
             }
             val sim = sims.firstOrNull { it.subId == subId } ?: sims.firstOrNull()
-            if (sims.size > 1 && sim != null) {
-                // Dual SIM: always say which SIM this message will go from; one tap to switch.
-                val changeSim = stringResource(R.string.change_sim)
-                val sendingDesc = stringResource(R.string.sending_from_desc, app.yarn.ui.common.simLabel(sim))
-                Box(Modifier.padding(start = 14.dp, top = 2.dp)) {
-                    Row(
-                        Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .clickable(onClickLabel = changeSim) { simMenu = true }
-                            .background(app.yarn.ui.common.simColor(sim).copy(alpha = 0.12f))
-                            .padding(start = 8.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
-                            .semantics { contentDescription = sendingDesc },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(stringResource(R.string.sending_from), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.width(6.dp))
-                        app.yarn.ui.common.SimTag(sim, badgeHeight = 14.dp, fontSize = 13.sp)
-                        Icon(Icons.Outlined.ArrowDropDown, null, Modifier.size(18.dp), tint = app.yarn.ui.common.simColor(sim))
-                    }
-                    app.yarn.ui.common.YarnMenu(expanded = simMenu, onDismissRequest = { simMenu = false }) {
-                        sims.forEach { s ->
-                            DropdownMenuItem(
-                                text = {
-                                    Column {
-                                        Text(app.yarn.ui.common.simLabel(s), style = MaterialTheme.typography.bodyLarge)
-                                        s.number?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                    }
-                                },
-                                leadingIcon = { app.yarn.ui.common.SimBadge(s, height = 22.dp) },
-                                trailingIcon = { if (s.subId == sim.subId) Icon(Icons.Outlined.Check, null, tint = MaterialTheme.colorScheme.primary) },
-                                onClick = { simMenu = false; onSim(s.subId) },
-                                modifier = Modifier.heightIn(min = 56.dp),
-                            )
-                        }
-                    }
-                }
-            }
             Row(Modifier.padding(horizontal = 6.dp), verticalAlignment = Alignment.Bottom) {
                 Box {
                     IconButton(onClick = { attachMenu = true }) { Icon(Icons.Outlined.AddCircleOutline, stringResource(R.string.attach)) }
@@ -213,8 +176,12 @@ fun Composer(
                 )
                 val sendLabel = stringResource(R.string.send)
                 val scheduleLabel = stringResource(R.string.schedule_message)
-                val sendDesc = stringResource(R.string.send_desc)
+                val multiSim = sims.size > 1 && sim != null
+                val sendDesc = if (multiSim) stringResource(R.string.send_desc_sim, app.yarn.ui.common.simLabel(sim!!)) else stringResource(R.string.send_desc)
+                val longLabel = if (multiSim) stringResource(R.string.change_sim_or_schedule) else scheduleLabel
                 val sendColor = if (canSend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest
+                // Long press: pick the SIM (dual SIM) or schedule the message.
+                Box {
                 Surface(
                     shape = CircleShape,
                     color = sendColor,
@@ -222,15 +189,46 @@ fun Composer(
                         .padding(bottom = 10.dp, start = 4.dp)
                         .size(48.dp)
                         .clip(CircleShape)
-                        .combinedClickable(enabled = canSend, onClick = onSend, onLongClick = { schedule = true }, onClickLabel = sendLabel, onLongClickLabel = scheduleLabel)
+                        .combinedClickable(
+                            enabled = canSend || multiSim,
+                            onClick = { if (canSend) onSend() },
+                            onLongClick = { if (multiSim) simMenu = true else schedule = true },
+                            onClickLabel = sendLabel, onLongClickLabel = longLabel,
+                        )
                         .semantics { contentDescription = sendDesc },
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(Icons.AutoMirrored.Filled.Send, null, tint = if (canSend) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (sims.size > 1 && sim != null) {
-                            app.yarn.ui.common.SimBadge(sim, Modifier.align(Alignment.BottomEnd).padding(end = 7.dp, bottom = 7.dp), height = 13.dp)
+                        if (multiSim) {
+                            app.yarn.ui.common.SimBadge(sim!!, Modifier.align(Alignment.BottomEnd).padding(end = 7.dp, bottom = 7.dp), height = 13.dp)
                         }
                     }
+                }
+                app.yarn.ui.common.YarnMenu(expanded = simMenu, onDismissRequest = { simMenu = false }) {
+                    sims.forEach { s ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(app.yarn.ui.common.simLabel(s), style = MaterialTheme.typography.bodyLarge)
+                                    s.number?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                }
+                            },
+                            leadingIcon = { app.yarn.ui.common.SimBadge(s, height = 20.dp) },
+                            trailingIcon = { if (s.subId == sim?.subId) Icon(Icons.Outlined.Check, null, tint = MaterialTheme.colorScheme.primary) },
+                            onClick = { simMenu = false; onSim(s.subId) },
+                            modifier = Modifier.heightIn(min = 56.dp),
+                        )
+                    }
+                    if (canSend) {
+                        app.yarn.ui.common.YarnMenuDivider()
+                        DropdownMenuItem(
+                            text = { Text(scheduleLabel, style = MaterialTheme.typography.bodyLarge) },
+                            leadingIcon = { Icon(Icons.Outlined.Schedule, null) },
+                            onClick = { simMenu = false; schedule = true },
+                            modifier = Modifier.heightIn(min = 52.dp),
+                        )
+                    }
+                }
                 }
             }
         }

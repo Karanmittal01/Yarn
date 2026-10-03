@@ -6,8 +6,8 @@ import app.yarn.data.prefs.SettingsRepository
 
 /** Kinds of clutter the junk cleaner can clear, with how old a message must be to count. */
 enum class JunkKind(val categories: List<String>, val minAgeMs: Long, val selectedByDefault: Boolean) {
-    /** Codes stop working within minutes; a day later they're only clutter. */
-    CODES(listOf("OTP"), DAY, true),
+    /** Codes stop working within minutes, so anything older than 10 minutes is clutter. */
+    CODES(listOf("OTP"), 10 * 60_000L, true),
     OFFERS(listOf("PROMOTIONS"), 7 * DAY, true),
     SPAM(emptyList(), 0, true),
     /** Order and delivery updates, once the parcel has long arrived. Off by default. */
@@ -41,7 +41,7 @@ class Cleaner(
     suspend fun autoClean(settingsNow: AppSettings? = null, now: Long = System.currentTimeMillis()): Int {
         val s = settingsNow ?: settings.current()
         val ids = buildSet {
-            if (s.otpAutoDeleteHours > 0) addAll(ids(JunkKind.CODES, now - s.otpAutoDeleteHours * 3_600_000L))
+            if (s.otpAutoDeleteMinutes > 0) addAll(ids(JunkKind.CODES, now - s.otpAutoDeleteMinutes * 60_000L))
             if (s.promoAutoDeleteDays > 0) addAll(ids(JunkKind.OFFERS, now - s.promoAutoDeleteDays * DAY))
             if (s.spamAutoDeleteDays > 0) addAll(ids(JunkKind.SPAM, now - s.spamAutoDeleteDays * DAY))
         }
@@ -52,6 +52,6 @@ class Cleaner(
     }
 
     companion object {
-        fun isAutoCleanOn(s: AppSettings) = s.otpAutoDeleteHours > 0 || s.promoAutoDeleteDays > 0
+        fun isAutoCleanOn(s: AppSettings) = s.otpAutoDeleteMinutes > 0 || s.promoAutoDeleteDays > 0
     }
 }

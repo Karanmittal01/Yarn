@@ -71,10 +71,10 @@ fun simLabel(sim: SimInfo): String = stringResource(R.string.sim_label, sim.slot
 
 /** Small coloured SIM card with the slot number inside. */
 @Composable
-fun SimBadge(sim: SimInfo, modifier: Modifier = Modifier, height: Dp = 16.dp) {
+fun SimBadge(sim: SimInfo, modifier: Modifier = Modifier, height: Dp = 16.dp, fill: Color? = null, ink: Color? = null) {
     val label = simLabel(sim)
-    val color = simColor(sim)
-    val onColor = if (LocalDarkTheme.current) Color(0xFF0B0B0C) else Color.White
+    val color = fill ?: simColor(sim)
+    val onColor = ink ?: if (LocalDarkTheme.current) Color(0xFF0B0B0C) else Color.White
     Box(
         modifier.width(height * 0.78f).height(height).background(color, SimShape).semantics { contentDescription = label },
         contentAlignment = Alignment.Center,

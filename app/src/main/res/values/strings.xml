@@ -590,10 +590,10 @@
         <item quantity="other">Delete after %1$d days</item>
     </plurals>
     <string name="clean_never_note">Starred messages, pinned chats and chats you\'ve replied to are never cleaned.</string>
-    <string name="junk_codes">Old verification codes</string>
+    <string name="junk_codes">Verification codes</string>
     <string name="junk_offers">Old offers &amp; promotions</string>
     <string name="junk_orders">Old order &amp; delivery updates</string>
-    <string name="junk_codes_sub">Older than a day · codes expire in minutes</string>
+    <string name="junk_codes_sub">All codes except the last 10 minutes · they expire in minutes</string>
     <string name="junk_offers_sub">Older than a week</string>
     <string name="junk_spam_sub">Everything in Spam</string>
     <string name="junk_orders_sub">Older than a month</string>
@@ -725,4 +725,14 @@
     <string name="reason_imitates">Domain imitates %1$s but is not an official %2$s domain</string>
     <string name="ai_off">AI features are turned off in Settings.</string>
     <string name="rewrite_needs_model">Rewriting needs an on-device language model. This phone doesn\'t offer Gemini Nano; you can import a free open model (e.g. Gemma or Qwen) in Settings › Smart features.</string>
+    <string name="send_desc_sim">Send from %1$s. Long press to change SIM or schedule</string>
+    <string name="change_sim_or_schedule">Change SIM or schedule</string>
+    <plurals name="delete_after_minutes">
+        <item quantity="one">Delete after %1$d minute</item>
+        <item quantity="other">Delete after %1$d minutes</item>
+    </plurals>
+    <plurals name="delete_after_hours">
+        <item quantity="one">Delete after %1$d hour</item>
+        <item quantity="other">Delete after %1$d hours</item>
+    </plurals>
 </resources>
