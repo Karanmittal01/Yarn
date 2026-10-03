@@ -57,10 +57,9 @@ jobs:
             app/build/outputs/bundle/release/*.aab
             app/build/outputs/apk/release/*.apk
 
-      # Publishes every main build to Play's internal testing track and the closed testing
-      # track ("alpha"), and sends it for Google's review so closed testers get it once approved.
-      # Testers get it through the Play Store and Yarn's in-app "update ready" prompt.
-      - name: Upload to Play internal + closed testing
+      # Publishes every main build to Play's closed testing track ("alpha") and sends it for
+      # Google's review; closed testers get it through the Play Store once approved.
+      - name: Upload to Play closed testing
         if: ${{ github.ref == 'refs/heads/main' && env.PLAY_JSON != '' }}
         env:
           PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
@@ -69,6 +68,6 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: app.yarn.messages
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
-          tracks: internal,alpha
+          tracks: alpha
           whatsNewDirectory: distribution/whatsnew
           status: completed
