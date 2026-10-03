@@ -74,6 +74,8 @@ data class ConversationEntity(
     val preferredSubId: Int = -1,
     val hasBusinessSender: Boolean = false,
     val hasOutgoing: Boolean = false,
+    /** SIM subscription of the latest message, so dual-SIM inboxes can show which SIM it used. */
+    @ColumnInfo(defaultValue = "-1") val lastSubId: Int = -1,
 ) {
     val isGroup: Boolean get() = addresses.size > 1
     val title: String get() = customTitle?.takeIf { it.isNotBlank() } ?: displayName.ifBlank { addresses.joinToString(", ") }

@@ -45,6 +45,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.res.stringResource
 
 class MainActivity : FragmentActivity() {
     private val container get() = (application as YarnApplication).container
@@ -53,6 +54,10 @@ class MainActivity : FragmentActivity() {
     private var backgroundedAt = 0L
     private var settingsSnapshot = AppSettings()
     private lateinit var updates: InAppUpdates
+
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(app.yarn.i18n.AppLanguage.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -75,9 +80,9 @@ class MainActivity : FragmentActivity() {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     when {
                         s == null -> Unit
-                        !s.onboardingDone -> OnboardingScreen(onDone = {
+                        !s.onboardingDone -> OnboardingScreen(onDone = { clean ->
                             lifecycleScope.launch {
-                                container.settings.update { it.copy(onboardingDone = true) }
+                                container.settings.update { (clean?.applyTo(it) ?: it).copy(onboardingDone = true) }
                                 SyncWorker.enqueue(this@MainActivity)
                             }
                         })
@@ -89,10 +94,10 @@ class MainActivity : FragmentActivity() {
                     if (updateReady && !updateLater) {
                         androidx.compose.material3.AlertDialog(
                             onDismissRequest = {},
-                            title = { Text("Update ready") },
-                            text = { Text("A new version of Yarn has downloaded. Restart now to finish updating? Your messages are not affected.") },
-                            confirmButton = { androidx.compose.material3.TextButton(onClick = { updates.completeUpdate() }) { Text("Restart") } },
-                            dismissButton = { androidx.compose.material3.TextButton(onClick = { updateLater = true }) { Text("Later") } },
+                            title = { Text(stringResource(R.string.update_ready)) },
+                            text = { Text(stringResource(R.string.update_ready_text)) },
+                            confirmButton = { androidx.compose.material3.TextButton(onClick = { updates.completeUpdate() }) { Text(stringResource(R.string.restart)) } },
+                            dismissButton = { androidx.compose.material3.TextButton(onClick = { updateLater = true }) { Text(stringResource(R.string.later)) } },
                         )
                     }
                 }
@@ -142,8 +147,8 @@ class MainActivity : FragmentActivity() {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Icon(Icons.Outlined.Lock, null, Modifier.size(56.dp), tint = MaterialTheme.colorScheme.primary)
-            Text("Yarn is locked", style = MaterialTheme.typography.headlineSmall)
-            Button(onClick = { authenticate() }) { Text("Unlock") }
+            Text(stringResource(R.string.locked), style = MaterialTheme.typography.headlineSmall)
+            Button(onClick = { authenticate() }) { Text(stringResource(R.string.unlock)) }
         }
     }
 
@@ -162,7 +167,7 @@ class MainActivity : FragmentActivity() {
         })
         prompt.authenticate(
             BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Unlock Yarn")
+                .setTitle(this.getString(R.string.unlock_yarn))
                 .setAllowedAuthenticators(authenticators)
                 .build(),
         )

@@ -42,6 +42,7 @@ import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.GppGood
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.DriveFileMove
@@ -126,6 +127,9 @@ import app.yarn.ui.common.YarnMenu
 import app.yarn.ui.common.YarnMenuDivider
 import app.yarn.ui.common.YarnMenuItem
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import app.yarn.R
 
 sealed interface InboxDestination {
     data object Starred : InboxDestination
@@ -133,6 +137,7 @@ sealed interface InboxDestination {
     data object Spam : InboxDestination
     data object Blocked : InboxDestination
     data object Settings : InboxDestination
+    data object Cleanup : InboxDestination
 }
 
 @Composable
@@ -154,9 +159,11 @@ fun InboxScreen(
     val status by vm.status.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val spamUnread by vm.spamUnread.collectAsStateWithLifecycle()
+    val junk by vm.junk.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val shareTitle = stringResource(R.string.share_conversation)
     var confirmDelete by remember { mutableStateOf<Set<Long>?>(null) }
     var pickCategory by remember { mutableStateOf<Set<Long>?>(null) }
     val selecting = selection.isNotEmpty()
@@ -164,9 +171,10 @@ fun InboxScreen(
 
     BackHandler(enabled = selecting) { vm.clearSelection() }
 
+    val undoLabel = stringResource(R.string.undo)
     LaunchedEffect(Unit) {
         vm.events.collect { e ->
-            val r = snackbar.showSnackbar(e.message, actionLabel = if (e.undo != null) "Undo" else null, duration = SnackbarDuration.Short)
+            val r = snackbar.showSnackbar(e.message, actionLabel = if (e.undo != null) undoLabel else null, duration = SnackbarDuration.Short)
             if (r == SnackbarResult.ActionPerformed) vm.runUndo(e)
         }
     }
@@ -203,13 +211,13 @@ fun InboxScreen(
                             vm.clearSelection()
                             scope.launch {
                                 val text = vm.transcript(ids)
-                                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), "Share conversation"))
+                                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), shareTitle))
                             }
                         },
                     )
                     onBack != null -> TopAppBar(
                         title = { Text(title, style = MaterialTheme.typography.titleLarge) },
-                        navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                        navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     )
                     else -> InboxHeader(
@@ -240,7 +248,7 @@ fun InboxScreen(
                 ExtendedFloatingActionButton(
                     onClick = onNewMessage,
                     icon = { Icon(Icons.Outlined.Edit, null, Modifier.size(22.dp)) },
-                    text = { Text("Start chat", style = MaterialTheme.typography.titleMedium) },
+                    text = { Text(stringResource(R.string.start_chat), style = MaterialTheme.typography.titleMedium) },
                     expanded = !scrolled,
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -266,6 +274,11 @@ fun InboxScreen(
             ) {
                 item(key = "banners", contentType = "banners") {
                     StatusBanners(status, onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } })
+                    CleanBanners(
+                        report = settings.autoCleanReport, junk = if (status.isDefault) junk else 0,
+                        onClean = { onNavigate(InboxDestination.Cleanup) },
+                        onDismissHint = vm::dismissCleanHint, onDismissReport = vm::dismissCleanReport,
+                    )
                 }
                 when {
                     list == null -> Unit
@@ -307,9 +320,9 @@ fun InboxScreen(
 
     confirmDelete?.let { ids ->
         ConfirmDialog(
-            title = "Delete ${ids.size} conversation${if (ids.size > 1) "s" else ""}?",
-            text = "Messages are removed from this phone, including the system message store. This can't be undone.",
-            confirm = "Delete",
+            title = pluralStringResource(R.plurals.delete_conversations_title, ids.size, ids.size),
+            text = stringResource(R.string.delete_conversations_text),
+            confirm = stringResource(R.string.delete),
             destructive = true,
             onConfirm = { vm.delete(ids) },
             onDismiss = { confirmDelete = null; vm.clearSelection() },
@@ -347,18 +360,19 @@ internal fun InboxHeader(
             modifier = Modifier.weight(1f).semantics { heading() },
         )
         if (onSearch != null) {
-            IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, "Search messages", Modifier.size(22.dp)) }
+            IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, stringResource(R.string.search_messages), Modifier.size(22.dp)) }
         }
         Box {
-            IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "More options", Modifier.size(22.dp)) }
+            IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.more_options), Modifier.size(22.dp)) }
             YarnMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                YarnMenuItem("Mark all as read", Icons.Outlined.DoneAll, { menu = false; onMarkAllRead() }, enabled = hasUnread)
+                YarnMenuItem(stringResource(R.string.mark_all_read), Icons.Outlined.DoneAll, { menu = false; onMarkAllRead() }, enabled = hasUnread)
                 YarnMenuDivider()
-                YarnMenuItem("Starred", Icons.Outlined.StarOutline, { menu = false; onNavigate(InboxDestination.Starred) })
-                YarnMenuItem("Archived", Icons.Outlined.Archive, { menu = false; onNavigate(InboxDestination.Archived) })
-                YarnMenuItem(if (spamUnread > 0) "Spam & blocked · $spamUnread" else "Spam & blocked", Icons.Outlined.Report, { menu = false; onNavigate(InboxDestination.Spam) })
+                YarnMenuItem(stringResource(R.string.starred), Icons.Outlined.StarOutline, { menu = false; onNavigate(InboxDestination.Starred) })
+                YarnMenuItem(stringResource(R.string.archived), Icons.Outlined.Archive, { menu = false; onNavigate(InboxDestination.Archived) })
+                YarnMenuItem(if (spamUnread > 0) stringResource(R.string.spam_blocked_count, spamUnread) else stringResource(R.string.spam_blocked), Icons.Outlined.Report, { menu = false; onNavigate(InboxDestination.Spam) })
+                YarnMenuItem(stringResource(R.string.clean_up), Icons.Outlined.CleaningServices, { menu = false; onNavigate(InboxDestination.Cleanup) })
                 YarnMenuDivider()
-                YarnMenuItem("Settings", Icons.Outlined.Settings, { menu = false; onNavigate(InboxDestination.Settings) })
+                YarnMenuItem(stringResource(R.string.settings), Icons.Outlined.Settings, { menu = false; onNavigate(InboxDestination.Settings) })
             }
         }
     }
@@ -367,6 +381,10 @@ internal fun InboxHeader(
 @Composable
 internal fun GroupChip(chip: InboxChip, selected: Boolean, onClick: () -> Unit) {
     val idle = if (app.yarn.ui.theme.LocalDarkTheme.current) Color(0xFF3D3E43) else Color.White
+    val label = stringResource(chip.label)
+    val selectedDesc = stringResource(R.string.state_selected)
+    val notSelectedDesc = stringResource(R.string.state_not_selected)
+    val unreadDesc = stringResource(R.string.chip_unread, label, chip.unread)
     val bg by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else idle, label = "chipBg")
     val fg by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, label = "chipFg")
     Row(
@@ -377,12 +395,12 @@ internal fun GroupChip(chip: InboxChip, selected: Boolean, onClick: () -> Unit) 
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp)
             .semantics(mergeDescendants = true) {
-                stateDescription = if (selected) "Selected" else "Not selected"
-                if (chip.unread > 0) contentDescription = "${chip.label}, ${chip.unread} unread"
+                stateDescription = if (selected) selectedDesc else notSelectedDesc
+                if (chip.unread > 0) contentDescription = unreadDesc
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(chip.label, style = MaterialTheme.typography.labelLarge, color = fg, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium)
+        Text(label, style = MaterialTheme.typography.labelLarge, color = fg, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium)
         if (chip.unread > 0) {
             Spacer(Modifier.width(6.dp))
             Text(
@@ -474,18 +492,31 @@ fun ConversationRow(
         label = "rowBg",
     )
     val time = Format.listTime(context, c.lastMessageAt)
-    val preview = when {
-        !c.draft.isNullOrBlank() -> "Draft: ${c.draft}"
-        c.snippetFromMe -> "You: ${c.snippet}"
+    // Snippets for media-only messages are stored in English; show them in Yarn's language.
+    val snippet = when (c.snippet) {
+        "Multimedia message" -> stringResource(R.string.mms_title)
+        "Attachment" -> stringResource(R.string.attachment)
         else -> c.snippet
     }
+    val preview = when {
+        !c.draft.isNullOrBlank() -> stringResource(R.string.draft_prefix, c.draft.orEmpty())
+        c.snippetFromMe -> stringResource(R.string.you_prefix, snippet)
+        else -> snippet
+    }
+    val unreadText = stringResource(R.string.a11y_unread, c.unreadCount)
+    val pinnedText = stringResource(R.string.a11y_pinned)
+    val unsentText = stringResource(R.string.a11y_unsent)
+    val simText = item.sim?.let { app.yarn.ui.common.simLabel(it) }
     val a11y = buildString {
         append(c.title)
-        if (unread) append(", ${c.unreadCount} unread")
-        if (c.pinned) append(", pinned")
-        if (c.hasFailed) append(", has unsent messages")
+        if (unread) append(unreadText)
+        if (c.pinned) append(pinnedText)
+        if (c.hasFailed) append(unsentText)
         append(". $preview. $time")
+        simText?.let { append(". $it") }
     }
+    val selectLabel = stringResource(R.string.select)
+    val selectedDesc = stringResource(R.string.state_selected)
     val strong = MaterialTheme.colorScheme.onSurface
     val quiet = MaterialTheme.colorScheme.onSurfaceVariant
     val nameStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.5.sp, lineHeight = 22.sp)
@@ -496,9 +527,9 @@ fun ConversationRow(
             .padding(horizontal = 8.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(bg)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = "Select")
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = selectLabel)
             .padding(start = 10.dp, end = 12.dp, top = 11.dp, bottom = 11.dp)
-            .semantics(mergeDescendants = true) { contentDescription = a11y; stateDescription = if (selected) "Selected" else "" },
+            .semantics(mergeDescendants = true) { contentDescription = a11y; stateDescription = if (selected) selectedDesc else "" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) {
@@ -531,6 +562,7 @@ fun ConversationRow(
                     if (c.muted) Icon(Icons.Outlined.NotificationsOff, null, Modifier.padding(start = 5.dp).size(14.dp), tint = quiet)
                 }
                 Spacer(Modifier.width(10.dp))
+                item.sim?.let { app.yarn.ui.common.SimBadge(it, Modifier.padding(end = 6.dp), height = 15.dp) }
                 Text(
                     time, style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                     color = if (unread) MaterialTheme.colorScheme.primary else quiet,
@@ -560,6 +592,7 @@ fun ConversationRow(
                 }
             }
             item.otpCode?.let { code ->
+                val copyDesc = stringResource(R.string.copy_code_n, code)
                 Spacer(Modifier.height(8.dp))
                 Row(
                     Modifier
@@ -567,7 +600,7 @@ fun ConversationRow(
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
                         .clickable { onCopyCode(code) }
                         .padding(horizontal = 12.dp, vertical = 5.dp)
-                        .semantics(mergeDescendants = true) { contentDescription = "Copy code $code" },
+                        .semantics(mergeDescendants = true) { contentDescription = copyDesc },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(Icons.Outlined.ContentCopy, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
@@ -596,37 +629,37 @@ private fun SelectionTopBar(
     var menu by remember { mutableStateOf(false) }
     TopAppBar(
         title = { Text("$count", style = MaterialTheme.typography.titleLarge, maxLines = 1) },
-        navigationIcon = { IconButton(onClick = vm::clearSelection) { Icon(Icons.Filled.Close, "Clear selection") } },
+        navigationIcon = { IconButton(onClick = vm::clearSelection) { Icon(Icons.Filled.Close, stringResource(R.string.clear_selection)) } },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
         actions = {
             if (view == InboxView.BLOCKED) {
-                TextButton(onClick = { vm.unblock() }) { Text("Unblock") }
+                TextButton(onClick = { vm.unblock() }) { Text(stringResource(R.string.unblock)) }
                 return@TopAppBar
             }
             IconButton(onClick = { if (anyUnread) vm.markRead() else vm.markUnread() }) {
-                Icon(if (anyUnread) Icons.Outlined.Drafts else Icons.Outlined.MarkEmailUnread, if (anyUnread) "Mark as read" else "Mark as unread")
+                Icon(if (anyUnread) Icons.Outlined.Drafts else Icons.Outlined.MarkEmailUnread, if (anyUnread) stringResource(R.string.mark_read) else stringResource(R.string.mark_unread))
             }
             val archived = view == InboxView.ARCHIVED
             IconButton(onClick = { vm.archive(archived = !archived) }) {
-                Icon(if (archived) Icons.Outlined.Unarchive else Icons.Outlined.Archive, if (archived) "Unarchive" else "Archive")
+                Icon(if (archived) Icons.Outlined.Unarchive else Icons.Outlined.Archive, if (archived) stringResource(R.string.unarchive) else stringResource(R.string.archive))
             }
-            IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, "Delete") }
+            IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, stringResource(R.string.delete)) }
             Box {
-                IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "More actions") }
+                IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.more_actions)) }
                 YarnMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    YarnMenuItem("Select all", Icons.Outlined.SelectAll, { menu = false; vm.selectAll() })
-                    YarnMenuItem(if (allPinned) "Unpin" else "Pin", Icons.Outlined.PushPin, { menu = false; vm.pin(!allPinned) })
-                    YarnMenuItem(if (allStarred) "Unstar" else "Star", Icons.Outlined.StarOutline, { menu = false; vm.star(!allStarred) })
-                    YarnMenuItem(if (allMuted) "Unmute" else "Mute", if (allMuted) Icons.Outlined.Notifications else Icons.Outlined.NotificationsOff, { menu = false; vm.mute(!allMuted) })
-                    YarnMenuItem("Move to…", Icons.Outlined.DriveFileMove, { menu = false; onCategory() })
-                    YarnMenuItem("Share as text", Icons.Outlined.Share, { menu = false; onShare() })
+                    YarnMenuItem(stringResource(R.string.select_all), Icons.Outlined.SelectAll, { menu = false; vm.selectAll() })
+                    YarnMenuItem(if (allPinned) stringResource(R.string.unpin) else stringResource(R.string.pin), Icons.Outlined.PushPin, { menu = false; vm.pin(!allPinned) })
+                    YarnMenuItem(if (allStarred) stringResource(R.string.unstar) else stringResource(R.string.star), Icons.Outlined.StarOutline, { menu = false; vm.star(!allStarred) })
+                    YarnMenuItem(if (allMuted) stringResource(R.string.unmute) else stringResource(R.string.mute), if (allMuted) Icons.Outlined.Notifications else Icons.Outlined.NotificationsOff, { menu = false; vm.mute(!allMuted) })
+                    YarnMenuItem(stringResource(R.string.move_to_ellipsis), Icons.Outlined.DriveFileMove, { menu = false; onCategory() })
+                    YarnMenuItem(stringResource(R.string.share_as_text), Icons.Outlined.Share, { menu = false; onShare() })
                     YarnMenuDivider()
                     if (view == InboxView.SPAM) {
-                        YarnMenuItem("Not spam", Icons.Outlined.GppGood, { menu = false; vm.spam(false) })
+                        YarnMenuItem(stringResource(R.string.not_spam), Icons.Outlined.GppGood, { menu = false; vm.spam(false) })
                     } else {
-                        YarnMenuItem("Report spam", Icons.Outlined.Report, { menu = false; vm.spam(true) })
+                        YarnMenuItem(stringResource(R.string.report_spam), Icons.Outlined.Report, { menu = false; vm.spam(true) })
                     }
-                    YarnMenuItem("Block", Icons.Outlined.Block, { menu = false; vm.block() }, destructive = true)
+                    YarnMenuItem(stringResource(R.string.block), Icons.Outlined.Block, { menu = false; vm.block() }, destructive = true)
                 }
             }
         },
@@ -638,30 +671,59 @@ private fun StatusBanners(status: InboxStatus, onSetDefault: () -> Unit) {
     AnimatedVisibility(!status.isDefault) {
         Banner(
             icon = Icons.Outlined.ErrorOutline,
-            text = "Set Yarn as your default SMS app to send and receive messages.",
-            action = "Set default", onAction = onSetDefault, emphasis = true,
+            text = stringResource(R.string.banner_not_default),
+            action = stringResource(R.string.set_default), onAction = onSetDefault, emphasis = true,
         )
     }
     AnimatedVisibility(status.waiting > 0 || (status.airplaneMode && status.isDefault)) {
         Banner(
             icon = Icons.Outlined.SignalCellularConnectedNoInternet0Bar,
             text = when {
-                status.waiting > 0 && status.airplaneMode -> "Airplane mode is on · ${status.waiting} waiting to send"
-                status.waiting > 0 -> "${status.waiting} waiting for signal · will send automatically"
-                else -> "Airplane mode is on · messages will queue"
+                status.waiting > 0 && status.airplaneMode -> stringResource(R.string.airplane_waiting, status.waiting)
+                status.waiting > 0 -> stringResource(R.string.waiting_signal, status.waiting)
+                else -> stringResource(R.string.airplane_queue)
             },
         )
     }
     AnimatedVisibility(status.sync.running) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)) {
-            Text("Organising your messages… ${status.sync.imported}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.organising, status.sync.imported), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).clip(CircleShape))
         }
     }
 }
 
+/** "Yarn cleared 1,240 old codes…" once after setup, and a gentle clean-up suggestion when junk piles up. */
 @Composable
-private fun Banner(icon: ImageVector, text: String, action: String? = null, onAction: (() -> Unit)? = null, emphasis: Boolean = false) {
+internal fun CleanBanners(report: Int, junk: Int, onClean: () -> Unit, onDismissHint: () -> Unit, onDismissReport: () -> Unit) {
+    val fmt = java.text.NumberFormat.getIntegerInstance()
+    AnimatedVisibility(report > 0) {
+        Banner(
+            icon = Icons.Outlined.CleaningServices,
+            text = stringResource(R.string.auto_clean_report, fmt.format(report)),
+            action = stringResource(R.string.ok), onAction = onDismissReport,
+        )
+    }
+    AnimatedVisibility(report <= 0 && junk >= CLEAN_HINT_MIN) {
+        Banner(
+            icon = Icons.Outlined.CleaningServices,
+            text = stringResource(R.string.clean_hint, fmt.format(junk)),
+            action = stringResource(R.string.clean_up), onAction = onClean, onDismiss = onDismissHint,
+        )
+    }
+}
+
+private const val CLEAN_HINT_MIN = 100
+
+@Composable
+private fun Banner(
+    icon: ImageVector,
+    text: String,
+    action: String? = null,
+    onAction: (() -> Unit)? = null,
+    emphasis: Boolean = false,
+    onDismiss: (() -> Unit)? = null,
+) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = if (emphasis) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -672,6 +734,11 @@ private fun Banner(icon: ImageVector, text: String, action: String? = null, onAc
             Spacer(Modifier.width(10.dp))
             Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
             if (action != null && onAction != null) TextButton(onClick = onAction) { Text(action, fontWeight = FontWeight.SemiBold) }
+            if (onDismiss != null) {
+                IconButton(onClick = onDismiss, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.Close, stringResource(R.string.dismiss), Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
     }
 }
@@ -684,20 +751,20 @@ private fun EmptyInbox(view: InboxView, importing: Boolean) {
             Spacer(Modifier.height(16.dp))
             Text(
                 when {
-                    importing -> "Bringing in your messages…"
-                    view == InboxView.ARCHIVED -> "Nothing archived"
-                    view == InboxView.SPAM -> "No spam"
-                    view == InboxView.BLOCKED -> "No blocked conversations"
-                    view == InboxView.ALL -> "No conversations yet"
-                    else -> "All caught up"
+                    importing -> stringResource(R.string.empty_importing)
+                    view == InboxView.ARCHIVED -> stringResource(R.string.empty_archived)
+                    view == InboxView.SPAM -> stringResource(R.string.empty_spam)
+                    view == InboxView.BLOCKED -> stringResource(R.string.empty_blocked)
+                    view == InboxView.ALL -> stringResource(R.string.empty_all)
+                    else -> stringResource(R.string.all_caught_up)
                 },
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 when (view) {
-                    InboxView.SPAM -> "Suspected spam and scams land here — never deleted silently."
-                    InboxView.ALL -> "Tap Start chat to send your first message."
+                    InboxView.SPAM -> stringResource(R.string.empty_spam_text)
+                    InboxView.ALL -> stringResource(R.string.empty_all_text)
                     else -> ""
                 },
                 style = MaterialTheme.typography.bodyMedium,
@@ -714,10 +781,8 @@ internal fun InboxCount(list: List<InboxItem>) {
     val messages = list.sumOf { it.conversation.messageCount }
     val fmt = java.text.NumberFormat.getIntegerInstance()
     Text(
-        buildString {
-            append(fmt.format(conversations)).append(if (conversations == 1) " conversation" else " conversations")
-            append(" · ").append(fmt.format(messages)).append(if (messages == 1) " message" else " messages")
-        },
+        pluralStringResource(R.plurals.count_conversations, conversations, fmt.format(conversations)) + " · " +
+            pluralStringResource(R.plurals.count_messages, messages, fmt.format(messages)),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = androidx.compose.ui.text.style.TextAlign.Center,

@@ -41,8 +41,10 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import app.yarn.R
 
 data class SharePayload(val text: String = "", val attachments: List<AttachmentDraft> = emptyList())
 
@@ -54,9 +56,14 @@ class ShareHolder {
 
 sealed interface TranslationUi {
     data object Loading : TranslationUi
+    /** [from] is the source language code ("en", "hi"…). */
     data class Done(val text: String, val from: String) : TranslationUi
-    data class Error(val message: String) : TranslationUi
+    /** The language pack isn't downloaded and the phone is on mobile data. */
+    data class NeedsDownload(val from: String) : TranslationUi
+    data class Error(val reason: TranslationError) : TranslationUi
 }
+
+enum class TranslationError { SAME_LANGUAGE, UNKNOWN_LANGUAGE, UNSUPPORTED, OFFLINE, FAILED }
 
 sealed interface SummaryUi {
     data object Hidden : SummaryUi
@@ -68,7 +75,7 @@ sealed interface RewriteUi {
     data object Hidden : RewriteUi
     data object Loading : RewriteUi
     data class Ready(val original: String, val options: List<String>, val engine: Engine) : RewriteUi
-    data class Error(val message: String) : RewriteUi
+    data class Error(@androidx.annotation.StringRes val message: Int) : RewriteUi
 }
 
 data class ScamWarning(val verdict: SpamVerdict, val reasons: List<String>)
@@ -193,7 +200,7 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     fun addAttachments(uris: List<Uri>) {
         viewModelScope.launch(Dispatchers.IO) {
             val drafts = uris.mapNotNull { MediaTools.importAttachment(c.app, it) }
-            if (drafts.size < uris.size) _events.tryEmit("Some attachments couldn't be added")
+            if (drafts.size < uris.size) _events.tryEmit(c.app.getString(R.string.attachments_failed))
             _attachments.value = _attachments.value + drafts
         }
     }
@@ -213,11 +220,11 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
         viewModelScope.launch {
             try {
                 c.sender.queue(conversationId, body, files, _subId.value, scheduledAt)
-                if (scheduledAt != null) _events.tryEmit("Message scheduled")
+                if (scheduledAt != null) _events.tryEmit(c.app.getString(R.string.message_scheduled))
             } catch (e: Exception) {
                 text.value = body
                 _attachments.value = files
-                _events.tryEmit("Couldn't queue message: ${e.message}")
+                _events.tryEmit(c.app.getString(R.string.queue_failed, e.message.orEmpty()))
             }
         }
     }
@@ -245,7 +252,7 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     fun deleteSelected() {
         val ids = _selection.value
         clearSelection()
-        viewModelScope.launch { c.conversations.deleteMessages(ids); _events.tryEmit("${ids.size} message(s) deleted") }
+        viewModelScope.launch { c.conversations.deleteMessages(ids); _events.tryEmit(c.app.resources.getQuantityString(R.plurals.n_messages_deleted, ids.size, ids.size)) }
     }
 
     fun starSelected(starred: Boolean) {
@@ -269,13 +276,13 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     fun recategorize(messageIds: Collection<Long>, category: Category, always: Boolean) = viewModelScope.launch {
         c.conversations.recategorizeMessages(messageIds, category, always)
         clearSelection()
-        _events.tryEmit("Got it — Yarn will learn from this")
+        _events.tryEmit(c.app.getString(R.string.will_learn))
     }
 
     fun markSpam(spam: Boolean) = viewModelScope.launch {
         c.conversations.setSpam(listOf(conversationId), spam)
         _scam.value = null
-        _events.tryEmit(if (spam) "Reported as spam" else "Marked as not spam. This sender is now trusted.")
+        _events.tryEmit(c.app.getString(if (spam) R.string.reported_spam else R.string.marked_not_spam))
     }
 
     fun block() = viewModelScope.launch { c.conversations.block(listOf(conversationId)) }
@@ -289,25 +296,43 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
 
     // ---- AI ---------------------------------------------------------------------------------
 
-    fun translate(m: MessageEntity) {
-        if (_translations.value[m.id] is TranslationUi.Done) {
-            _translations.value = _translations.value - m.id // toggle back to original
-            return
-        }
-        _translations.value = _translations.value + (m.id to TranslationUi.Loading)
-        viewModelScope.launch {
-            val target = settings.value.translateTarget
-            val result = c.translation.translate(m.body, target, allowMobileData = false)
-            val ui = when (result) {
-                is TranslationService.Result.Success -> TranslationUi.Done(result.text, java.util.Locale.forLanguageTag(result.sourceLanguage).displayLanguage)
-                TranslationService.Result.SameLanguage -> TranslationUi.Error("Already in your language")
-                TranslationService.Result.UnknownLanguage -> TranslationUi.Error("Couldn't detect the language")
-                is TranslationService.Result.Unsupported -> TranslationUi.Error("Language not supported for offline translation")
-                is TranslationService.Result.Failed -> TranslationUi.Error("Language pack not downloaded yet. Connect to Wi-Fi and try again.")
-            }
-            _translations.value = _translations.value + (m.id to ui)
+    /** Detected language per message (ML Kit code), "" when it isn't worth offering a translation. */
+    private val _languages = MutableStateFlow<Map<Long, String>>(emptyMap())
+    val languages: StateFlow<Map<Long, String>> = _languages
+    private val detecting = HashSet<Long>()
+
+    /** Identifies a message's language once, so the chat can offer a one-tap translation. */
+    fun detectLanguage(m: MessageEntity) {
+        if (m.outgoing || !detecting.add(m.id)) return
+        viewModelScope.launch(Dispatchers.Default) {
+            val lang = if (worthTranslating(m.body)) c.translation.translatableLanguage(m.body) else null
+            _languages.update { it + (m.id to lang.orEmpty()) }
         }
     }
+
+    /** Translates [m] into [target] or, if it's already translated, goes back to the original. */
+    fun translate(m: MessageEntity, target: String, allowMobileData: Boolean = false) {
+        if (_translations.value[m.id] is TranslationUi.Done) {
+            _translations.update { it - m.id }
+            return
+        }
+        _translations.update { it + (m.id to TranslationUi.Loading) }
+        viewModelScope.launch {
+            val hint = _languages.value[m.id]?.takeIf { it.isNotEmpty() }
+            val ui = when (val r = c.translation.translate(m.body, target, allowMobileData, hint)) {
+                is TranslationService.Result.Success -> TranslationUi.Done(r.text, r.sourceLanguage)
+                is TranslationService.Result.NeedsDownload -> TranslationUi.NeedsDownload(r.sourceLanguage)
+                TranslationService.Result.SameLanguage -> TranslationUi.Error(TranslationError.SAME_LANGUAGE)
+                TranslationService.Result.UnknownLanguage -> TranslationUi.Error(TranslationError.UNKNOWN_LANGUAGE)
+                is TranslationService.Result.Unsupported -> TranslationUi.Error(TranslationError.UNSUPPORTED)
+                TranslationService.Result.Offline -> TranslationUi.Error(TranslationError.OFFLINE)
+                is TranslationService.Result.Failed -> TranslationUi.Error(TranslationError.FAILED)
+            }
+            _translations.update { it + (m.id to ui) }
+        }
+    }
+
+    fun dismissTranslation(id: Long) = _translations.update { it - id }
 
     fun summarize() {
         _summary.value = SummaryUi.Loading
@@ -315,7 +340,7 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
             val conv = conversation.value
             val unread = c.db.messages().unread(conversationId)
             val source = if (unread.size >= 5) unread else c.db.messages().recent(conversationId, 60).reversed()
-            val msgs = source.map { SummaryMessage(if (it.outgoing) "You" else senderName(it.address), it.body, it.date, it.outgoing) }
+            val msgs = source.map { SummaryMessage(if (it.outgoing) c.app.getString(R.string.you) else senderName(it.address), it.body, it.date, it.outgoing) }
             val result = c.assistant.summarize(msgs)
             _summary.value = SummaryUi.Ready(result)
             if (conv == null) _summary.value = SummaryUi.Hidden
@@ -343,4 +368,12 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
         _participants.value[address]?.name ?: c.contacts.lookup(address)?.name ?: PhoneNumbers.format(address, PhoneNumbers.countryIso(c.app))
 
     fun isPendingOutgoing(m: MessageEntity) = m.outgoing && m.status in MessageStatus.OUTGOING_PENDING
+
+    companion object {
+        /** A few real words: codes, links and one-word replies aren't worth translating. */
+        fun worthTranslating(body: String): Boolean {
+            val words = body.split(Regex("\\s+")).count { w -> w.count(Char::isLetter) >= 2 && !w.startsWith("http") }
+            return words >= 3 && body.count(Char::isLetter) >= 12
+        }
+    }
 }

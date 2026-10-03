@@ -16,6 +16,7 @@ import app.yarn.YarnApplication
 import app.yarn.data.db.MessageStatus
 import app.yarn.notifications.Notifier
 import java.util.concurrent.TimeUnit
+import app.yarn.R
 
 private val Context.container get() = (applicationContext as YarnApplication).container
 
@@ -34,7 +35,7 @@ class SendWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         return Result.success()
     }
 
-    override suspend fun getForegroundInfo(): ForegroundInfo = foregroundInfo(applicationContext, "Sending messages…")
+    override suspend fun getForegroundInfo(): ForegroundInfo = foregroundInfo(applicationContext, applicationContext.getString(R.string.bg_sending))
 
     companion object {
         fun enqueue(context: Context, delayMillis: Long = 0) {
@@ -104,11 +105,14 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             processed += batch.size
         }
         runCatching { c.smartSorter.sortRecent(limit = 60) }
+        val firstImport = !c.settings.current().initialImportDone
         c.settings.update { it.copy(initialImportDone = true) }
+        // Auto-clean chosen during setup runs right after the first import, not hours later.
+        if (firstImport && app.yarn.telephony.DefaultSmsApp.isDefault(applicationContext)) runCatching { c.cleaner.autoClean() }
         return Result.success()
     }
 
-    override suspend fun getForegroundInfo(): ForegroundInfo = foregroundInfo(applicationContext, "Organising your messages…")
+    override suspend fun getForegroundInfo(): ForegroundInfo = foregroundInfo(applicationContext, applicationContext.getString(R.string.bg_organising))
 
     companion object {
         fun enqueue(context: Context) {
@@ -158,14 +162,8 @@ class MaintenanceWorker(context: Context, params: WorkerParameters) : CoroutineW
         val c = applicationContext.container
         val s = c.settings.current()
         val now = System.currentTimeMillis()
-        if (s.otpAutoDeleteHours > 0) {
-            val ids = c.db.messages().otpOlderThan(now - s.otpAutoDeleteHours * 3_600_000L)
-            if (ids.isNotEmpty()) c.conversations.deleteMessages(ids)
-        }
-        if (s.spamAutoDeleteDays > 0) {
-            val ids = c.db.messages().spamOlderThan(now - s.spamAutoDeleteDays * 86_400_000L)
-            if (ids.isNotEmpty()) c.conversations.deleteMessages(ids)
-        }
+        // Auto-clean needs the SMS role, or deleted messages would linger in the system store.
+        if (s.initialImportDone && app.yarn.telephony.DefaultSmsApp.isDefault(applicationContext)) c.cleaner.autoClean(s, now)
         c.sender.processQueue()
         c.sync.sync()
         c.sync.reconcileDeletions()

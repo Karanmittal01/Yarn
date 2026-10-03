@@ -26,7 +26,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
@@ -61,16 +63,20 @@ import app.yarn.data.prefs.ThemeMode
 import app.yarn.telephony.DefaultSmsApp
 import app.yarn.ui.common.YarnLogo
 import app.yarn.ui.common.container
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import app.yarn.R
 
-enum class SettingsPage(val title: String) {
-    APPEARANCE("Appearance"),
-    NOTIFICATIONS("Notifications"),
-    MESSAGING("Messaging"),
-    AI("Smart features"),
-    PRIVACY("Privacy & security"),
-    BLOCKED("Blocked & filters"),
-    BACKUP("Backup & restore"),
-    ABOUT("About Yarn"),
+enum class SettingsPage(@androidx.annotation.StringRes val title: Int) {
+    APPEARANCE(R.string.appearance),
+    NOTIFICATIONS(R.string.notifications),
+    MESSAGING(R.string.messaging),
+    AI(R.string.smart_features),
+    PRIVACY(R.string.privacy_security),
+    CLEANUP(R.string.clean_up),
+    BLOCKED(R.string.blocked_filters),
+    BACKUP(R.string.backup_restore),
+    ABOUT(R.string.about_yarn),
 }
 
 /** Collapsing large-title scaffold shared by every settings page. */
@@ -83,7 +89,7 @@ fun SettingsScaffold(title: String, onBack: () -> Unit, content: androidx.compos
         topBar = {
             LargeTopAppBar(
                 title = { Text(title) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                 scrollBehavior = scroll,
                 colors = TopAppBarDefaults.largeTopAppBarColors(containerColor = settingsPageColor(), scrolledContainerColor = settingsPageColor()),
             )
@@ -100,7 +106,7 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, onOpen: (SettingsP
     val context = LocalContext.current
     val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { context.container.refreshPlatformState() }
 
-    SettingsScaffold("Settings", onBack) {
+    SettingsScaffold(stringResource(R.string.settings), onBack) {
         settingsHubItems(s, isDefault, onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } }, onOpen = onOpen)
     }
 }
@@ -127,70 +133,86 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.settingsHubItems(
             Column(Modifier.weight(1f)) {
                 Text("Yarn", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    if (isDefault) "Default messaging app" else "Not your default SMS app",
+                    if (isDefault) stringResource(R.string.hub_default) else stringResource(R.string.hub_not_default),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (!isDefault) FilledTonalButton(onClick = onSetDefault) { Text("Set") }
+            if (!isDefault) FilledTonalButton(onClick = onSetDefault) { Text(stringResource(R.string.set_short)) }
         }
     }
     item { Spacer(Modifier.height(10.dp)) }
     item {
         SettingsGroup {
-            NavRow(Icons.Outlined.Palette, "Appearance", themeLabel(s.theme), Color(0xFF7C5CFF)) { onOpen(SettingsPage.APPEARANCE) }
-            NavRow(Icons.Outlined.Notifications, "Notifications", null, Color(0xFFF2453D)) { onOpen(SettingsPage.NOTIFICATIONS) }
-            NavRow(Icons.Outlined.Sms, "Messaging", null, Color(0xFF34C759)) { onOpen(SettingsPage.MESSAGING) }
+            NavRow(Icons.Outlined.Palette, stringResource(R.string.appearance), themeLabel(s.theme), Color(0xFF7C5CFF)) { onOpen(SettingsPage.APPEARANCE) }
+            NavRow(Icons.Outlined.Notifications, stringResource(R.string.notifications), null, Color(0xFFF2453D)) { onOpen(SettingsPage.NOTIFICATIONS) }
+            NavRow(Icons.Outlined.Sms, stringResource(R.string.messaging), null, Color(0xFF34C759)) { onOpen(SettingsPage.MESSAGING) }
         }
     }
     item { Spacer(Modifier.height(10.dp)) }
     item {
         SettingsGroup {
-            NavRow(Icons.Outlined.AutoAwesome, "Smart features", if (s.aiEnabled) "On" else "Off", Color(0xFF1466F0)) { onOpen(SettingsPage.AI) }
-            NavRow(Icons.Outlined.Lock, "Privacy & security", null, Color(0xFF0FA3B1)) { onOpen(SettingsPage.PRIVACY) }
-            NavRow(Icons.Outlined.Block, "Blocked", null, Color(0xFF8E8E93)) { onOpen(SettingsPage.BLOCKED) }
+            NavRow(Icons.Outlined.AutoAwesome, stringResource(R.string.smart_features), if (s.aiEnabled) stringResource(R.string.on) else stringResource(R.string.off), Color(0xFF1466F0)) { onOpen(SettingsPage.AI) }
+            NavRow(Icons.Outlined.Lock, stringResource(R.string.privacy_security), null, Color(0xFF0FA3B1)) { onOpen(SettingsPage.PRIVACY) }
+            NavRow(Icons.Outlined.CleaningServices, stringResource(R.string.clean_up), if (app.yarn.data.repo.Cleaner.isAutoCleanOn(s)) stringResource(R.string.auto) else null, Color(0xFF00A86B)) { onOpen(SettingsPage.CLEANUP) }
+            NavRow(Icons.Outlined.Block, stringResource(R.string.blocked), null, Color(0xFF8E8E93)) { onOpen(SettingsPage.BLOCKED) }
         }
     }
     item { Spacer(Modifier.height(10.dp)) }
     item {
         SettingsGroup {
-            NavRow(Icons.Outlined.Backup, "Backup & restore", null, Color(0xFFFF9500)) { onOpen(SettingsPage.BACKUP) }
-            NavRow(Icons.Outlined.Info, "About", BuildConfig.VERSION_NAME, Color(0xFF636366)) { onOpen(SettingsPage.ABOUT) }
+            NavRow(Icons.Outlined.Backup, stringResource(R.string.backup_restore), null, Color(0xFFFF9500)) { onOpen(SettingsPage.BACKUP) }
+            NavRow(Icons.Outlined.Info, stringResource(R.string.about), BuildConfig.VERSION_NAME, Color(0xFF636366)) { onOpen(SettingsPage.ABOUT) }
         }
     }
 }
 
-private fun themeLabel(t: ThemeMode) = when (t) {
-    ThemeMode.SYSTEM -> "System"
-    ThemeMode.LIGHT -> "Light"
-    ThemeMode.DARK -> "Dark"
-}
+@Composable
+private fun themeLabel(t: ThemeMode) = stringResource(
+    when (t) {
+        ThemeMode.SYSTEM -> R.string.theme_system
+        ThemeMode.LIGHT -> R.string.theme_light
+        ThemeMode.DARK -> R.string.theme_dark
+    },
+)
 
-private val swipeOptions = listOf(
-    SwipeAction.NONE to "Nothing", SwipeAction.ARCHIVE to "Archive", SwipeAction.DELETE to "Delete",
-    SwipeAction.READ to "Read / unread", SwipeAction.PIN to "Pin",
+@Composable
+private fun swipeOptions() = listOf(
+    SwipeAction.NONE to stringResource(R.string.swipe_nothing), SwipeAction.ARCHIVE to stringResource(R.string.archive),
+    SwipeAction.DELETE to stringResource(R.string.delete), SwipeAction.READ to stringResource(R.string.swipe_read_unread),
+    SwipeAction.PIN to stringResource(R.string.pin),
 )
 
 @Composable
 fun AppearanceScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val s by vm.settings.collectAsStateWithLifecycle()
-    SettingsScaffold("Appearance", onBack) {
-        item { SectionHeader("Theme") }
+    val context = LocalContext.current
+    SettingsScaffold(stringResource(R.string.appearance), onBack) {
+        item { SectionHeader(stringResource(R.string.language)) }
         item {
             SettingsGroup {
-                ChoiceRow("Theme", listOf(ThemeMode.SYSTEM to "System default", ThemeMode.LIGHT to "Light", ThemeMode.DARK to "Dark"), s.theme) { v -> vm.update { it.copy(theme = v) } }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    SwitchRow("Wallpaper colours", "Use your wallpaper's colours instead of Yarn blue", s.dynamicColor) { v -> vm.update { it.copy(dynamicColor = v) } }
+                val options = listOf("" to stringResource(R.string.phone_language)) + app.yarn.i18n.AppLanguage.supported.map { it to app.yarn.i18n.AppLanguage.nativeName(it) }
+                ChoiceRow(stringResource(R.string.app_language), options, app.yarn.i18n.AppLanguage.selected(context), icon = Icons.Outlined.Language, tint = Color(0xFF1A73E8)) { tag ->
+                    (context as? android.app.Activity)?.let { app.yarn.i18n.AppLanguage.select(it, tag) }
                 }
             }
         }
-        item { SectionHeader("Text size") }
-        item { TextSizeCard(s.textScale) { v -> vm.update { it.copy(textScale = v) } } }
-        item { SectionHeader("Inbox gestures") }
+        item { SectionHeader(stringResource(R.string.theme)) }
         item {
             SettingsGroup {
-                ChoiceRow("Swipe right", swipeOptions, s.swipeStart) { v -> vm.update { it.copy(swipeStart = v) } }
-                ChoiceRow("Swipe left", swipeOptions, s.swipeEnd) { v -> vm.update { it.copy(swipeEnd = v) } }
+                ChoiceRow(stringResource(R.string.theme), listOf(ThemeMode.SYSTEM to stringResource(R.string.system_default), ThemeMode.LIGHT to stringResource(R.string.theme_light), ThemeMode.DARK to stringResource(R.string.theme_dark)), s.theme) { v -> vm.update { it.copy(theme = v) } }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    SwitchRow(stringResource(R.string.wallpaper_colours), stringResource(R.string.wallpaper_colours_sub), s.dynamicColor) { v -> vm.update { it.copy(dynamicColor = v) } }
+                }
+            }
+        }
+        item { SectionHeader(stringResource(R.string.text_size)) }
+        item { TextSizeCard(s.textScale) { v -> vm.update { it.copy(textScale = v) } } }
+        item { SectionHeader(stringResource(R.string.inbox_gestures)) }
+        item {
+            SettingsGroup {
+                ChoiceRow(stringResource(R.string.swipe_right), swipeOptions(), s.swipeStart) { v -> vm.update { it.copy(swipeStart = v) } }
+                ChoiceRow(stringResource(R.string.swipe_left), swipeOptions(), s.swipeEnd) { v -> vm.update { it.copy(swipeEnd = v) } }
             }
         }
     }
@@ -200,24 +222,24 @@ fun AppearanceScreen(vm: SettingsViewModel, onBack: () -> Unit) {
 fun NotificationsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    SettingsScaffold("Notifications", onBack) {
-        item { SectionHeader("Content") }
+    SettingsScaffold(stringResource(R.string.notifications), onBack) {
+        item { SectionHeader(stringResource(R.string.content)) }
         item {
             SettingsGroup {
-                SwitchRow("Show message previews", "Off shows only “New message”", s.showNotificationPreviews) { v -> vm.update { it.copy(showNotificationPreviews = v) } }
+                SwitchRow(stringResource(R.string.show_previews), stringResource(R.string.show_previews_sub), s.showNotificationPreviews) { v -> vm.update { it.copy(showNotificationPreviews = v) } }
             }
         }
-        item { SectionHeader("Which messages notify") }
+        item { SectionHeader(stringResource(R.string.which_notify)) }
         item {
             SettingsGroup {
-                SwitchRow("Offers & promotions", "Delivered silently when on", s.notifyPromotions) { v -> vm.update { it.copy(notifyPromotions = v) } }
-                SwitchRow("Suspected spam", null, s.notifySpam) { v -> vm.update { it.copy(notifySpam = v) } }
+                SwitchRow(stringResource(R.string.offers_promotions), stringResource(R.string.delivered_silently), s.notifyPromotions) { v -> vm.update { it.copy(notifyPromotions = v) } }
+                SwitchRow(stringResource(R.string.suspected_spam), null, s.notifySpam) { v -> vm.update { it.copy(notifySpam = v) } }
             }
         }
         item { Spacer(Modifier.height(8.dp)) }
         item {
             SettingsGroup {
-                ClickRow("Sounds & vibration", "Open Android notification settings") {
+                ClickRow(stringResource(R.string.sounds_vibration), stringResource(R.string.open_android_notif)) {
                     context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
                 }
             }
@@ -230,33 +252,39 @@ fun MessagingScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val sims = vm.c.sims.current()
-    SettingsScaffold("Messaging", onBack) {
-        item { SectionHeader("Sending") }
+    SettingsScaffold(stringResource(R.string.messaging), onBack) {
+        item { SectionHeader(stringResource(R.string.sending)) }
         item {
             SettingsGroup {
-                ChoiceRow("Undo send", listOf(0 to "Off", 3 to "3 seconds", 5 to "5 seconds", 10 to "10 seconds"), s.sendDelaySeconds) { v -> vm.update { it.copy(sendDelaySeconds = v) } }
-                SwitchRow("Delivery reports", "Ask the network to confirm delivery", s.deliveryReports) { v -> vm.update { it.copy(deliveryReports = v) } }
-                SwitchRow("Group messaging", "One group thread everyone can reply to (MMS)", s.groupMms) { v -> vm.update { it.copy(groupMms = v) } }
-                ClickRow("On-time scheduled messages", "Allow exact alarms for scheduled sends") {
+                ChoiceRow(stringResource(R.string.undo_send), listOf(0 to stringResource(R.string.off), 3 to pluralStringResource(R.plurals.n_seconds, 3, 3), 5 to pluralStringResource(R.plurals.n_seconds, 5, 5), 10 to pluralStringResource(R.plurals.n_seconds, 10, 10)), s.sendDelaySeconds) { v -> vm.update { it.copy(sendDelaySeconds = v) } }
+                SwitchRow(stringResource(R.string.delivery_reports), stringResource(R.string.delivery_reports_sub), s.deliveryReports) { v -> vm.update { it.copy(deliveryReports = v) } }
+                SwitchRow(stringResource(R.string.group_messaging), stringResource(R.string.group_messaging_sub), s.groupMms) { v -> vm.update { it.copy(groupMms = v) } }
+                ClickRow(stringResource(R.string.exact_alarms), stringResource(R.string.exact_alarms_sub)) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))
                     }
                 }
             }
         }
-        item { SectionHeader("Multimedia (MMS)") }
+        item { SectionHeader(stringResource(R.string.mms_section)) }
         item {
             SettingsGroup {
-                SwitchRow("Auto-download", "MMS uses mobile data", s.autoDownloadMms) { v -> vm.update { it.copy(autoDownloadMms = v) } }
-                SwitchRow("Auto-download while roaming", "May cost extra", s.autoDownloadMmsRoaming, enabled = s.autoDownloadMms) { v -> vm.update { it.copy(autoDownloadMmsRoaming = v) } }
+                SwitchRow(stringResource(R.string.auto_download), stringResource(R.string.auto_download_sub), s.autoDownloadMms) { v -> vm.update { it.copy(autoDownloadMms = v) } }
+                SwitchRow(stringResource(R.string.auto_download_roaming), stringResource(R.string.may_cost_extra), s.autoDownloadMmsRoaming, enabled = s.autoDownloadMms) { v -> vm.update { it.copy(autoDownloadMmsRoaming = v) } }
             }
         }
         if (sims.isNotEmpty()) {
-            item { SectionHeader("SIM cards") }
+            item { SectionHeader(stringResource(R.string.sim_cards)) }
             item {
                 SettingsGroup {
+                    val defaultSub = vm.c.sims.defaultSmsSubId()
                     sims.forEach { sim ->
-                        InfoRow(sim.label, sim.number)
+                        SettingsRow(
+                            app.yarn.ui.common.simLabel(sim),
+                            summary = listOfNotNull(sim.number, if (sim.subId == defaultSub && sims.size > 1) stringResource(R.string.default_for_texts) else null)
+                                .joinToString(" · ").ifEmpty { null },
+                            leading = { app.yarn.ui.common.SimBadge(sim, height = 24.dp) },
+                        )
                     }
                 }
             }
@@ -267,27 +295,20 @@ fun MessagingScreen(vm: SettingsViewModel, onBack: () -> Unit) {
 @Composable
 fun PrivacyScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val s by vm.settings.collectAsStateWithLifecycle()
-    SettingsScaffold("Privacy & security", onBack) {
-        item { SectionHeader("Protection") }
+    SettingsScaffold(stringResource(R.string.privacy_security), onBack) {
+        item { SectionHeader(stringResource(R.string.protection)) }
         item {
             SettingsGroup {
-                SwitchRow("App lock", "Fingerprint, face or screen lock to open Yarn", s.appLock) { v -> vm.update { it.copy(appLock = v) } }
+                SwitchRow(stringResource(R.string.app_lock), stringResource(R.string.app_lock_sub), s.appLock) { v -> vm.update { it.copy(appLock = v) } }
                 if (s.appLock) {
-                    ChoiceRow("Lock after", listOf(0 to "Immediately", 60 to "1 minute", 300 to "5 minutes", 1800 to "30 minutes"), s.lockTimeoutSeconds) { v -> vm.update { it.copy(lockTimeoutSeconds = v) } }
+                    ChoiceRow(stringResource(R.string.lock_after), listOf(0 to stringResource(R.string.immediately), 60 to pluralStringResource(R.plurals.n_minutes, 1, 1), 300 to pluralStringResource(R.plurals.n_minutes, 5, 5), 1800 to pluralStringResource(R.plurals.n_minutes, 30, 30)), s.lockTimeoutSeconds) { v -> vm.update { it.copy(lockTimeoutSeconds = v) } }
                 }
-                SwitchRow("Block screenshots", "Also hides Yarn in Recents", s.secureScreen) { v -> vm.update { it.copy(secureScreen = v) } }
-            }
-        }
-        item { SectionHeader("Clean-up") }
-        item {
-            SettingsGroup {
-                ChoiceRow("Delete old OTP messages", listOf(0 to "Never", 24 to "After 1 day", 168 to "After 7 days", 720 to "After 30 days"), s.otpAutoDeleteHours) { v -> vm.update { it.copy(otpAutoDeleteHours = v) } }
-                ChoiceRow("Delete old spam", listOf(0 to "Never", 7 to "After 7 days", 30 to "After 30 days", 90 to "After 90 days"), s.spamAutoDeleteDays) { v -> vm.update { it.copy(spamAutoDeleteDays = v) } }
+                SwitchRow(stringResource(R.string.block_screenshots), stringResource(R.string.block_screenshots_sub), s.secureScreen) { v -> vm.update { it.copy(secureScreen = v) } }
             }
         }
         item {
             Text(
-                "Your messages are stored in an encrypted database whose key never leaves this phone. Yarn has no servers and no analytics.",
+                stringResource(R.string.privacy_note),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp),
@@ -298,25 +319,25 @@ fun PrivacyScreen(vm: SettingsViewModel, onBack: () -> Unit) {
 
 @Composable
 fun AboutScreen(onBack: () -> Unit) {
-    SettingsScaffold("About", onBack) {
+    SettingsScaffold(stringResource(R.string.about), onBack) {
         item {
             Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 YarnLogo(size = 72.dp)
                 Spacer(Modifier.height(4.dp))
                 Text("Yarn", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                Text("Version ${BuildConfig.VERSION_NAME}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.version_n, BuildConfig.VERSION_NAME), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         item {
             SettingsGroup {
-                InfoRow("Private by design", "Messages and AI stay on your phone. Core messaging never uses the internet.")
-                InfoRow("SMS & MMS", "Android doesn't offer RCS to third-party apps, so Yarn uses SMS and MMS.")
+                InfoRow(stringResource(R.string.private_by_design), stringResource(R.string.private_by_design_sub))
+                InfoRow(stringResource(R.string.sms_mms), stringResource(R.string.sms_mms_sub))
             }
         }
     }
 }
 
-private val TEXT_SIZES = listOf(0.85f to "Small", 0.92f to "Compact", 1f to "Default", 1.1f to "Large", 1.2f to "Larger", 1.3f to "Largest")
+private val TEXT_SIZES = listOf(0.85f to R.string.size_small, 0.92f to R.string.size_compact, 1f to R.string.size_default, 1.1f to R.string.size_large, 1.2f to R.string.size_larger, 1.3f to R.string.size_largest)
 
 /** Slider for Yarn's own text size, with a live preview of an inbox row. */
 @Composable
@@ -325,6 +346,8 @@ fun TextSizeCard(value: Float, onChange: (Float) -> Unit) {
     var pos by androidx.compose.runtime.remember(index) { androidx.compose.runtime.mutableFloatStateOf(index.toFloat()) }
     val current = TEXT_SIZES[pos.toInt().coerceIn(0, TEXT_SIZES.lastIndex)]
     val base = androidx.compose.ui.platform.LocalDensity.current
+    val sizeName = stringResource(current.second)
+    val sizeDesc = stringResource(R.string.text_size_desc, sizeName)
     Column(
         Modifier
             .fillMaxWidth()
@@ -338,11 +361,11 @@ fun TextSizeCard(value: Float, onChange: (Float) -> Unit) {
             androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density, base.fontScale / value * current.first),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                app.yarn.ui.common.Avatar("Kavya Mittal", null, size = 40.dp)
+                app.yarn.ui.common.Avatar(stringResource(R.string.preview_name), null, size = 40.dp)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Kavya Mittal", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                    Text("Are we still on for dinner tonight?", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.preview_name), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.preview_message), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -356,12 +379,12 @@ fun TextSizeCard(value: Float, onChange: (Float) -> Unit) {
                 valueRange = 0f..TEXT_SIZES.lastIndex.toFloat(),
                 steps = TEXT_SIZES.size - 2,
                 modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
-                    .androidxSemantics("Text size, ${current.second}"),
+                    .androidxSemantics(sizeDesc),
             )
             Text("A", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(
-            current.second + if (current.first == 1f) " · same as your phone" else "",
+            sizeName + if (current.first == 1f) " · " + stringResource(R.string.same_as_phone) else "",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.align(Alignment.CenterHorizontally),

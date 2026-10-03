@@ -55,6 +55,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
+import androidx.compose.ui.res.stringResource
+import app.yarn.R
 
 @OptIn(FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SearchViewModel(private val c: AppContainer) : ViewModel() {
@@ -80,13 +82,13 @@ fun SearchScreen(vm: SearchViewModel, onBack: () -> Unit, onOpen: (conversationI
     Scaffold(
         topBar = {
             TopAppBar(
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                 title = {
                     TextField(
                         value = query, onValueChange = { vm.query.value = it }, singleLine = true,
-                        placeholder = { Text("Search messages, people, numbers") },
+                        placeholder = { Text(stringResource(R.string.search_hint)) },
                         modifier = Modifier.fillMaxWidth().focusRequester(focus),
-                        trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { vm.query.value = "" }) { Icon(Icons.Outlined.Close, "Clear") } },
+                        trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { vm.query.value = "" }) { Icon(Icons.Outlined.Close, stringResource(R.string.clear)) } },
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
                             focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
@@ -98,7 +100,7 @@ fun SearchScreen(vm: SearchViewModel, onBack: () -> Unit, onOpen: (conversationI
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { FilterChip(selected = starred, onClick = { vm.starredOnly.value = !starred }, label = { Text("Starred") }) }
+                item { FilterChip(selected = starred, onClick = { vm.starredOnly.value = !starred }, label = { Text(stringResource(R.string.starred)) }) }
                 items(Category.entries.filter { it != Category.SPAM }) { c ->
                     FilterChip(
                         selected = category == c,
@@ -110,14 +112,14 @@ fun SearchScreen(vm: SearchViewModel, onBack: () -> Unit, onOpen: (conversationI
             val r = results
             LazyColumn(Modifier.fillMaxSize()) {
                 if (r == null) {
-                    item { Text("Search runs entirely on your phone.", Modifier.padding(24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    item { Text(stringResource(R.string.search_private), Modifier.padding(24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     return@LazyColumn
                 }
                 if (r.conversations.isEmpty() && r.messages.isEmpty()) {
-                    item { Text("No results for “$query”", Modifier.padding(24.dp)) }
+                    item { Text(stringResource(R.string.no_results, query), Modifier.padding(24.dp)) }
                 }
                 if (r.conversations.isNotEmpty()) {
-                    item { Header("Conversations") }
+                    item { Header(stringResource(R.string.conversations)) }
                     items(r.conversations, key = { "c${it.id}" }) { c ->
                         ListItem(
                             headlineContent = { Text(c.title) },
@@ -128,7 +130,7 @@ fun SearchScreen(vm: SearchViewModel, onBack: () -> Unit, onOpen: (conversationI
                     }
                 }
                 if (r.messages.isNotEmpty()) {
-                    item { Header("Messages (${r.messages.size})") }
+                    item { Header(stringResource(R.string.messages_n, r.messages.size)) }
                     items(r.messages, key = { "m${it.message.id}" }) { res ->
                         ListItem(
                             overlineContent = { Text("${res.conversationTitle} · ${Format.listTime(context, res.message.date)}") },

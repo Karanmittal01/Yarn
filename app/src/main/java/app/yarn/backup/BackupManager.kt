@@ -28,6 +28,7 @@ import java.io.InputStreamReader
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+import app.yarn.R
 
 @Serializable
 data class BackupMessage(
@@ -91,9 +92,9 @@ class BackupManager(
     suspend fun export(target: Uri, passphrase: CharArray, includeMedia: Boolean) = withContext(Dispatchers.IO) {
         try {
             val done = write(target, passphrase, includeMedia)
-            _state.value = BackupState.Done("Backed up $done messages")
+            _state.value = BackupState.Done(context.resources.getQuantityString(R.plurals.backed_up_n, done, done))
         } catch (e: Exception) {
-            _state.value = BackupState.Failed(e.message ?: "Backup failed")
+            _state.value = BackupState.Failed(e.message ?: context.getString(R.string.backup_failed))
         } finally {
             passphrase.fill('\u0000')
         }
@@ -107,15 +108,15 @@ class BackupManager(
         val tmp = File(context.cacheDir, "drive-backup.tmp")
         var key: CharArray? = null
         try {
-            _state.value = BackupState.Running("Preparing backup", 0, 0)
+            _state.value = BackupState.Running(context.getString(R.string.bk_preparing), 0, 0)
             key = drive.backupKey(token)
             val count = write(Uri.fromFile(tmp), key, includeMedia)
-            _state.value = BackupState.Running("Uploading to Google Drive", 0, 0)
+            _state.value = BackupState.Running(context.getString(R.string.bk_uploading), 0, 0)
             drive.upload(token, tmp, count)
-            _state.value = BackupState.Done("Backed up $count messages to Google Drive")
+            _state.value = BackupState.Done(context.resources.getQuantityString(R.plurals.backed_up_drive_n, count, count))
             tmp.length() to count
         } catch (e: Exception) {
-            _state.value = BackupState.Failed(e.message ?: "Backup failed")
+            _state.value = BackupState.Failed(e.message ?: context.getString(R.string.backup_failed))
             null
         } finally {
             key?.fill('\u0000')
@@ -127,12 +128,12 @@ class BackupManager(
     suspend fun restoreFromGoogle(drive: GoogleDrive, token: String, backup: DriveBackup) = withContext(Dispatchers.IO) {
         val tmp = File(context.cacheDir, "drive-restore.tmp")
         try {
-            _state.value = BackupState.Running("Downloading from Google Drive", 0, 0)
+            _state.value = BackupState.Running(context.getString(R.string.bk_downloading), 0, 0)
             val key = drive.backupKey(token)
             drive.download(token, backup, tmp)
             restore(Uri.fromFile(tmp), key)
         } catch (e: Exception) {
-            _state.value = BackupState.Failed(e.message ?: "Restore failed")
+            _state.value = BackupState.Failed(e.message ?: context.getString(R.string.restore_failed))
         } finally {
             tmp.delete()
         }
@@ -172,7 +173,7 @@ class BackupManager(
                             zip.write(line.toByteArray()); zip.write('\n'.code)
                             done++
                         }
-                        _state.value = BackupState.Running("Backing up messages", done, total)
+                        _state.value = BackupState.Running(context.getString(R.string.bk_messages), done, total)
                     }
                     zip.closeEntry()
                     for ((entry, uri) in mediaQueue) {
@@ -201,7 +202,7 @@ class BackupManager(
      */
     suspend fun restore(source: Uri, passphrase: CharArray) = withContext(Dispatchers.IO) {
         if (!DefaultSmsApp.isDefault(context)) {
-            _state.value = BackupState.Failed("Set Yarn as your default SMS app before restoring.")
+            _state.value = BackupState.Failed(context.getString(R.string.restore_needs_default))
             return@withContext
         }
         try {
@@ -224,7 +225,7 @@ class BackupManager(
                                 val m = json.decodeFromString(BackupMessage.serializer(), line)
                                 if (m.kind == MessageKind.MMS) { pendingMms += m; continue }
                                 if (restoreSms(m)) restored++ else skipped++
-                                if ((restored + skipped) % 200 == 0) _state.value = BackupState.Running("Restoring messages", restored + skipped, 0)
+                                if ((restored + skipped) % 200 == 0) _state.value = BackupState.Running(context.getString(R.string.bk_restoring), restored + skipped, 0)
                             }
                         }
                         entry.name == "meta.json" -> meta = json.decodeFromString(BackupMeta.serializer(), zip.readBytes().decodeToString())
@@ -233,14 +234,14 @@ class BackupManager(
                 }
             }
             for (m in pendingMms) if (restoreMms(m, media)) restored++ else skipped++
-            _state.value = BackupState.Running("Organising restored messages", 0, 0)
+            _state.value = BackupState.Running(context.getString(R.string.bk_organising), 0, 0)
             sync.sync()
             meta?.let { applyMeta(it) }
-            _state.value = BackupState.Done("Restored $restored messages" + if (skipped > 0) " ($skipped already present)" else "")
+            _state.value = BackupState.Done(context.resources.getQuantityString(R.plurals.restored_n, restored, restored) + if (skipped > 0) context.getString(R.string.already_present_n, skipped) else "")
         } catch (e: app.yarn.crypto.BadPassphraseException) {
-            _state.value = BackupState.Failed("Wrong passphrase.")
+            _state.value = BackupState.Failed(context.getString(R.string.wrong_passphrase))
         } catch (e: Exception) {
-            _state.value = BackupState.Failed(e.message ?: "Restore failed")
+            _state.value = BackupState.Failed(e.message ?: context.getString(R.string.restore_failed))
         } finally {
             passphrase.fill('\u0000')
         }

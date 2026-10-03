@@ -29,6 +29,8 @@ import app.yarn.ui.common.ConfirmDialog
 import app.yarn.work.ReanalyzeWorker
 import com.google.mlkit.nl.translate.TranslateLanguage
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import app.yarn.R
 
 /**
  * Deliberately simple: the engines behind these switches (rules, learning, ML Kit and Gemini Nano
@@ -39,13 +41,13 @@ fun AiSettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var confirmReset by remember { mutableStateOf(false) }
-    SettingsScaffold("Smart features", onBack) {
+    SettingsScaffold(stringResource(R.string.smart_features), onBack) {
         smartFeatureItems(s, update = { t -> vm.update(t) }, onRecheck = { ReanalyzeWorker.enqueue(context) }, onReset = { confirmReset = true })
     }
 
     if (confirmReset) {
         ConfirmDialog(
-            "Forget what Yarn learned?", "Your corrections and sender preferences will be cleared and messages re-sorted.", "Forget",
+            stringResource(R.string.forget_q), stringResource(R.string.forget_text), stringResource(R.string.forget),
             onConfirm = { vm.launch { engine.resetLearning() }; ReanalyzeWorker.enqueue(context) }, onDismiss = { confirmReset = false }, destructive = true,
         )
     }
@@ -61,49 +63,53 @@ internal fun LazyListScope.smartFeatureItems(
     val on = s.aiEnabled
     item {
         SettingsGroup {
-            SwitchRow("Smart features", "Sorting, spam protection and suggestions", s.aiEnabled, icon = Icons.Outlined.AutoAwesome, tint = Color(0xFF1466F0)) { v ->
+            SwitchRow(stringResource(R.string.smart_features), stringResource(R.string.smart_features_sub), s.aiEnabled, icon = Icons.Outlined.AutoAwesome, tint = Color(0xFF1466F0)) { v ->
                 update { it.copy(aiEnabled = v) }
             }
         }
     }
-    item { SectionHeader("Organise") }
+    item { SectionHeader(stringResource(R.string.organise)) }
     item {
         SettingsGroup {
-            SwitchRow("Smart sorting", "Personal, Transactions, Updates and Offers", s.autoCategorize, enabled = on, icon = Icons.Outlined.Category, tint = Color(0xFF7C5CFF)) { v ->
+            SwitchRow(stringResource(R.string.smart_sorting), stringResource(R.string.smart_sorting_sub), s.autoCategorize, enabled = on, icon = Icons.Outlined.Category, tint = Color(0xFF7C5CFF)) { v ->
                 update { it.copy(autoCategorize = v) }
             }
-            SwitchRow("Spam protection", "Moves scams and spam to the Spam folder", s.spamFilter, enabled = on, icon = Icons.Outlined.GppGood, tint = Color(0xFF34C759)) { v ->
+            SwitchRow(stringResource(R.string.spam_protection), stringResource(R.string.spam_protection_sub), s.spamFilter, enabled = on, icon = Icons.Outlined.GppGood, tint = Color(0xFF34C759)) { v ->
                 update { it.copy(spamFilter = v) }
             }
             if (on && s.spamFilter) {
                 ChoiceRow(
-                    "Filter strength",
-                    listOf(SpamSensitivity.LOW to "Relaxed", SpamSensitivity.MEDIUM to "Balanced", SpamSensitivity.HIGH to "Strict"),
+                    stringResource(R.string.filter_strength),
+                    listOf(SpamSensitivity.LOW to stringResource(R.string.strength_relaxed), SpamSensitivity.MEDIUM to stringResource(R.string.strength_balanced), SpamSensitivity.HIGH to stringResource(R.string.strength_strict)),
                     s.spamSensitivity,
                     icon = Icons.Outlined.Tune, tint = Color(0xFF8E8E93),
                 ) { v -> update { it.copy(spamSensitivity = v) }; onRecheck() }
             }
         }
     }
-    item { SectionHeader("Assist") }
+    item { SectionHeader(stringResource(R.string.assist)) }
     item {
         SettingsGroup {
-            SwitchRow("Smart replies", "Quick reply suggestions in chats", s.smartReplies, enabled = on, icon = Icons.Outlined.Quickreply, tint = Color(0xFF0FA3B1)) { v ->
+            SwitchRow(stringResource(R.string.smart_replies), stringResource(R.string.smart_replies_sub), s.smartReplies, enabled = on, icon = Icons.Outlined.Quickreply, tint = Color(0xFF0FA3B1)) { v ->
                 update { it.copy(smartReplies = v) }
             }
-            val langs = remember { TranslateLanguage.getAllLanguages().map { it to Locale.forLanguageTag(it).displayLanguage }.sortedBy { it.second } }
-            ChoiceRow("Translate into", langs, s.translateTarget, icon = Icons.Outlined.Translate, tint = Color(0xFFFF9500)) { v -> update { it.copy(translateTarget = v) } }
+            val sameAsApp = stringResource(R.string.same_as_app_language)
+            val uiLocale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+            val langs = remember(sameAsApp, uiLocale) {
+                listOf("" to sameAsApp) + TranslateLanguage.getAllLanguages().map { it to Locale.forLanguageTag(it).getDisplayLanguage(uiLocale) }.sortedBy { it.second }
+            }
+            ChoiceRow(stringResource(R.string.translate_into), langs, s.translateTarget, icon = Icons.Outlined.Translate, tint = Color(0xFFFF9500)) { v -> update { it.copy(translateTarget = v) } }
         }
     }
     item { Spacer(Modifier.height(20.dp)) }
     item {
         SettingsGroup {
-            ClickRow("Forget what Yarn learned", destructive = true) { onReset() }
+            ClickRow(stringResource(R.string.forget_learned), destructive = true) { onReset() }
         }
     }
     item {
         Text(
-            "Everything runs privately on your phone. Yarn learns when you move a message or mark spam, and uses your phone's built-in AI when available.",
+            stringResource(R.string.ai_note),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp),

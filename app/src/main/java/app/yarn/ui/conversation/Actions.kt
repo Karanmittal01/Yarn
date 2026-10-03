@@ -13,21 +13,22 @@ import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
+import app.yarn.R
 
 /** Intents for contextual actions. Nothing here needs extra permissions. */
 object Actions {
-    private fun start(context: Context, intent: Intent, failure: String = "No app can handle this") {
+    private fun start(context: Context, intent: Intent, @androidx.annotation.StringRes failure: Int = R.string.no_app) {
         try {
             context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (e: ActivityNotFoundException) {
-            Toast.makeText(context, failure, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(failure), Toast.LENGTH_SHORT).show()
         }
     }
 
-    fun openUrl(context: Context, url: String) = start(context, Intent(Intent.ACTION_VIEW, Uri.parse(url)), "No browser installed")
+    fun openUrl(context: Context, url: String) = start(context, Intent(Intent.ACTION_VIEW, Uri.parse(url)), R.string.no_browser)
     fun dial(context: Context, number: String) = start(context, Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number))))
     fun email(context: Context, address: String) = start(context, Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$address")))
-    fun map(context: Context, address: String) = start(context, Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=" + Uri.encode(address))), "No maps app installed")
+    fun map(context: Context, address: String) = start(context, Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=" + Uri.encode(address))), R.string.no_maps)
 
     /** Opens the calendar's "new event" screen prefilled; the user confirms there. */
     fun addToCalendar(context: Context, isoValue: String, title: String, description: String) {
@@ -43,7 +44,7 @@ object Actions {
             .putExtra(CalendarContract.EXTRA_EVENT_ALL_DAY, allDay)
             .putExtra(CalendarContract.Events.TITLE, title)
             .putExtra(CalendarContract.Events.DESCRIPTION, description)
-        start(context, intent, "No calendar app installed")
+        start(context, intent, R.string.no_calendar)
     }
 
     /** A URI other apps can read: our files go through FileProvider; MMS parts are grantable. */
@@ -52,7 +53,7 @@ object Actions {
 
     fun openAttachment(context: Context, uri: Uri, mime: String) {
         val intent = Intent(Intent.ACTION_VIEW).setDataAndType(shareableUri(context, uri), mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        start(context, intent, "No app can open this file")
+        start(context, intent, R.string.no_file_app)
     }
 
     fun share(context: Context, text: String, uris: List<Pair<Uri, String>>) {
@@ -64,7 +65,7 @@ object Actions {
                 .putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris.map { shareableUri(context, it.first) }))
                 .apply { if (text.isNotBlank()) putExtra(Intent.EXTRA_TEXT, text) }
         }.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        start(context, Intent.createChooser(intent, "Share"))
+        start(context, Intent.createChooser(intent, context.getString(R.string.share)))
     }
 
     /** Saves an attachment to the public Downloads collection (no storage permission needed). */

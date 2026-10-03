@@ -164,6 +164,7 @@ abstract class ConversationDao {
                 // A user decision (locked category) always overrides automatic spam detection.
                 spam = if (c.categoryLocked) c.category == "SPAM" else spam,
                 hasOutgoing = hasOutgoing,
+                lastSubId = latest?.subId ?: -1,
             ),
         )
     }
@@ -299,8 +300,18 @@ abstract class MessageDao {
     @Query("SELECT * FROM messages WHERE starred = 1 ORDER BY date DESC")
     abstract fun observeStarred(): Flow<List<MessageWithAttachments>>
 
-    @Query("SELECT id FROM messages WHERE category = 'OTP' AND starred = 0 AND date < :before")
-    abstract suspend fun otpOlderThan(before: Long): List<Long>
+    /**
+     * Clean-up candidates: received messages in [categories] older than [before]. Starred messages,
+     * pinned or starred chats, chats the user has replied to and chats they filed as personal are
+     * never touched.
+     */
+    @Query(
+        "SELECT m.id FROM messages m JOIN conversations c ON c.id = m.conversationId " +
+            "WHERE m.category IN (:categories) AND m.outgoing = 0 AND m.starred = 0 AND m.date < :before " +
+            "AND c.pinned = 0 AND c.starred = 0 AND c.hasOutgoing = 0 AND c.spam = 0 " +
+            "AND NOT (c.categoryLocked = 1 AND c.category = 'PERSONAL')",
+    )
+    abstract suspend fun junkIds(categories: List<String>, before: Long): List<Long>
 
     @Query("SELECT m.id FROM messages m JOIN conversations c ON c.id = m.conversationId WHERE c.spam = 1 AND m.starred = 0 AND m.date < :before")
     abstract suspend fun spamOlderThan(before: Long): List<Long>

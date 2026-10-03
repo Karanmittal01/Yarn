@@ -74,6 +74,8 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import app.yarn.R
 
 data class Recipient(val name: String, val address: String)
 
@@ -166,8 +168,8 @@ fun NewConversationContent(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("New chat", style = MaterialTheme.typography.titleLarge) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                title = { Text(stringResource(R.string.new_chat), style = MaterialTheme.typography.titleLarge) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                 colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
             )
         },
@@ -175,7 +177,7 @@ fun NewConversationContent(
             if (recipients.size > 1 || (recipients.isNotEmpty() && query.isBlank())) {
                 ExtendedFloatingActionButton(
                     onClick = onStart,
-                    text = { Text(if (recipients.size > 1) "Start group" else "Next", style = MaterialTheme.typography.titleMedium) },
+                    text = { Text(if (recipients.size > 1) stringResource(R.string.start_group) else stringResource(R.string.next), style = MaterialTheme.typography.titleMedium) },
                     icon = {},
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -190,7 +192,7 @@ fun NewConversationContent(
                     recipients.forEach { r ->
                         InputChip(
                             selected = true, onClick = { onRemove(r) }, label = { Text(r.name, style = MaterialTheme.typography.labelLarge) },
-                            trailingIcon = { Icon(Icons.Outlined.Close, "Remove ${r.name}", Modifier.size(16.dp)) },
+                            trailingIcon = { Icon(Icons.Outlined.Close, stringResource(R.string.remove_n, r.name), Modifier.size(16.dp)) },
                             shape = androidx.compose.foundation.shape.CircleShape,
                         )
                     }
@@ -207,7 +209,7 @@ fun NewConversationContent(
                     .padding(start = 20.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("To", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.to), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.width(14.dp))
                 androidx.compose.foundation.text.BasicTextField(
                     value = query,
@@ -222,7 +224,7 @@ fun NewConversationContent(
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (query.isEmpty()) {
                                 Text(
-                                    "Name, number or email",
+                                    stringResource(R.string.name_number_email),
                                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
@@ -233,7 +235,7 @@ fun NewConversationContent(
                     },
                 )
                 IconButton(onClick = { dialpad = !dialpad }) {
-                    Icon(if (dialpad) Icons.Outlined.Keyboard else Icons.Outlined.Dialpad, if (dialpad) "Use keyboard" else "Use dial pad")
+                    Icon(if (dialpad) Icons.Outlined.Keyboard else Icons.Outlined.Dialpad, if (dialpad) stringResource(R.string.use_keyboard) else stringResource(R.string.use_dialpad))
                 }
             }
             if (query.isBlank() && recipients.isEmpty()) {
@@ -244,13 +246,13 @@ fun NewConversationContent(
                     Icon(Icons.Outlined.PersonSearch, null, Modifier.size(44.dp), tint = MaterialTheme.colorScheme.outline)
                     Spacer(Modifier.height(14.dp))
                     Text(
-                        "Start typing a name or number",
+                        stringResource(R.string.start_typing),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Add more people to start a group chat.",
+                        stringResource(R.string.add_more_people),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -260,10 +262,10 @@ fun NewConversationContent(
                 typedAddress?.let { typed ->
                     item(key = "typed") {
                         RecipientRow(
-                            title = "Send to $typed",
-                            subtitle = if (recipients.isEmpty()) "Tap to start" else "Tap to add",
+                            title = stringResource(R.string.send_to_n, typed),
+                            subtitle = if (recipients.isEmpty()) stringResource(R.string.tap_to_start) else stringResource(R.string.tap_to_add),
                             avatar = { Avatar(typed, null, size = 48.dp, neutral = true) },
-                            action = "Add",
+                            action = stringResource(R.string.add),
                             onAction = { onAdd(typed, typed) },
                             onClick = { if (recipients.isEmpty()) onStart() else onAdd(typed, typed) },
                         )
@@ -272,10 +274,10 @@ fun NewConversationContent(
                 if (!hasContacts && query.isNotBlank()) {
                     item {
                         RecipientRow(
-                            title = "Search your contacts",
-                            subtitle = "Allow access to find people by name. Contacts stay on your phone.",
+                            title = stringResource(R.string.search_contacts),
+                            subtitle = stringResource(R.string.allow_contacts),
                             avatar = { Avatar("?", null, size = 48.dp, neutral = true, icon = Icons.Outlined.PersonSearch) },
-                            action = "Allow",
+                            action = stringResource(R.string.allow),
                             onAction = onRequestContacts,
                             onClick = onRequestContacts,
                         )
@@ -286,7 +288,7 @@ fun NewConversationContent(
                         title = contact.name,
                         subtitle = contact.number,
                         avatar = { Avatar(contact.name, contact.photoUri, size = 48.dp) },
-                        action = "Add",
+                        action = stringResource(R.string.add),
                         onAction = { onAdd(contact.name, contact.number) },
                         onClick = {
                             // First pick opens the chat right away; later picks build a group.

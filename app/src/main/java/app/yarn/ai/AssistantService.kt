@@ -7,22 +7,23 @@ import app.yarn.intelligence.ConversationSummary
 import app.yarn.intelligence.ExtractiveSummarizer
 import app.yarn.intelligence.QuickReplies
 import app.yarn.intelligence.SummaryMessage
+import app.yarn.R
 
 /** Which engine produced a generative result; shown to the user for transparency. */
-enum class Engine(val label: String) {
-    GEMINI_NANO("Gemini Nano (on-device)"),
-    LOCAL_LLM("Local model (on-device)"),
-    SELF_HOSTED("Your self-hosted AI"),
-    EXTRACTIVE("Quick summary (on-device)"),
-    ML_KIT("ML Kit (on-device)"),
-    RULES("Built-in suggestions"),
+enum class Engine(@androidx.annotation.StringRes val label: Int) {
+    GEMINI_NANO(R.string.engine_nano),
+    LOCAL_LLM(R.string.engine_local),
+    SELF_HOSTED(R.string.engine_self),
+    EXTRACTIVE(R.string.engine_extractive),
+    ML_KIT(R.string.engine_mlkit),
+    RULES(R.string.engine_rules),
 }
 
 data class AssistantSummary(val summary: ConversationSummary, val engine: Engine, val freeText: String? = null)
 
 sealed interface RewriteResult {
     data class Success(val options: List<String>, val engine: Engine) : RewriteResult
-    data class Unavailable(val reason: String) : RewriteResult
+    data class Unavailable(@androidx.annotation.StringRes val reason: Int) : RewriteResult
 }
 
 data class EngineStatus(
@@ -94,7 +95,7 @@ class AssistantService(
 
     suspend fun rewrite(text: String, style: RewriteStyle): RewriteResult {
         val s = settings.current()
-        if (!s.aiEnabled) return RewriteResult.Unavailable("AI features are turned off in Settings.")
+        if (!s.aiEnabled) return RewriteResult.Unavailable(R.string.ai_off)
         val lang = language.identify(text) ?: "en"
         nano.rewrite(text, style, lang)?.takeIf { it.isNotEmpty() }?.let { return RewriteResult.Success(it.distinct(), Engine.GEMINI_NANO) }
         val instruction = when (style) {
@@ -112,10 +113,7 @@ class AssistantService(
         if (s.selfHostedAiEnabled && s.selfHostedAiUrl.isNotBlank()) {
             selfHosted.complete(s.selfHostedAiUrl, s.selfHostedAiModel, prompt)?.let { return RewriteResult.Success(listOf(clean(it)), Engine.SELF_HOSTED) }
         }
-        return RewriteResult.Unavailable(
-            "Rewriting needs an on-device language model. This phone doesn't offer Gemini Nano; " +
-                "you can import a free open model (e.g. Gemma or Qwen) in Settings › AI.",
-        )
+        return RewriteResult.Unavailable(R.string.rewrite_needs_model)
     }
 
     /** Reply suggestions: ML Kit Smart Reply first, then built-in intent rules. */

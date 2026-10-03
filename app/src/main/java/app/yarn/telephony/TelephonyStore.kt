@@ -231,6 +231,15 @@ class TelephonyStore(private val context: Context) {
     }
 
     fun deleteSms(id: Long) = safeDelete(ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id))
+
+    /** Deletes many SMS rows in one provider call (ids are numbers, so the IN list is safe). */
+    fun deleteSms(ids: Collection<Long>) {
+        if (ids.isEmpty()) return
+        val ok = runCatching {
+            context.contentResolver.delete(Telephony.Sms.CONTENT_URI, "_id IN (${ids.joinToString(",")})", null)
+        }.isSuccess
+        if (!ok) ids.forEach { deleteSms(it) }
+    }
     fun deleteMms(id: Long) = safeDelete(ContentUris.withAppendedId(Telephony.Mms.CONTENT_URI, id))
     fun deleteThread(threadId: Long) = safeDelete(ContentUris.withAppendedId(Telephony.Threads.CONTENT_URI, threadId))
 

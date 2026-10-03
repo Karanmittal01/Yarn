@@ -86,4 +86,26 @@ class DatabaseTest {
         db.conversations().delete(listOf(1))
         assertThat(db.messages().recent(1, 10)).isEmpty()
     }
+
+    @Test
+    fun junkQueryKeepsWhatMatters() = runTest {
+        val old = 1_000L
+        fun conv(id: Long, vararg mods: (ConversationEntity) -> ConversationEntity) =
+            mods.fold(ConversationEntity(id = id, addresses = listOf("AX-SHOP$id"), displayName = "Shop $id")) { c, m -> m(c) }
+        db.conversations().upsert(conv(10))
+        db.conversations().upsert(conv(11, { it.copy(pinned = true) }))
+        db.conversations().upsert(conv(12, { it.copy(hasOutgoing = true) }))
+        db.conversations().upsert(conv(13, { it.copy(categoryLocked = true, category = "PERSONAL") }))
+        var pid = 100L
+        suspend fun msg(conv: Long, category: String, date: Long = old, starred: Boolean = false) =
+            db.messages().insert(MessageEntity(conversationId = conv, providerId = pid++, address = "AX-SHOP$conv", body = "x", date = date, outgoing = false, status = MessageStatus.RECEIVED, category = category, starred = starred))
+        val junk = msg(10, "PROMOTIONS")
+        msg(10, "PROMOTIONS", starred = true) // starred: kept
+        msg(10, "PROMOTIONS", date = 9_000) // too recent: kept
+        msg(10, "BANKING") // not junk
+        msg(11, "PROMOTIONS") // pinned chat
+        msg(12, "PROMOTIONS") // replied-to chat
+        msg(13, "PROMOTIONS") // filed as personal
+        assertThat(db.messages().junkIds(listOf("PROMOTIONS"), before = 5_000)).containsExactly(junk)
+    }
 }

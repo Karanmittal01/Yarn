@@ -80,6 +80,12 @@ android {
         }
     }
 
+    // Yarn switches language in-app (English / Hindi), so every install needs every language,
+    // not just the phone's: keep all translations in the base APK.
+    bundle {
+        language { enableSplit = false }
+    }
+
     packaging {
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "META-INF/DEPENDENCIES")
     }

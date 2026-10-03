@@ -63,10 +63,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.yarn.ui.common.YarnLogo
 import app.yarn.ui.theme.LocalDarkTheme
+import androidx.compose.ui.res.stringResource
+import app.yarn.R
 
 /**
  * Full-screen invitation to make Yarn the default SMS app. Android only lets the default app send
- * and receive, so this is shown whenever Yarn isn't default; "Not now" hides it until next launch.
+ * and receive, so this is shown whenever Yarn isn't default; stringResource(R.string.not_now) hides it until next launch.
  */
 @Composable
 fun DefaultAppPrompt(onSetDefault: () -> Unit, onDismiss: () -> Unit) {
@@ -100,7 +102,7 @@ fun DefaultAppPromptContent(onSetDefault: () -> Unit, onDismiss: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    "Make Yarn your SMS app",
+                    stringResource(R.string.make_default_title),
                     style = MaterialTheme.typography.headlineSmall.copy(fontSize = 26.sp, lineHeight = 32.sp),
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
@@ -109,15 +111,15 @@ fun DefaultAppPromptContent(onSetDefault: () -> Unit, onDismiss: () -> Unit) {
                 )
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Android lets only your default SMS app send and receive messages.",
+                    stringResource(R.string.make_default_text),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(24.dp))
-                Benefit(Icons.Outlined.Sort, "A calm inbox, sorted for you")
-                Benefit(Icons.Outlined.GppGood, "Spam and scam protection")
-                Benefit(Icons.Outlined.Lock, "Private: everything stays on your phone")
+                Benefit(Icons.Outlined.Sort, stringResource(R.string.benefit_sorted))
+                Benefit(Icons.Outlined.GppGood, stringResource(R.string.benefit_spam))
+                Benefit(Icons.Outlined.Lock, stringResource(R.string.benefit_private))
             }
             Spacer(Modifier.weight(1f))
             Button(
@@ -125,10 +127,10 @@ fun DefaultAppPromptContent(onSetDefault: () -> Unit, onDismiss: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(28.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            ) { Text("Set as default SMS app", style = MaterialTheme.typography.titleMedium) }
+            ) { Text(stringResource(R.string.set_default_sms), style = MaterialTheme.typography.titleMedium) }
             Spacer(Modifier.height(6.dp))
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                Text("Not now", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.not_now), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(12.dp))
         }
@@ -160,7 +162,7 @@ private fun Illustration(modifier: Modifier = Modifier) {
         YarnLogo(size = 112.dp, modifier = Modifier.shadow(18.dp, RoundedCornerShape(34.dp)))
         Bubble(Icons.Outlined.Password, "482913", Color(0xFF7C5CFF), x = (-92).dp, y = (-96).dp, lift = a * 8f)
         Bubble(Icons.Outlined.AccountBalance, "₹2,500", Color(0xFF34C759), x = 96.dp, y = (-58).dp, lift = b * 10f)
-        Bubble(Icons.Outlined.ShoppingBag, "Delivered", Color(0xFFFF9500), x = (-74).dp, y = 104.dp, lift = b * 7f)
+        Bubble(Icons.Outlined.ShoppingBag, stringResource(R.string.bubble_delivered), Color(0xFFFF9500), x = (-74).dp, y = 104.dp, lift = b * 7f)
         Dot(primary, x = 108.dp, y = 92.dp, size = 14.dp, lift = a * 6f)
         Dot(Color(0xFFFFC94D), x = (-124).dp, y = 12.dp, size = 10.dp, lift = b * 6f)
         Dot(Color(0xFF7EEBFB), x = 40.dp, y = (-128).dp, size = 8.dp, lift = a * 5f)

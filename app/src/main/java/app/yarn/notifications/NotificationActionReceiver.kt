@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.PersistableBundle
 import androidx.core.app.RemoteInput
 import app.yarn.receivers.async
+import app.yarn.R
 
 class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -82,7 +83,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         /** Android 13+ shows its own clipboard confirmation; older versions get a toast. */
         private fun confirmCopy(context: Context) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                android.widget.Toast.makeText(context, "Code copied", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, context.getString(R.string.code_copied), android.widget.Toast.LENGTH_SHORT).show()
             }
         }
 

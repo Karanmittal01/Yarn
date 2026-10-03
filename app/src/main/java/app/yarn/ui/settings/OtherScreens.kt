@@ -75,6 +75,9 @@ import app.yarn.work.ReanalyzeWorker
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import app.yarn.R
 
 @Composable
 private fun SimpleScaffold(title: String, onBack: () -> Unit, content: @Composable (Modifier) -> Unit) {
@@ -84,7 +87,7 @@ private fun SimpleScaffold(title: String, onBack: () -> Unit, content: @Composab
         topBar = {
             androidx.compose.material3.LargeTopAppBar(
                 title = { Text(title) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                 scrollBehavior = scroll,
             )
         },
@@ -97,26 +100,26 @@ private fun SimpleScaffold(title: String, onBack: () -> Unit, content: @Composab
 fun BlockedScreen(vm: SettingsViewModel, onBack: () -> Unit, onBlockedConversations: () -> Unit) {
     val rules by vm.c.db.blocks().observe().collectAsState(initial = emptyList())
     var add by remember { mutableStateOf<String?>(null) }
-    SettingsScaffold("Blocked", onBack) {
+    SettingsScaffold(stringResource(R.string.blocked), onBack) {
         item {
             SettingsGroup {
-                ClickRow("Block a number", icon = Icons.Outlined.Block, tint = androidx.compose.ui.graphics.Color(0xFFF2453D)) { add = BlockRuleEntity.NUMBER }
-                ClickRow("Filter a word", icon = Icons.Outlined.FilterAlt, tint = androidx.compose.ui.graphics.Color(0xFFFF9500)) { add = BlockRuleEntity.KEYWORD }
-                ClickRow("Blocked conversations", icon = Icons.Outlined.Forum, tint = androidx.compose.ui.graphics.Color(0xFF8E8E93)) { onBlockedConversations() }
+                ClickRow(stringResource(R.string.block_number), icon = Icons.Outlined.Block, tint = androidx.compose.ui.graphics.Color(0xFFF2453D)) { add = BlockRuleEntity.NUMBER }
+                ClickRow(stringResource(R.string.filter_word), icon = Icons.Outlined.FilterAlt, tint = androidx.compose.ui.graphics.Color(0xFFFF9500)) { add = BlockRuleEntity.KEYWORD }
+                ClickRow(stringResource(R.string.blocked_conversations), icon = Icons.Outlined.Forum, tint = androidx.compose.ui.graphics.Color(0xFF8E8E93)) { onBlockedConversations() }
             }
         }
         if (rules.isNotEmpty()) {
-            item { SectionHeader("Your list") }
+            item { SectionHeader(stringResource(R.string.your_list)) }
             item {
                 SettingsGroup {
                     rules.forEach { r ->
                         SettingsRow(
                             r.value,
-                            summary = if (r.type == BlockRuleEntity.NUMBER) "Number" else "Word filter",
+                            summary = if (r.type == BlockRuleEntity.NUMBER) stringResource(R.string.rule_number) else stringResource(R.string.rule_word),
                             trailing = {
                                 IconButton(onClick = {
                                     vm.launch { if (r.type == BlockRuleEntity.NUMBER) conversations.unblockNumber(r.value) else conversations.removeRule(r.id) }
-                                }) { Icon(Icons.Outlined.Close, "Remove ${r.value}", Modifier.size(20.dp)) }
+                                }) { Icon(Icons.Outlined.Close, stringResource(R.string.remove_n, r.value), Modifier.size(20.dp)) }
                             },
                         )
                     }
@@ -125,7 +128,7 @@ fun BlockedScreen(vm: SettingsViewModel, onBack: () -> Unit, onBlockedConversati
         }
         item {
             Text(
-                "Blocked numbers are dropped silently. Messages with a filtered word go to Spam without notifying you.",
+                stringResource(R.string.blocked_note),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp),
             )
@@ -135,12 +138,12 @@ fun BlockedScreen(vm: SettingsViewModel, onBack: () -> Unit, onBlockedConversati
         var value by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { add = null },
-            title = { Text(if (type == BlockRuleEntity.NUMBER) "Block a number" else "Filter messages containing") },
+            title = { Text(if (type == BlockRuleEntity.NUMBER) stringResource(R.string.block_number) else stringResource(R.string.filter_containing)) },
             text = {
                 OutlinedTextField(
                     value, { value = it }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = if (type == BlockRuleEntity.NUMBER) KeyboardType.Phone else KeyboardType.Text),
-                    placeholder = { Text(if (type == BlockRuleEntity.NUMBER) "+1 555 0100 or sender ID" else "e.g. lottery") },
+                    placeholder = { Text(if (type == BlockRuleEntity.NUMBER) stringResource(R.string.block_number_hint) else stringResource(R.string.filter_word_hint)) },
                 )
             },
             confirmButton = {
@@ -148,9 +151,9 @@ fun BlockedScreen(vm: SettingsViewModel, onBack: () -> Unit, onBlockedConversati
                     val v = value.trim()
                     if (v.isNotEmpty()) vm.launch { if (type == BlockRuleEntity.NUMBER) conversations.blockNumbers(listOf(v)) else conversations.addKeywordFilter(v) }
                     add = null
-                }) { Text("Add") }
+                }) { Text(stringResource(R.string.add)) }
             },
-            dismissButton = { TextButton(onClick = { add = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { add = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }
@@ -175,9 +178,9 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
         val p = pending
         pending = null
         if (p == null) { checking = false; return@rememberLauncherForActivityResult }
-        if (result.resultCode != android.app.Activity.RESULT_OK) { checking = false; error = "Access wasn't allowed."; return@rememberLauncherForActivityResult }
+        if (result.resultCode != android.app.Activity.RESULT_OK) { checking = false; error = context.getString(R.string.access_not_allowed); return@rememberLauncherForActivityResult }
         scope.launch {
-            runCatching { p.second(c.drive.token(p.first)) }.onFailure { error = it.message ?: "Google sign-in failed." }
+            runCatching { p.second(c.drive.token(p.first)) }.onFailure { error = it.message ?: context.getString(R.string.google_signin_failed) }
             checking = false
         }
     }
@@ -192,7 +195,7 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                     action(token)
                 } catch (e: java.io.IOException) {
                     // A cached token can expire; refresh once and retry.
-                    if (e.message?.contains("expired") != true) throw e
+                    if (e !is app.yarn.backup.AuthExpiredException) throw e
                     c.drive.invalidate(token)
                     action(c.drive.token(email))
                 }
@@ -201,7 +204,7 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                 consent.launch(e.intent)
                 return@launch
             } catch (e: Exception) {
-                error = e.message ?: "Couldn't reach Google"
+                error = e.message ?: context.getString(R.string.google_unreachable)
             }
             checking = false
         }
@@ -232,7 +235,7 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
         runCatching { refreshLatest(c.drive.token(email)) }
     }
 
-    SettingsScaffold("Backup", onBack) {
+    SettingsScaffold(stringResource(R.string.backup), onBack) {
         backupItems(
             s, latest, state, checking, error, running,
             onSignIn = { error = null; picker.launch(c.drive.accountPickerIntent()) },
@@ -252,7 +255,7 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             onRestore = {
                 withAccount { token ->
                     refreshLatest(token)
-                    if (latest == null) error = "No backup found in this Google account." else confirmRestore = latest
+                    if (latest == null) error = context.getString(R.string.no_backup_found) else confirmRestore = latest
                 }
             },
             onTurnOff = { confirmOff = true },
@@ -261,11 +264,13 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
 
     confirmRestore?.let { b ->
         ConfirmDialog(
-            "Restore messages?",
-            "Found a backup from ${Format.listTime(context, b.modifiedAt)}" +
-                (if (b.messageCount > 0) " with ${java.text.NumberFormat.getIntegerInstance().format(b.messageCount)} messages" else "") +
-                ". Messages already on this phone are kept; duplicates are skipped.",
-            "Restore",
+            stringResource(R.string.restore_q),
+            if (b.messageCount > 0) {
+                pluralStringResource(R.plurals.restore_found_count, b.messageCount, Format.listTime(context, b.modifiedAt), java.text.NumberFormat.getIntegerInstance().format(b.messageCount))
+            } else {
+                stringResource(R.string.restore_found, Format.listTime(context, b.modifiedAt))
+            },
+            stringResource(R.string.restore),
             onConfirm = {
                 withAccount { token ->
                     c.backup.restoreFromGoogle(c.drive, token, b)
@@ -277,7 +282,7 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     }
     if (confirmOff) {
         ConfirmDialog(
-            "Turn off Google backup?", "Yarn stops backing up. Your existing backup stays in Google Drive so you can restore it later.", "Turn off",
+            stringResource(R.string.backup_off_q), stringResource(R.string.backup_off_text), stringResource(R.string.turn_off),
             onConfirm = {
                 vm.update { it.copy(googleAccount = null) }
                 GoogleBackupWorker.schedule(context, false)
@@ -318,10 +323,10 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.backupItems(
                     Icon(Icons.Outlined.CloudUpload, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(30.dp))
                 }
                 Spacer(Modifier.height(16.dp))
-                Text("Back up to Google Drive", style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.backup_to_drive), style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Keep your messages safe and bring them to a new phone. Free — it uses your Google account's storage.",
+                    stringResource(R.string.backup_pitch),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -331,7 +336,7 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.backupItems(
                     onClick = onSignIn,
                     enabled = !running,
                     modifier = Modifier.fillMaxWidth().height(48.dp),
-                ) { Text("Sign in with Google") }
+                ) { Text(stringResource(R.string.sign_in_google)) }
             }
         }
     } else {
@@ -340,9 +345,9 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.backupItems(
                 SettingsRow(
                     s.googleAccount.orEmpty(),
                     summary = when {
-                        s.lastBackupAt > 0 -> "Last backup ${Format.listTime(LocalContext.current, s.lastBackupAt)} · ${android.text.format.Formatter.formatShortFileSize(LocalContext.current, s.lastBackupBytes)}"
-                        latest != null -> "Last backup ${Format.listTime(LocalContext.current, latest.modifiedAt)} · ${android.text.format.Formatter.formatShortFileSize(LocalContext.current, latest.sizeBytes)}"
-                        else -> "Not backed up yet"
+                        s.lastBackupAt > 0 -> stringResource(R.string.last_backup, Format.listTime(LocalContext.current, s.lastBackupAt), android.text.format.Formatter.formatShortFileSize(LocalContext.current, s.lastBackupBytes))
+                        latest != null -> stringResource(R.string.last_backup, Format.listTime(LocalContext.current, latest.modifiedAt), android.text.format.Formatter.formatShortFileSize(LocalContext.current, latest.sizeBytes))
+                        else -> stringResource(R.string.not_backed_up)
                     },
                     icon = Icons.Outlined.CloudDone, tint = androidx.compose.ui.graphics.Color(0xFF1466F0),
                 )
@@ -353,21 +358,21 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.backupItems(
                 onClick = onBackupNow,
                 enabled = !running,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp).height(48.dp),
-            ) { Text("Back up now") }
+            ) { Text(stringResource(R.string.back_up_now)) }
         }
         item { BackupProgress(state, checking) }
-        item { SectionHeader("Settings") }
+        item { SectionHeader(stringResource(R.string.settings)) }
         item {
             SettingsGroup {
-                SwitchRow("Back up daily", "On Wi-Fi while charging", s.autoBackup, icon = Icons.Outlined.Schedule, tint = androidx.compose.ui.graphics.Color(0xFF34C759)) { v -> onAutoBackup(v) }
-                SwitchRow("Include photos & videos", checked = s.backupMedia, icon = Icons.Outlined.Image, tint = androidx.compose.ui.graphics.Color(0xFFFF9500)) { v -> onMedia(v) }
+                SwitchRow(stringResource(R.string.back_up_daily), stringResource(R.string.back_up_daily_sub), s.autoBackup, icon = Icons.Outlined.Schedule, tint = androidx.compose.ui.graphics.Color(0xFF34C759)) { v -> onAutoBackup(v) }
+                SwitchRow(stringResource(R.string.include_media), checked = s.backupMedia, icon = Icons.Outlined.Image, tint = androidx.compose.ui.graphics.Color(0xFFFF9500)) { v -> onMedia(v) }
             }
         }
         item { Spacer(Modifier.height(12.dp)) }
         item {
             SettingsGroup {
-                ClickRow("Restore from Google Drive", icon = Icons.Outlined.CloudDownload, tint = androidx.compose.ui.graphics.Color(0xFF0FA3B1)) { onRestore() }
-                ClickRow("Turn off Google backup", destructive = true) { onTurnOff() }
+                ClickRow(stringResource(R.string.restore_from_drive), icon = Icons.Outlined.CloudDownload, tint = androidx.compose.ui.graphics.Color(0xFF0FA3B1)) { onRestore() }
+                ClickRow(stringResource(R.string.turn_off_backup), destructive = true) { onTurnOff() }
             }
         }
     }
@@ -380,8 +385,7 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.backupItems(
     }
     item {
         Text(
-            "Backups are encrypted and kept in a private Yarn folder in your Google Drive that only Yarn can open. " +
-                "They count towards your Google storage (15 GB free). Yarn has no servers of its own.",
+            stringResource(R.string.backup_note),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 32.dp, vertical = 14.dp),
         )
@@ -412,16 +416,16 @@ fun StarredScreen(vm: SettingsViewModel, onBack: () -> Unit, onOpen: (Long, Long
     val starred by vm.c.db.messages().observeStarred().collectAsState(initial = emptyList())
     val context = LocalContext.current
     val iso = remember { PhoneNumbers.countryIso(context) }
-    SimpleScaffold("Starred messages", onBack) { modifier ->
+    SimpleScaffold(stringResource(R.string.starred_messages), onBack) { modifier ->
         LazyColumn(modifier) {
-            if (starred.isEmpty()) item { Text("Long-press a message and choose Star to keep it here.", Modifier.padding(24.dp)) }
+            if (starred.isEmpty()) item { Text(stringResource(R.string.starred_empty), Modifier.padding(24.dp)) }
             items(starred, key = { it.message.id }) { s ->
                 val m = s.message
                 ListItem(
                     overlineContent = {
-                        Text((if (m.outgoing) "You" else vm.c.contacts.lookup(m.address)?.name ?: PhoneNumbers.format(m.address, iso)) + " · " + Format.listTime(context, m.date))
+                        Text((if (m.outgoing) stringResource(R.string.you) else vm.c.contacts.lookup(m.address)?.name ?: PhoneNumbers.format(m.address, iso)) + " · " + Format.listTime(context, m.date))
                     },
-                    headlineContent = { Text(m.body.ifBlank { "Attachment" }, maxLines = 3, overflow = TextOverflow.Ellipsis) },
+                    headlineContent = { Text(m.body.ifBlank { stringResource(R.string.attachment) }, maxLines = 3, overflow = TextOverflow.Ellipsis) },
                     modifier = Modifier.clickable { onOpen(m.conversationId, m.id) },
                 )
             }

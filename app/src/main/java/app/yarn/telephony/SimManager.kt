@@ -23,7 +23,33 @@ data class SimInfo(
     val number: String?,
     val color: Int,
 ) {
-    val label: String get() = "SIM ${slotIndex + 1} · $displayName"
+    /** 1-based slot number, as printed on the phone's SIM tray. */
+    val slot: Int get() = slotIndex + 1
+    /** Short, familiar network name: "Jio", "Airtel", "Vi", "BSNL"… */
+    val carrier: String get() = SimNames.carrier(displayName, carrierName, slot)
+    val label: String get() = "SIM $slot · $carrier"
+}
+
+object SimNames {
+    private val generic = Regex("(?i)^(sim|slot|card|esim|e-sim)\\s*\\d?$")
+
+    /** Prefers the name the user gave the SIM, falling back to the network's own name. */
+    fun carrier(displayName: String, carrierName: String, slot: Int): String {
+        val raw = displayName.trim().takeUnless { it.isBlank() || generic.matches(it) }
+            ?: carrierName.trim().takeUnless { it.isBlank() || generic.matches(it) }
+            ?: return "SIM $slot"
+        val lower = raw.lowercase()
+        return when {
+            "jio" in lower -> "Jio"
+            "airtel" in lower -> "Airtel"
+            lower == "vi" || lower.startsWith("vi ") || "vodafone" in lower || "idea" in lower -> "Vi"
+            "bsnl" in lower || "cellone" in lower -> "BSNL"
+            "mtnl" in lower || "dolphin" in lower -> "MTNL"
+            else -> raw.split(' ').filter { it.isNotBlank() }.take(2).joinToString(" ") { w ->
+                if (w.any { it.isLowerCase() }) w.replaceFirstChar { it.uppercase() } else w
+            }.take(16)
+        }
+    }
 }
 
 /** Carrier MMS limits, read from the platform's carrier config with safe defaults. */

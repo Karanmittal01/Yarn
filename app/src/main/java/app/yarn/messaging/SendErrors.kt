@@ -1,6 +1,8 @@
 package app.yarn.messaging
 
+import android.content.Context
 import android.telephony.SmsManager
+import app.yarn.R
 
 /** Classifies radio/MMS failures into what the queue should do next and what to tell the user. */
 object SendErrors {
@@ -25,18 +27,18 @@ object SendErrors {
         else -> Action.FAIL
     }
 
-    fun smsMessage(resultCode: Int): String = when (resultCode) {
-        SmsManager.RESULT_ERROR_RADIO_OFF -> "Airplane mode or radio is off. It will send when you're back online."
-        SmsManager.RESULT_ERROR_NO_SERVICE, SmsManager.RESULT_RADIO_NOT_AVAILABLE -> "No mobile signal. It will send automatically when service returns."
-        SmsManager.RESULT_ERROR_LIMIT_EXCEEDED -> "Android's SMS sending limit was reached. Try again later."
-        SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE -> "Blocked by Fixed Dialing Numbers on your SIM."
-        SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED, SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED -> "Sending to this short code isn't allowed."
-        SmsManager.RESULT_INVALID_SMS_FORMAT, SmsManager.RESULT_INVALID_ARGUMENTS -> "The message or number is invalid."
-        SmsManager.RESULT_NETWORK_REJECT -> "The network rejected the message."
-        SmsManager.RESULT_INVALID_SMSC_ADDRESS -> "Your SIM's message center number is invalid."
-        SmsManager.RESULT_OPERATION_NOT_ALLOWED -> "Your carrier doesn't allow this message."
-        SmsManager.RESULT_CANCELLED -> "Sending was cancelled."
-        else -> "Couldn't send (error $resultCode)."
+    fun smsMessage(context: Context, resultCode: Int): String = when (resultCode) {
+        SmsManager.RESULT_ERROR_RADIO_OFF -> context.getString(R.string.err_radio_off)
+        SmsManager.RESULT_ERROR_NO_SERVICE, SmsManager.RESULT_RADIO_NOT_AVAILABLE -> context.getString(R.string.err_no_service)
+        SmsManager.RESULT_ERROR_LIMIT_EXCEEDED -> context.getString(R.string.err_limit)
+        SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE -> context.getString(R.string.err_fdn)
+        SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED, SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED -> context.getString(R.string.err_short_code)
+        SmsManager.RESULT_INVALID_SMS_FORMAT, SmsManager.RESULT_INVALID_ARGUMENTS -> context.getString(R.string.err_invalid)
+        SmsManager.RESULT_NETWORK_REJECT -> context.getString(R.string.err_network_reject)
+        SmsManager.RESULT_INVALID_SMSC_ADDRESS -> context.getString(R.string.err_smsc)
+        SmsManager.RESULT_OPERATION_NOT_ALLOWED -> context.getString(R.string.err_not_allowed)
+        SmsManager.RESULT_CANCELLED -> context.getString(R.string.err_cancelled)
+        else -> context.getString(R.string.err_sms_code, resultCode)
     }
 
     fun mmsAction(resultCode: Int): Action = when (resultCode) {
@@ -50,15 +52,15 @@ object SendErrors {
         else -> Action.FAIL
     }
 
-    fun mmsMessage(resultCode: Int): String = when (resultCode) {
-        SmsManager.MMS_ERROR_NO_DATA_NETWORK -> "MMS needs mobile data. It will retry when mobile data is available."
-        SmsManager.MMS_ERROR_DATA_DISABLED -> "Mobile data is off. Turn it on to send or receive MMS."
-        SmsManager.MMS_ERROR_INVALID_APN, SmsManager.MMS_ERROR_CONFIGURATION_ERROR -> "Your carrier's MMS settings (APN) look wrong."
-        SmsManager.MMS_ERROR_MMS_DISABLED_BY_CARRIER -> "Your carrier has disabled MMS for this SIM."
-        MMS_TOO_LARGE -> "The attachment is too large for your carrier."
-        SmsManager.MMS_ERROR_INACTIVE_SUBSCRIPTION, SmsManager.MMS_ERROR_INVALID_SUBSCRIPTION_ID -> "The selected SIM isn't active."
-        SmsManager.MMS_ERROR_HTTP_FAILURE, SmsManager.MMS_ERROR_UNABLE_CONNECT_MMS -> "Couldn't reach your carrier's MMS server."
-        else -> "Couldn't send multimedia message (error $resultCode)."
+    fun mmsMessage(context: Context, resultCode: Int): String = when (resultCode) {
+        SmsManager.MMS_ERROR_NO_DATA_NETWORK -> context.getString(R.string.err_mms_no_data)
+        SmsManager.MMS_ERROR_DATA_DISABLED -> context.getString(R.string.err_mms_data_off)
+        SmsManager.MMS_ERROR_INVALID_APN, SmsManager.MMS_ERROR_CONFIGURATION_ERROR -> context.getString(R.string.err_mms_apn)
+        SmsManager.MMS_ERROR_MMS_DISABLED_BY_CARRIER -> context.getString(R.string.err_mms_disabled)
+        MMS_TOO_LARGE -> context.getString(R.string.err_mms_too_large)
+        SmsManager.MMS_ERROR_INACTIVE_SUBSCRIPTION, SmsManager.MMS_ERROR_INVALID_SUBSCRIPTION_ID -> context.getString(R.string.err_mms_sim_inactive)
+        SmsManager.MMS_ERROR_HTTP_FAILURE, SmsManager.MMS_ERROR_UNABLE_CONNECT_MMS -> context.getString(R.string.err_mms_server)
+        else -> context.getString(R.string.err_mms_code, resultCode)
     }
 
     /** Backoff for queue retries: 15s, 1m, 5m, 15m... */

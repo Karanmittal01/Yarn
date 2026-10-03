@@ -50,7 +50,7 @@ class UiSnapshotTest {
         InboxItem(conv(id, title, snippet, cat, unread, addr, pinned), null, business, group, otp)
 
     private val inbox = listOf(
-        item(1, "Priya Sharma", "Are we still on for dinner tonight?", "PERSONAL", 2, "+919812345678", false, InboxGroup.PERSONAL, pinned = true),
+        item(1, "Kavya Mittal", "Are we still on for dinner tonight?", "PERSONAL", 2, "+919812345678", false, InboxGroup.PERSONAL, pinned = true),
         item(2, "SBI Card", "423378 is the OTP for Trxn. of INR 375.00 at AMAZON with your SBI Card", "OTP", 1, "AD-SBICRD-T", true, InboxGroup.OTP, "423378"),
         item(3, "HDFC Bank", "Rs.2,500.00 debited from A/c XX1234 to VPA swiggy@icici", "BANKING", 1, "VM-HDFCBK-S", true, InboxGroup.TRANSACTIONS),
         item(4, "Zepto", "Thank you for ordering from Zepto. Your order is about to be delivered.", "SHOPPING", 0, "JM-ZEPTON-S", true, InboxGroup.SHOPPING),
@@ -60,7 +60,7 @@ class UiSnapshotTest {
         item(8, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.UPDATES),
         item(9, "CDSL", "Credit in a/c *89040843 through IPO/FPO for 107 shares", "BANKING", 0, "JX-CDSLTX-S", true, InboxGroup.TRANSACTIONS),
     )
-    private val chips = listOf(app.yarn.ui.inbox.InboxChip("All", app.yarn.data.repo.InboxFilter(), unread = 4)) +
+    private val chips = listOf(app.yarn.ui.inbox.InboxChip(app.yarn.R.string.chip_all, app.yarn.data.repo.InboxFilter(), unread = 4)) +
         listOf(InboxGroup.PERSONAL to 2, InboxGroup.OTP to 1, InboxGroup.TRANSACTIONS to 1, InboxGroup.SHOPPING to 0, InboxGroup.UPDATES to 0, InboxGroup.OFFERS to 0)
             .map { (g, n) -> app.yarn.ui.inbox.InboxChip(g.label, g.filter, g, n) }
 
@@ -81,7 +81,7 @@ class UiSnapshotTest {
             containerColor = header,
             topBar = {
                 Column(Modifier.background(header)) {
-                    app.yarn.ui.inbox.InboxHeader("Messages", {}, 0, true, {}, {})
+                    app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.messages), {}, 0, true, {}, {})
                     androidx.compose.foundation.lazy.LazyRow(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
@@ -91,7 +91,7 @@ class UiSnapshotTest {
             floatingActionButton = {
                 androidx.compose.material3.ExtendedFloatingActionButton(
                     onClick = {}, icon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Edit, null, Modifier.size(22.dp)) },
-                    text = { androidx.compose.material3.Text("Start chat", style = MaterialTheme.typography.titleMedium) },
+                    text = { androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(app.yarn.R.string.start_chat), style = MaterialTheme.typography.titleMedium) },
                     containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
                 )
@@ -180,5 +180,89 @@ class UiSnapshotTest {
             item { app.yarn.ui.settings.SectionHeader("Text size") }
             item { app.yarn.ui.settings.TextSizeCard(1.1f) {} }
         }
+    }
+
+    // ---- dual SIM, translation, clean-up, onboarding ---------------------------------------
+
+    private val jio = app.yarn.telephony.SimInfo(1, 0, "Jio 4G", "Jio", "+91 98187 16240", 0)
+    private val airtel = app.yarn.telephony.SimInfo(2, 1, "airtel", "airtel", "+91 99100 22334", 0)
+
+    private fun msg(id: Long, body: String, outgoing: Boolean, sub: Int, minutesAgo: Long, status: Int = app.yarn.data.db.MessageStatus.RECEIVED) =
+        app.yarn.data.db.MessageWithAttachments(
+            app.yarn.data.db.MessageEntity(id = id, conversationId = 1, address = "+919812345678", body = body, date = now - minutesAgo * 60_000, outgoing = outgoing, status = status, subId = sub),
+            emptyList(), emptyList(),
+        )
+
+    @androidx.compose.runtime.Composable
+    private fun ChatMock(translated: Boolean, hindiUi: Boolean = false) {
+        val noop = app.yarn.ui.conversation.BubbleCallbacks({}, {}, {}, {}, {}, { _, _ -> })
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 32.dp)) {
+            app.yarn.ui.conversation.MessageBubble(msg(1, "Kal shaam ko milte hain? Movie dekhne chalenge", false, 1, 50), null, false, false, null, true, noop, sim = jio)
+            app.yarn.ui.conversation.MessageBubble(msg(2, "Haan pakka! 7 baje", true, 2, 45, app.yarn.data.db.MessageStatus.DELIVERED), null, false, false, null, true, noop, sim = airtel)
+            if (hindiUi) app.yarn.ui.conversation.MessageBubble(
+                msg(3, "Rs.2,500 has been debited from your account. If not done by you, call the bank immediately.", false, 1, 30), null, false, false,
+                null, true, noop, translateTo = "hi", sim = jio,
+            ) else app.yarn.ui.conversation.MessageBubble(
+                msg(3, "आपके खाते से ₹2,500 की निकासी हुई है। यदि यह आपने नहीं किया है तो तुरंत बैंक से संपर्क करें।", false, 1, 30), null, false, false,
+                if (translated) app.yarn.ui.conversation.TranslationUi.Done("₹2,500 has been withdrawn from your account. If you didn't do this, contact the bank immediately.", "hi") else null,
+                true, noop, translateTo = "en", sim = jio,
+            )
+            app.yarn.ui.conversation.MessageBubble(
+                msg(4, "Votre colis sera livré demain entre 9h et 12h.", false, 2, 10), null, false, false,
+                app.yarn.ui.conversation.TranslationUi.NeedsDownload("fr"), true, noop, translateTo = "en", sim = airtel,
+            )
+            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+            app.yarn.ui.conversation.Composer(
+                text = "", onText = {}, attachments = emptyList(), onAddAttachments = {}, onRemoveAttachment = {},
+                sims = listOf(jio, airtel), subId = 2, onSim = {}, smartReplies = listOf("See you then!", "👍"), onSmartReply = {},
+                onSend = {}, onSchedule = {}, onRewrite = {}, isGroupMms = false,
+            )
+        }
+    }
+
+    @Test fun chatDualSimLight() = shot(false, "15_chat_dual_sim_translate_light") { ChatMock(translated = false) }
+    @Test fun chatDualSimDark() = shot(true, "16_chat_dual_sim_translated_dark") { ChatMock(translated = true) }
+
+    @Test fun inboxDualSim() = shot(false, "17_inbox_dual_sim_clean_banner") {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 24.dp)) {
+            app.yarn.ui.inbox.CleanBanners(report = 0, junk = 1284, onClean = {}, onDismissHint = {}, onDismissReport = {})
+            inbox.take(6).forEachIndexed { i, it -> ConversationRow(it.copy(sim = if (i % 2 == 0) jio else airtel), false, false, {}, {}) }
+        }
+    }
+
+    private val found = mapOf(
+        app.yarn.data.repo.JunkKind.CODES to 842, app.yarn.data.repo.JunkKind.OFFERS to 1210,
+        app.yarn.data.repo.JunkKind.SPAM to 37, app.yarn.data.repo.JunkKind.ORDERS to 156,
+    )
+
+    @Test fun cleanerLight() = shot(false, "18_cleaner_light") {
+        app.yarn.ui.cleaner.CleanerContent(app.yarn.ui.cleaner.CleanerState(scanning = false, found = found), app.yarn.data.prefs.AppSettings(), true, {}, {}, {}, {}, {})
+    }
+    @Test fun cleanerDoneDark() = shot(true, "19_cleaner_done_dark") {
+        app.yarn.ui.cleaner.CleanerContent(
+            app.yarn.ui.cleaner.CleanerState(scanning = false, found = found.mapValues { 0 }, cleaned = 2089),
+            app.yarn.data.prefs.AppSettings(otpAutoDeleteHours = 24, promoAutoDeleteDays = 30), true, {}, {}, {}, {}, {},
+        )
+    }
+
+    private fun onboarding(step: Int, dark: Boolean, name: String) = shot(dark, name) {
+        app.yarn.ui.onboarding.OnboardingContent(step, false, "", {}, app.yarn.ui.onboarding.AutoCleanChoice(), {}, {}, {}, {}, {})
+    }
+
+    @Test fun onboardingWelcome() = onboarding(0, false, "20_onboarding_welcome")
+    @Test fun onboardingClean() = onboarding(3, true, "21_onboarding_auto_clean_dark")
+
+    // ---- Hindi ---------------------------------------------------------------------------
+
+    @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun hindiInbox() = shot(false, "22_hi_inbox") { InboxMock() }
+    @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun hindiChat() = shot(true, "23_hi_chat_dark") { ChatMock(translated = false, hindiUi = true) }
+    @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun hindiSettings() = shot(false, "24_hi_settings") {
+        app.yarn.ui.settings.SettingsScaffold(androidx.compose.ui.res.stringResource(app.yarn.R.string.settings), {}) { settingsHubItems(app.yarn.data.prefs.AppSettings(), true, {}, {}) }
+    }
+    @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun hindiCleaner() = shot(false, "25_hi_cleaner") {
+        app.yarn.ui.cleaner.CleanerContent(app.yarn.ui.cleaner.CleanerState(scanning = false, found = found), app.yarn.data.prefs.AppSettings(), true, {}, {}, {}, {}, {})
+    }
+    @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun hindiOnboarding() = shot(false, "26_hi_onboarding") {
+        app.yarn.ui.onboarding.OnboardingContent(0, false, "hi", {}, app.yarn.ui.onboarding.AutoCleanChoice(), {}, {}, {}, {}, {})
     }
 }

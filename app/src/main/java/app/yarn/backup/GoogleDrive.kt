@@ -12,12 +12,16 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.security.SecureRandom
+import app.yarn.R
 
 /** A backup stored in the user's Google Drive. */
 data class DriveBackup(val id: String, val modifiedAt: Long, val sizeBytes: Long, val messageCount: Int)
 
 /** Thrown when Google needs the user to allow access on screen; launch [intent], then try again. */
 class ConsentNeededException(val intent: Intent) : Exception("Allow Yarn to use Google Drive to continue")
+
+/** The access token was rejected (401); fetch a fresh one and retry. */
+class AuthExpiredException(message: String) : IOException(message)
 
 /**
  * Backs up to the hidden, app-only folder of the user's own Google Drive (the `drive.appdata`
@@ -42,7 +46,7 @@ class GoogleDrive(private val context: Context) {
         try {
             com.google.android.gms.auth.GoogleAuthUtil.getToken(context, account, "oauth2:$SCOPE_APPDATA")
         } catch (e: com.google.android.gms.auth.UserRecoverableAuthException) {
-            throw ConsentNeededException(e.intent ?: throw IOException("Google needs you to sign in again."))
+            throw ConsentNeededException(e.intent ?: throw IOException(context.getString(R.string.g_sign_in_again)))
         } catch (e: com.google.android.gms.auth.GoogleAuthException) {
             throw IOException(explain(e.message.orEmpty()), e)
         }
@@ -56,12 +60,11 @@ class GoogleDrive(private val context: Context) {
     /** Plain-language reason for a failed Google sign-in. */
     private fun explain(reason: String): String = when {
         reason.replace("_", "").contains("UNREGISTEREDONAPICONSOLE", true) || reason.contains("INVALID_CLIENT", true) ->
-            "Google doesn't recognise this copy of Yarn. In Google Cloud → Clients, add an Android client for package " +
-                "${context.packageName} with SHA-1 ${signingSha1() ?: "(unknown)"}"
-        reason.contains("NetworkError", true) -> "No internet connection."
-        reason.contains("BadAuthentication", true) -> "Please sign in to this Google account again in your phone's settings."
-        reason.contains("ServiceDisabled", true) -> "Google Drive access is turned off for this account."
-        else -> "Google sign-in failed: $reason"
+            context.getString(R.string.g_unregistered, context.packageName, signingSha1() ?: "?")
+        reason.contains("NetworkError", true) -> context.getString(R.string.g_no_internet)
+        reason.contains("BadAuthentication", true) -> context.getString(R.string.g_bad_auth)
+        reason.contains("ServiceDisabled", true) -> context.getString(R.string.g_disabled)
+        else -> context.getString(R.string.g_failed_reason, reason)
     }
 
     /** The random key that encrypts this account's backups, created on first use. */
@@ -105,7 +108,7 @@ class GoogleDrive(private val context: Context) {
             outputStream.use { it.write(meta.toString().toByteArray()) }
         }
         check(start)
-        val session = start.getHeaderField("Location") ?: throw IOException("Google Drive refused the upload")
+        val session = start.getHeaderField("Location") ?: throw IOException(context.getString(R.string.g_upload_refused))
         val put = (URL(session).openConnection() as HttpURLConnection).apply {
             requestMethod = "PUT"
             doOutput = true
@@ -169,11 +172,11 @@ class GoogleDrive(private val context: Context) {
         val code = conn.responseCode
         if (code !in 200..299) {
             val detail = runCatching { conn.errorStream?.use { it.readBytes().decodeToString() } }.getOrNull().orEmpty()
+            if (code == 401) throw AuthExpiredException(context.getString(R.string.g_expired))
             throw IOException(
                 when (code) {
-                    401 -> "Google sign-in expired. Please sign in again."
-                    403 -> if ("storageQuota" in detail) "Your Google storage is full." else "Google Drive refused access."
-                    else -> "Google Drive error ($code)"
+                    403 -> context.getString(if ("storageQuota" in detail) R.string.g_storage_full else R.string.g_refused)
+                    else -> context.getString(R.string.g_error_code, code)
                 },
             )
         }

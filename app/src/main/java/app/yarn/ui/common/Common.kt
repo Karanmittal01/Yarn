@@ -67,6 +67,8 @@ import app.yarn.intelligence.Category
 import app.yarn.notifications.Avatars
 import coil3.compose.AsyncImage
 import java.util.Date
+import androidx.compose.ui.res.stringResource
+import app.yarn.R
 
 val Context.container: AppContainer get() = (applicationContext as YarnApplication).container
 
@@ -132,19 +134,24 @@ fun Avatar(
 private fun Color.mix(other: Color, t: Float): Color = Color(red + (other.red - red) * t, green + (other.green - green) * t, blue + (other.blue - blue) * t, 1f)
 
 object CategoryUi {
-    fun label(c: Category): String = when (c) {
-        Category.PERSONAL -> "Personal"
-        Category.WORK -> "Work"
-        Category.OTP -> "OTP"
-        Category.BANKING -> "Banking"
-        Category.PAYMENTS -> "Payments"
-        Category.BILLS -> "Bills"
-        Category.DELIVERY -> "Deliveries"
-        Category.SHOPPING -> "Shopping"
-        Category.TRAVEL -> "Travel"
-        Category.UPDATES -> "Updates"
-        Category.PROMOTIONS -> "Promotions"
-        Category.SPAM -> "Spam"
+    /** A category's name in Yarn's current language. */
+    @Composable
+    fun label(c: Category): String = stringResource(labelRes(c))
+
+    @androidx.annotation.StringRes
+    fun labelRes(c: Category): Int = when (c) {
+        Category.PERSONAL -> R.string.category_personal
+        Category.WORK -> R.string.category_work
+        Category.OTP -> R.string.category_otp
+        Category.BANKING -> R.string.category_banking
+        Category.PAYMENTS -> R.string.category_payments
+        Category.BILLS -> R.string.category_bills
+        Category.DELIVERY -> R.string.category_delivery
+        Category.SHOPPING -> R.string.category_shopping
+        Category.TRAVEL -> R.string.category_travel
+        Category.UPDATES -> R.string.category_updates
+        Category.PROMOTIONS -> R.string.category_promotions
+        Category.SPAM -> R.string.category_spam
     }
 
     fun icon(c: Category): ImageVector = when (c) {
@@ -188,8 +195,8 @@ object Format {
     fun time(context: Context, millis: Long): String = DateFormat.getTimeFormat(context).format(Date(millis))
 
     fun dayHeader(context: Context, millis: Long): String = when {
-        DateUtils.isToday(millis) -> "Today"
-        DateUtils.isToday(millis + DateUtils.DAY_IN_MILLIS) -> "Yesterday"
+        DateUtils.isToday(millis) -> context.getString(R.string.today)
+        DateUtils.isToday(millis + DateUtils.DAY_IN_MILLIS) -> context.getString(R.string.yesterday)
         else -> DateUtils.formatDateTime(context, millis, DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_SHOW_DATE or (if (isThisYear(millis)) DateUtils.FORMAT_NO_YEAR else DateUtils.FORMAT_SHOW_YEAR))
     }
 
@@ -209,11 +216,7 @@ object Format {
         return c.get(java.util.Calendar.YEAR) == y
     }
 
-    fun size(bytes: Long): String = when {
-        bytes >= 1_048_576 -> "%.1f MB".format(bytes / 1_048_576.0)
-        bytes >= 1024 -> "${bytes / 1024} KB"
-        else -> "$bytes B"
-    }
+    fun size(context: Context, bytes: Long): String = android.text.format.Formatter.formatShortFileSize(context, bytes)
 }
 
 @Composable
@@ -234,7 +237,7 @@ fun ConfirmDialog(
                 Text(confirm, color = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
@@ -245,7 +248,7 @@ fun CategoryPickerDialog(current: Category?, onPick: (Category, Boolean) -> Unit
     val currentGroup = InboxGroup.of(current)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Move to") },
+        title = { Text(stringResource(R.string.move_to)) },
         text = {
             Column {
                 InboxGroup.entries.forEach { g ->
@@ -261,18 +264,18 @@ fun CategoryPickerDialog(current: Category?, onPick: (Category, Boolean) -> Unit
                     ) {
                         androidx.compose.material3.Icon(CategoryUi.groupIcon(g), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(14.dp))
-                        Text(g.label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                        if (selected) Text("Current", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(g.label), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        if (selected) Text(stringResource(R.string.current), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 Row(Modifier.padding(top = 8.dp).clickable { always = !always }, verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = always, onCheckedChange = { always = it })
-                    Text("Always do this for this sender", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.always_for_sender), style = MaterialTheme.typography.bodyMedium)
                 }
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 

@@ -29,6 +29,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.yarn.data.repo.InboxFilter
 import app.yarn.data.repo.InboxView
+import app.yarn.ui.cleaner.CleanerScreen
+import app.yarn.ui.cleaner.CleanerViewModel
 import app.yarn.ui.common.yarnViewModel
 import app.yarn.ui.conversation.ConversationScreen
 import app.yarn.ui.conversation.ConversationViewModel
@@ -53,6 +55,8 @@ import app.yarn.ui.settings.SettingsViewModel
 import app.yarn.ui.settings.StarredScreen
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.Serializable
+import androidx.compose.ui.res.stringResource
+import app.yarn.R
 
 @Serializable object HomeRoute
 @Serializable data class ChatRoute(val id: Long, val messageId: Long = -1)
@@ -119,6 +123,7 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
                 SettingsPage.MESSAGING -> MessagingScreen(vm, back)
                 SettingsPage.AI -> AiSettingsScreen(vm, back)
                 SettingsPage.PRIVACY -> PrivacyScreen(vm, back)
+                SettingsPage.CLEANUP -> CleanerScreen(yarnViewModel { CleanerViewModel(it) }, back)
                 SettingsPage.BLOCKED -> BlockedScreen(vm, back) { nav.navigate(FolderRoute(InboxView.BLOCKED.name)) }
                 SettingsPage.BACKUP -> BackupScreen(vm, back)
                 SettingsPage.ABOUT -> AboutScreen(back)
@@ -130,11 +135,11 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
             InboxScreen(
                 vm = vm,
                 title = when (view) {
-                    InboxView.ARCHIVED -> "Archived"
-                    InboxView.SPAM -> "Spam"
-                    InboxView.BLOCKED -> "Blocked"
-                    InboxView.STARRED -> "Starred conversations"
-                    else -> "Messages"
+                    InboxView.ARCHIVED -> stringResource(R.string.archived)
+                    InboxView.SPAM -> stringResource(R.string.verdict_spam)
+                    InboxView.BLOCKED -> stringResource(R.string.blocked)
+                    InboxView.STARRED -> stringResource(R.string.starred_conversations)
+                    else -> stringResource(R.string.messages)
                 },
                 selectedConversation = null,
                 onOpen = { nav.navigate(ChatRoute(it)) },
@@ -164,6 +169,7 @@ private fun HomePane(nav: NavHostController) {
             InboxDestination.Spam -> nav.navigate(FolderRoute(InboxView.SPAM.name))
             InboxDestination.Blocked -> nav.navigate(FolderRoute(InboxView.BLOCKED.name))
             InboxDestination.Settings -> nav.navigate(SettingsRoute)
+            InboxDestination.Cleanup -> nav.navigate(SettingsSubRoute(SettingsPage.CLEANUP.name))
         }
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -171,7 +177,7 @@ private fun HomePane(nav: NavHostController) {
         val twoPane = width >= 720.dp
         if (!twoPane) {
             InboxScreen(
-                vm = inboxVm, title = "Messages", selectedConversation = null,
+                vm = inboxVm, title = stringResource(R.string.messages), selectedConversation = null,
                 onOpen = { nav.navigate(ChatRoute(it)) }, onNewMessage = { nav.navigate(NewChatRoute()) },
                 onSearch = { nav.navigate(SearchRoute) }, onNavigate = onNavigate,
             )
@@ -179,7 +185,7 @@ private fun HomePane(nav: NavHostController) {
             Row(Modifier.fillMaxSize()) {
                 Box(Modifier.width((width * 0.38f).coerceIn(320.dp, 440.dp)).fillMaxHeight()) {
                     InboxScreen(
-                        vm = inboxVm, title = "Messages", selectedConversation = selected,
+                        vm = inboxVm, title = stringResource(R.string.messages), selectedConversation = selected,
                         onOpen = { selected = it }, onNewMessage = { nav.navigate(NewChatRoute()) },
                         onSearch = { nav.navigate(SearchRoute) }, onNavigate = onNavigate,
                     )
@@ -191,7 +197,7 @@ private fun HomePane(nav: NavHostController) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(Icons.AutoMirrored.Outlined.Chat, null, tint = MaterialTheme.colorScheme.outline)
-                                Text("Select a conversation", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.select_conversation), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     } else {

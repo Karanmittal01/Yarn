@@ -39,7 +39,8 @@ data class AppSettings(
     val smartReplies: Boolean = true,
     val mlEntityExtraction: Boolean = true,
     val learningEnabled: Boolean = true,
-    val translateTarget: String = Locale.getDefault().language,
+    /** Language to translate messages into; "" follows Yarn's own language. */
+    val translateTarget: String = "",
     val localLlmPath: String? = null,
     val selfHostedAiEnabled: Boolean = false,
     val selfHostedAiUrl: String = "",
@@ -49,6 +50,12 @@ data class AppSettings(
     val secureScreen: Boolean = false,
     val otpAutoDeleteHours: Int = 0,
     val spamAutoDeleteDays: Int = 30,
+    /** Delete offers & promotions older than this many days (0 = keep). */
+    val promoAutoDeleteDays: Int = 0,
+    /** Messages removed by the first automatic clean-up, to tell the user once; -1 = already told. */
+    val autoCleanReport: Int = 0,
+    /** When the inbox's "clean up" suggestion was last dismissed. */
+    val cleanHintDismissedAt: Long = 0,
     val swipeStart: SwipeAction = SwipeAction.ARCHIVE,
     val swipeEnd: SwipeAction = SwipeAction.READ,
     val dayFirstDates: Boolean = Locale.getDefault().country !in setOf("US", "CA", "PH", "BZ", "FM"),
@@ -88,7 +95,7 @@ class SettingsRepository(private val context: Context) {
         val smartReplies = booleanPreferencesKey("smart_replies")
         val mlEntities = booleanPreferencesKey("ml_entities")
         val learning = booleanPreferencesKey("learning")
-        val translateTarget = stringPreferencesKey("translate_target")
+        val translateTarget = stringPreferencesKey("translate_into")
         val localLlmPath = stringPreferencesKey("local_llm_path")
         val selfHostedEnabled = booleanPreferencesKey("self_hosted_ai")
         val selfHostedUrl = stringPreferencesKey("self_hosted_ai_url")
@@ -98,6 +105,9 @@ class SettingsRepository(private val context: Context) {
         val secureScreen = booleanPreferencesKey("secure_screen")
         val otpAutoDelete = intPreferencesKey("otp_auto_delete_hours")
         val spamAutoDelete = intPreferencesKey("spam_auto_delete_days")
+        val promoAutoDelete = intPreferencesKey("promo_auto_delete_days")
+        val autoCleanReport = intPreferencesKey("auto_clean_report")
+        val cleanHintDismissedAt = longPreferencesKey("clean_hint_dismissed_at")
         val swipeStart = stringPreferencesKey("swipe_start")
         val swipeEnd = stringPreferencesKey("swipe_end")
         val dayFirst = booleanPreferencesKey("day_first")
@@ -148,6 +158,9 @@ class SettingsRepository(private val context: Context) {
             p[K.secureScreen] = s.secureScreen
             p[K.otpAutoDelete] = s.otpAutoDeleteHours
             p[K.spamAutoDelete] = s.spamAutoDeleteDays
+            p[K.promoAutoDelete] = s.promoAutoDeleteDays
+            p[K.autoCleanReport] = s.autoCleanReport
+            p[K.cleanHintDismissedAt] = s.cleanHintDismissedAt
             p[K.swipeStart] = s.swipeStart.name
             p[K.swipeEnd] = s.swipeEnd.name
             p[K.dayFirst] = s.dayFirstDates
@@ -192,6 +205,9 @@ class SettingsRepository(private val context: Context) {
         secureScreen = p[K.secureScreen] ?: d.secureScreen,
         otpAutoDeleteHours = p[K.otpAutoDelete] ?: d.otpAutoDeleteHours,
         spamAutoDeleteDays = p[K.spamAutoDelete] ?: d.spamAutoDeleteDays,
+        promoAutoDeleteDays = p[K.promoAutoDelete] ?: d.promoAutoDeleteDays,
+        autoCleanReport = p[K.autoCleanReport] ?: d.autoCleanReport,
+        cleanHintDismissedAt = p[K.cleanHintDismissedAt] ?: d.cleanHintDismissedAt,
         swipeStart = p[K.swipeStart]?.let { runCatching { SwipeAction.valueOf(it) }.getOrNull() } ?: d.swipeStart,
         swipeEnd = p[K.swipeEnd]?.let { runCatching { SwipeAction.valueOf(it) }.getOrNull() } ?: d.swipeEnd,
         dayFirstDates = p[K.dayFirst] ?: d.dayFirstDates,

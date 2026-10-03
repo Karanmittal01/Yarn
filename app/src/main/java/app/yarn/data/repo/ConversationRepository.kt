@@ -28,6 +28,7 @@ import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.text.DateFormat
 import java.util.Date
+import app.yarn.R
 
 enum class InboxView { ALL, IMPORTANT, UNREAD, CATEGORY, ARCHIVED, SPAM, BLOCKED, STARRED }
 
@@ -37,13 +38,13 @@ data class InboxFilter(val view: InboxView = InboxView.ALL, val categories: Set<
  * The six inbox groups people see. The analyser still works with finer categories internally
  * (useful for priority and notifications), but the UI keeps choices simple.
  */
-enum class InboxGroup(val label: String, val kind: CategoryGroup, val representative: Category) {
-    PERSONAL("Personal", CategoryGroup.PERSONAL, Category.PERSONAL),
-    OTP("OTP", CategoryGroup.OTP, Category.OTP),
-    TRANSACTIONS("Transactions", CategoryGroup.TRANSACTIONS, Category.BANKING),
-    SHOPPING("Shopping", CategoryGroup.SHOPPING, Category.SHOPPING),
-    UPDATES("Updates", CategoryGroup.UPDATES, Category.UPDATES),
-    OFFERS("Offers", CategoryGroup.OFFERS, Category.PROMOTIONS);
+enum class InboxGroup(@androidx.annotation.StringRes val label: Int, val kind: CategoryGroup, val representative: Category) {
+    PERSONAL(R.string.group_personal, CategoryGroup.PERSONAL, Category.PERSONAL),
+    OTP(R.string.group_otp, CategoryGroup.OTP, Category.OTP),
+    TRANSACTIONS(R.string.group_transactions, CategoryGroup.TRANSACTIONS, Category.BANKING),
+    SHOPPING(R.string.group_shopping, CategoryGroup.SHOPPING, Category.SHOPPING),
+    UPDATES(R.string.group_updates, CategoryGroup.UPDATES, Category.UPDATES),
+    OFFERS(R.string.group_offers, CategoryGroup.OFFERS, Category.PROMOTIONS);
 
     val categories: Set<Category> get() = Category.entries.filter { it.group == kind }.toSet()
     val filter: InboxFilter get() = InboxFilter(InboxView.CATEGORY, categories)
@@ -107,7 +108,7 @@ class ConversationRepository(
         }
     }
 
-    suspend fun titleFor(id: Long): String = db.conversations().get(id)?.title ?: "Unknown"
+    suspend fun titleFor(id: Long): String = db.conversations().get(id)?.title ?: context.getString(R.string.unknown)
 
     /** Re-resolves contact names after the address book changes. */
     suspend fun refreshDisplayNames() {
@@ -258,17 +259,27 @@ class ConversationRepository(
 
     // ---- messages ---------------------------------------------------------------------------
 
-    suspend fun deleteMessages(ids: Collection<Long>) {
-        val messages = db.messages().getAll(ids)
-        deleteLocalFiles(ids)
-        providerLock.withLock {
-            messages.forEach { m ->
-                m.providerId?.let { if (m.kind == MessageKind.SMS) store.deleteSms(it) else store.deleteMms(it) }
-                m.extraProviderIds?.split(',')?.mapNotNull { it.toLongOrNull() }?.forEach { store.deleteSms(it) }
+    /** Deletes messages here and in the system store, in batches so thousands go quickly. */
+    suspend fun deleteMessages(ids: Collection<Long>, onProgress: (Int) -> Unit = {}) {
+        val touched = HashSet<Long>()
+        var done = 0
+        for (chunk in ids.chunked(DELETE_BATCH)) {
+            val messages = db.messages().getAll(chunk)
+            deleteLocalFiles(chunk)
+            providerLock.withLock {
+                val sms = ArrayList<Long>()
+                messages.forEach { m ->
+                    m.providerId?.let { if (m.kind == MessageKind.SMS) sms += it else store.deleteMms(it) }
+                    m.extraProviderIds?.split(',')?.mapNotNull { it.toLongOrNull() }?.let(sms::addAll)
+                }
+                store.deleteSms(sms)
             }
+            db.messages().delete(chunk)
+            messages.mapTo(touched) { it.conversationId }
+            done += chunk.size
+            onProgress(done)
         }
-        db.messages().delete(ids)
-        messages.map { it.conversationId }.distinct().forEach { db.conversations().refresh(it) }
+        touched.forEach { db.conversations().refresh(it) }
     }
 
     suspend fun setMessagesStarred(ids: Collection<Long>, starred: Boolean) = db.messages().setStarred(ids, starred)
@@ -294,14 +305,14 @@ class ConversationRepository(
         val fmt = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
         val msgs = db.messages().recent(conversationId, 5000).sortedBy { it.date }
         return buildString {
-            appendLine("Conversation with ${c.title}")
+            appendLine(context.getString(R.string.transcript_header, c.title))
             appendLine()
-            msgs.forEach { m -> appendLine("[${fmt.format(Date(m.date))}] ${if (m.outgoing) "Me" else senderName(m)}: ${m.body}${if (m.hasAttachments) " [attachment]" else ""}") }
+            msgs.forEach { m -> appendLine("[${fmt.format(Date(m.date))}] ${if (m.outgoing) context.getString(R.string.me) else senderName(m)}: ${m.body}${if (m.hasAttachments) context.getString(R.string.attachment_tag) else ""}") }
         }
     }
 
     fun senderName(m: MessageEntity): String {
-        if (m.outgoing) return "You"
+        if (m.outgoing) return context.getString(R.string.you)
         return contacts.lookup(m.address)?.name ?: PhoneNumbers.format(m.address, PhoneNumbers.countryIso(context))
     }
 
@@ -327,3 +338,5 @@ class ConversationRepository(
         q.split(Regex("\\s+")).map { it.replace(Regex("[^\\p{L}\\p{N}]"), "") }.filter { it.isNotEmpty() }
             .joinToString(" ") { "$it*" }
 }
+
+private const val DELETE_BATCH = 400

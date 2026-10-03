@@ -28,6 +28,7 @@ import app.yarn.backup.BackupManager
 import app.yarn.data.contacts.ContactsRepository
 import app.yarn.data.db.YarnDatabase
 import app.yarn.data.prefs.SettingsRepository
+import app.yarn.data.repo.Cleaner
 import app.yarn.data.repo.ConversationRepository
 import app.yarn.data.repo.TelephonySync
 import app.yarn.messaging.IncomingProcessor
@@ -65,11 +66,11 @@ class AppContainer(val app: Application) {
     val store = TelephonyStore(app)
 
     val engine by lazy { IntelligenceEngine(db, settings, contacts, scope) }
-    val notifier by lazy { Notifier(app, db, contacts, settings) }
+    val notifier by lazy { Notifier(app, db, contacts, settings, sims) }
     val conversations by lazy { ConversationRepository(app, db, store, contacts, engine, notifier, providerLock, scope) }
     val sender by lazy { MessageSender(app, db, store, sims, settings, engine, notifier, providerLock, scope) }
     val language by lazy { LanguageService() }
-    val translation by lazy { TranslationService(language) }
+    val translation by lazy { TranslationService(app, language) }
     val mlEntities by lazy { MlEntityService() }
     val smartSorter by lazy { SmartSorter(db, nano, settings) }
     val incoming by lazy { IncomingProcessor(app, db, store, sims, settings, engine, mlEntities, smartSorter, conversations, sender, notifier, providerLock, scope) }
@@ -79,6 +80,7 @@ class AppContainer(val app: Application) {
     val assistant by lazy { AssistantService(settings, nano, localLlm, SelfHostedAiService(), SmartReplyService(), language, mlEntities) }
     val backup by lazy { BackupManager(app, db, store, sync, providerLock) }
     val drive by lazy { GoogleDrive(app) }
+    val cleaner by lazy { Cleaner(db, conversations, settings) }
     val shareHolder = ShareHolder()
 
     private val _isDefaultSmsApp = MutableStateFlow(false)
@@ -170,8 +172,15 @@ class YarnApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        app.yarn.i18n.AppLanguage.applyTo(this)
         container = AppContainer(this)
         container.start()
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // Android 10–12: keep Yarn's chosen language when the phone's configuration changes.
+        app.yarn.i18n.AppLanguage.applyTo(this)
     }
 
     companion object {

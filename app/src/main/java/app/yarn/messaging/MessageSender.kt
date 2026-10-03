@@ -41,6 +41,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.util.UUID
+import app.yarn.R
 
 /**
  * Durable outgoing queue. Every message is persisted before any radio work, so nothing is lost
@@ -171,7 +172,7 @@ class MessageSender(
                 if (m.sendAsMms) sendMms(m) else sendSms(m)
             } catch (e: Exception) {
                 Log.e(TAG, "Send failed for ${m.id}", e)
-                finishAttempt(m.id, m.attempts + 1, SendErrors.Action.RETRY, -1, e.message ?: "Unexpected error", isMms = m.sendAsMms)
+                finishAttempt(m.id, m.attempts + 1, SendErrors.Action.RETRY, -1, e.message ?: context.getString(R.string.unexpected_error), isMms = m.sendAsMms)
             }
         }
         scheduleAlarm()
@@ -184,11 +185,11 @@ class MessageSender(
             if (System.currentTimeMillis() - maxOf(m.nextAttemptAt, m.date) < 10 * 60_000L) continue
             db.messages().update(m.copy(status = MessageStatus.FAILED, errorCode = -2))
             db.conversations().refresh(m.conversationId)
-            notifier.notifyFailed(m, conversationTitle(m.conversationId), "Sending status unknown. Tap to check and retry.")
+            notifier.notifyFailed(m, conversationTitle(m.conversationId), context.getString(R.string.status_unknown_retry))
         }
     }
 
-    private suspend fun conversationTitle(id: Long) = db.conversations().get(id)?.title ?: "conversation"
+    private suspend fun conversationTitle(id: Long) = db.conversations().get(id)?.title ?: context.getString(R.string.conversation)
 
     // ---- SMS ----------------------------------------------------------------------------------
 
@@ -267,7 +268,7 @@ class MessageSender(
             finishSuccess(updated)
         } else {
             val code = updated.errorCode
-            finishAttempt(messageId, attempt, SendErrors.smsAction(code), code, SendErrors.smsMessage(code), isMms = false)
+            finishAttempt(messageId, attempt, SendErrors.smsAction(code), code, SendErrors.smsMessage(context, code), isMms = false)
         }
     }
 
@@ -286,7 +287,7 @@ class MessageSender(
             status >= 0x40 -> {
                 if (providerId > 0) providerLock.withLock { store.updateSmsDeliveryStatus(providerId, Telephony.Sms.STATUS_FAILED) }
                 db.messages().update(m.copy(status = MessageStatus.FAILED, errorCode = status))
-                notifier.notifyFailed(m, conversationTitle(m.conversationId), "The network reported the message was not delivered.")
+                notifier.notifyFailed(m, conversationTitle(m.conversationId), context.getString(R.string.not_delivered))
             }
         }
         db.conversations().refresh(m.conversationId)
@@ -347,7 +348,7 @@ class MessageSender(
         val attempt = m.attempts + 1
         if (!config.mmsEnabled) {
             db.messages().update(m.copy(attempts = attempt, status = MessageStatus.SENDING))
-            finishAttempt(m.id, attempt, SendErrors.Action.FAIL, SmsManager.MMS_ERROR_MMS_DISABLED_BY_CARRIER, SendErrors.mmsMessage(SmsManager.MMS_ERROR_MMS_DISABLED_BY_CARRIER), true)
+            finishAttempt(m.id, attempt, SendErrors.Action.FAIL, SmsManager.MMS_ERROR_MMS_DISABLED_BY_CARRIER, SendErrors.mmsMessage(context, SmsManager.MMS_ERROR_MMS_DISABLED_BY_CARRIER), true)
             return
         }
         val recipients = m.address.split(',').filter { it.isNotBlank() }
@@ -367,7 +368,7 @@ class MessageSender(
                     }
             } else {
                 val data = runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
-                    ?: run { finishAttempt(m.id, attempt, SendErrors.Action.FAIL, -3, "An attachment is no longer available.", true); return }
+                    ?: run { finishAttempt(m.id, attempt, SendErrors.Action.FAIL, -3, context.getString(R.string.attachment_gone), true); return }
                 if (data.size > perAttachment) { failTooLarge(m, attempt, config.maxMessageSize); return }
                 data to a.mimeType
             }
@@ -411,13 +412,13 @@ class MessageSender(
         } catch (e: Exception) {
             Log.w(TAG, "sendMultimediaMessage threw", e)
             file.delete()
-            finishAttempt(m.id, attempt, SendErrors.Action.RETRY, SmsManager.MMS_ERROR_UNSPECIFIED, SendErrors.mmsMessage(SmsManager.MMS_ERROR_UNSPECIFIED), true)
+            finishAttempt(m.id, attempt, SendErrors.Action.RETRY, SmsManager.MMS_ERROR_UNSPECIFIED, SendErrors.mmsMessage(context, SmsManager.MMS_ERROR_UNSPECIFIED), true)
         }
     }
 
     private suspend fun failTooLarge(m: MessageEntity, attempt: Int, limit: Int) {
         db.messages().update(m.copy(attempts = attempt, status = MessageStatus.SENDING))
-        finishAttempt(m.id, attempt, SendErrors.Action.FAIL, SendErrors.MMS_TOO_LARGE, "Attachment is larger than your carrier's ${limit / 1024} KB MMS limit.", true)
+        finishAttempt(m.id, attempt, SendErrors.Action.FAIL, SendErrors.MMS_TOO_LARGE, context.getString(R.string.mms_limit, limit / 1024), true)
     }
 
     suspend fun onMmsSent(messageId: Long, attempt: Int, resultCode: Int, response: ByteArray?, filePath: String?) = callbackLock.withLock {
@@ -430,7 +431,7 @@ class MessageSender(
                 val status = conf.responseStatus ?: 0
                 // 0xC0-0xDF transient, 0xE0-0xFF permanent (OMA-TS-MMS-ENC 7.3.48).
                 val action = if (status in 0xC0..0xDF) SendErrors.Action.RETRY else SendErrors.Action.FAIL
-                finishAttempt(messageId, attempt, action, status, conf.responseText ?: "The carrier rejected the message.", true)
+                finishAttempt(messageId, attempt, action, status, conf.responseText ?: context.getString(R.string.carrier_rejected), true)
                 return@withLock
             }
             db.messages().update(m.copy(status = MessageStatus.SENT, dateSent = System.currentTimeMillis(), mmsMessageId = conf?.messageId, errorCode = 0))
@@ -439,7 +440,7 @@ class MessageSender(
             db.conversations().refresh(m.conversationId)
             notifier.cancelFailed(m.id)
         } else {
-            finishAttempt(messageId, attempt, SendErrors.mmsAction(resultCode), resultCode, SendErrors.mmsMessage(resultCode), true)
+            finishAttempt(messageId, attempt, SendErrors.mmsAction(resultCode), resultCode, SendErrors.mmsMessage(context, resultCode), true)
         }
     }
 

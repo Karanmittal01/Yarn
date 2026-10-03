@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
+import app.yarn.R
 
 class IncomingProcessor(
     private val context: Context,
@@ -134,7 +135,7 @@ class IncomingProcessor(
 
     private suspend fun onMmsNotification(n: Pdu.NotificationInd, subId: Int) {
         if (db.messages().byContentLocation(n.contentLocation) != null) return // duplicate push
-        val from = n.from ?: "Unknown sender"
+        val from = n.from ?: context.getString(R.string.unknown_sender)
         if (conversations.blockDecision(from, n.subject.orEmpty()) == ConversationRepository.Block.DROP) return
         val threadId = runCatching { providerLock.withLock { store.threadIdFor(setOf(from)) } }.getOrElse { -from.hashCode().toLong() }
         conversations.ensure(threadId, listOf(from))
@@ -154,7 +155,7 @@ class IncomingProcessor(
             download(id)
         } else {
             val m = db.messages().get(id) ?: return
-            notifier.notifyMmsPending(m, conversations.titleFor(threadId), if (roaming) "Not downloaded while roaming. Tap to download." else "Tap to download.")
+            notifier.notifyMmsPending(m, conversations.titleFor(threadId), context.getString(if (roaming) R.string.mms_roaming_tap else R.string.tap_to_download))
         }
     }
 
@@ -263,7 +264,7 @@ class IncomingProcessor(
         if (!expired && attempt < 3 && SendErrors.mmsAction(code) != SendErrors.Action.FAIL) {
             MmsDownloadWorker.enqueue(context, messageId, SendErrors.backoffMillis(attempt + 1))
         } else if (!expired) {
-            notifier.notifyMmsPending(m, conversations.titleFor(m.conversationId), SendErrors.mmsMessage(code))
+            notifier.notifyMmsPending(m, conversations.titleFor(m.conversationId), SendErrors.mmsMessage(context, code))
         }
     }
 

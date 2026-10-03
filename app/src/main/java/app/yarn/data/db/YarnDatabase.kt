@@ -7,6 +7,8 @@ import android.util.Base64
 import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
@@ -40,7 +42,7 @@ class Converters {
         ConversationEntity::class, MessageEntity::class, MessageFts::class, AttachmentEntity::class,
         ExtractedEntity::class, CorrectionEntity::class, SenderRuleEntity::class, BlockRuleEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -52,6 +54,17 @@ abstract class YarnDatabase : RoomDatabase() {
 
     companion object {
         private const val NAME = "yarn.db"
+
+        /** Adds the latest message's SIM to conversations and fills it in for existing threads. */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE conversations ADD COLUMN lastSubId INTEGER NOT NULL DEFAULT -1")
+                db.execSQL(
+                    "UPDATE conversations SET lastSubId = COALESCE((SELECT m.subId FROM messages m " +
+                        "WHERE m.conversationId = conversations.id ORDER BY m.date DESC, m.id DESC LIMIT 1), -1)",
+                )
+            }
+        }
         private const val TAG = "YarnDatabase"
 
         /**
@@ -85,6 +98,7 @@ abstract class YarnDatabase : RoomDatabase() {
         private fun build(context: Context, key: ByteArray) =
             Room.databaseBuilder(context, YarnDatabase::class.java, NAME)
                 .openHelperFactory(SupportOpenHelperFactory(key))
+                .addMigrations(MIGRATION_1_2)
                 .fallbackToDestructiveMigrationOnDowngrade(true)
                 .build()
     }

@@ -2,6 +2,8 @@ package app.yarn.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -49,6 +51,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import app.yarn.R
 
 class SettingsViewModel(val c: AppContainer) : ViewModel() {
     val settings: StateFlow<AppSettings> = c.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
@@ -104,6 +108,7 @@ fun SettingsRow(
     tint: Color = MaterialTheme.colorScheme.primary,
     enabled: Boolean = true,
     titleColor: Color = MaterialTheme.colorScheme.onSurface,
+    leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val alpha = if (enabled) 1f else 0.38f
@@ -116,6 +121,9 @@ fun SettingsRow(
     ) {
         if (icon != null) {
             IconTile(icon, tint)
+            Spacer(Modifier.width(14.dp))
+        } else if (leading != null) {
+            Box(Modifier.size(30.dp), contentAlignment = Alignment.Center) { leading() }
             Spacer(Modifier.width(14.dp))
         }
         Column(Modifier.weight(1f)) {
@@ -192,7 +200,7 @@ fun <T> ChoiceRow(title: String, options: List<Pair<T, String>>, selected: T, ic
             onDismissRequest = { open = false },
             title = { Text(title) },
             text = {
-                Column {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
                     options.forEach { (value, label) ->
                         Row(
                             Modifier.fillMaxWidth().selectable(selected = value == selected, role = Role.RadioButton) { onSelect(value); open = false }.padding(vertical = 10.dp),
@@ -205,7 +213,7 @@ fun <T> ChoiceRow(title: String, options: List<Pair<T, String>>, selected: T, ic
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { open = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }

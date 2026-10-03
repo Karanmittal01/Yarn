@@ -29,38 +29,40 @@ import app.yarn.data.db.YarnDatabase
 import app.yarn.data.prefs.SettingsRepository
 import app.yarn.intelligence.Category
 import app.yarn.telephony.PhoneNumbers
+import app.yarn.telephony.SimManager
 
 class Notifier(
     private val context: Context,
     private val db: YarnDatabase,
     private val contacts: ContactsRepository,
     private val settings: SettingsRepository,
+    private val sims: SimManager,
 ) {
     private val nm = NotificationManagerCompat.from(context)
 
     fun createChannels() {
         val manager = context.getSystemService(NotificationManager::class.java)
         val channels = listOf(
-            NotificationChannel(CH_MESSAGES, "Messages", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "New messages from people and important senders"
+            NotificationChannel(CH_MESSAGES, context.getString(R.string.ch_messages), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = context.getString(R.string.ch_messages_desc)
             },
-            NotificationChannel(CH_OTP, "One-time codes", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Verification codes, with a quick copy button"
+            NotificationChannel(CH_OTP, context.getString(R.string.ch_otp), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = context.getString(R.string.ch_otp_desc)
             },
-            NotificationChannel(CH_QUIET, "Promotions & updates", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "Marketing and routine updates, delivered silently"
+            NotificationChannel(CH_QUIET, context.getString(R.string.ch_quiet), NotificationManager.IMPORTANCE_LOW).apply {
+                description = context.getString(R.string.ch_quiet_desc)
             },
-            NotificationChannel(CH_SPAM, "Suspected spam", NotificationManager.IMPORTANCE_MIN).apply {
-                description = "Only used if you turn on spam notifications"
+            NotificationChannel(CH_SPAM, context.getString(R.string.ch_spam), NotificationManager.IMPORTANCE_MIN).apply {
+                description = context.getString(R.string.ch_spam_desc)
             },
-            NotificationChannel(CH_FAILED, "Failed messages", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                description = "Messages that could not be sent or downloaded"
+            NotificationChannel(CH_FAILED, context.getString(R.string.ch_failed), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = context.getString(R.string.ch_failed_desc)
             },
-            NotificationChannel(CH_FLASH, "Flash messages", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Class 0 messages that are shown immediately and not stored"
+            NotificationChannel(CH_FLASH, context.getString(R.string.ch_flash), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = context.getString(R.string.ch_flash_desc)
             },
-            NotificationChannel(CH_BACKGROUND, "Background activity", NotificationManager.IMPORTANCE_MIN).apply {
-                description = "Shown briefly while sending or importing on older Android versions"
+            NotificationChannel(CH_BACKGROUND, context.getString(R.string.ch_background), NotificationManager.IMPORTANCE_MIN).apply {
+                description = context.getString(R.string.ch_background_desc)
             },
         )
         manager.createNotificationChannels(channels)
@@ -133,17 +135,17 @@ class Notifier(
             else -> CH_MESSAGES
         }
         val iso = PhoneNumbers.countryIso(context)
-        val me = Person.Builder().setName("You").setKey("me").build()
+        val me = Person.Builder().setName(context.getString(R.string.you)).setKey("me").build()
         val style = NotificationCompat.MessagingStyle(me)
             .setConversationTitle(if (conversation.isGroup) conversation.title else null)
             .setGroupConversation(conversation.isGroup)
         val people = HashMap<String, Person>()
         for (m in unread) {
             val text = when {
-                !s.showNotificationPreviews -> "New message"
+                !s.showNotificationPreviews -> context.getString(R.string.shortcut_new_message)
                 m.body.isNotBlank() -> m.body
-                m.hasAttachments -> "📎 Attachment"
-                else -> "Multimedia message"
+                m.hasAttachments -> context.getString(R.string.notif_attachment)
+                else -> context.getString(R.string.mms_title)
             }
             val p = people.getOrPut(m.address) { person(m.address, iso) }
             style.addMessage(NotificationCompat.MessagingStyle.Message(text, m.date, p))
@@ -166,13 +168,15 @@ class Notifier(
             .setPublicVersion(
                 NotificationCompat.Builder(context, channel)
                     .setSmallIcon(R.drawable.ic_notification)
-                    .setContentTitle("New message")
-                    .setContentText("${unread.size} unread")
+                    .setContentTitle(context.getString(R.string.shortcut_new_message))
+                    .setContentText(context.getString(R.string.n_unread, unread.size))
                     .build(),
             )
             .setDeleteIntent(actionIntent(NotificationActionReceiver.ACTION_DISMISSED, conversationId))
+        // Dual SIM: say which SIM the message (or code) arrived on, e.g. "SIM 2 · Airtel".
+        if (sims.isMultiSim) sims.current().firstOrNull { it.subId == latest.subId }?.let { builder.setSubText(app.yarn.ui.common.simLabel(context, it)) }
 
-        val markRead = NotificationCompat.Action.Builder(R.drawable.ic_done, "Mark read", actionIntent(NotificationActionReceiver.ACTION_MARK_READ, conversationId))
+        val markRead = NotificationCompat.Action.Builder(R.drawable.ic_done, context.getString(R.string.mark_read_short), actionIntent(NotificationActionReceiver.ACTION_MARK_READ, conversationId))
             .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ)
             .setShowsUserInterface(false)
             .build()
@@ -180,9 +184,9 @@ class Notifier(
         // "Copy" shortcut for one-time codes, so Yarn doesn't duplicate it.
         run {
             if (latest.body.isNotBlank() && !conversation.spam && conversation.addresses.all { PhoneNumbers.isDialable(it) || PhoneNumbers.isEmail(it) }) {
-                val remoteInput = RemoteInput.Builder(NotificationActionReceiver.KEY_REPLY).setLabel("Reply").build()
+                val remoteInput = RemoteInput.Builder(NotificationActionReceiver.KEY_REPLY).setLabel(context.getString(R.string.reply)).build()
                 builder.addAction(
-                    NotificationCompat.Action.Builder(R.drawable.ic_reply, "Reply", actionIntent(NotificationActionReceiver.ACTION_REPLY, conversationId, mutable = true))
+                    NotificationCompat.Action.Builder(R.drawable.ic_reply, context.getString(R.string.reply), actionIntent(NotificationActionReceiver.ACTION_REPLY, conversationId, mutable = true))
                         .addRemoteInput(remoteInput)
                         .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
                         .setShowsUserInterface(false)
@@ -192,7 +196,7 @@ class Notifier(
             builder.addAction(markRead)
             builder.addAction(
                 NotificationCompat.Action.Builder(
-                    R.drawable.ic_delete, "Delete",
+                    R.drawable.ic_delete, context.getString(R.string.delete),
                     actionIntent(NotificationActionReceiver.ACTION_DELETE, conversationId, {
                         putExtra(NotificationActionReceiver.EXTRA_MESSAGE_IDS, unread.map { it.id }.toLongArray())
                     }),
@@ -207,7 +211,7 @@ class Notifier(
         runCatching {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("yarn://conversation/${conversation.id}"), context, MainActivity::class.java)
             val shortcut = ShortcutInfoCompat.Builder(context, id)
-                .setShortLabel(conversation.title.take(24).ifBlank { "Conversation" })
+                .setShortLabel(conversation.title.take(24).ifBlank { context.getString(R.string.conversation) })
                 .setLongLived(true)
                 .setIntent(intent)
                 .setLocusId(LocusIdCompat(id))
@@ -226,13 +230,13 @@ class Notifier(
         if (!canPost()) return
         val n = NotificationCompat.Builder(context, CH_FAILED)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Message to $conversationTitle not sent")
+            .setContentTitle(context.getString(R.string.not_sent_to, conversationTitle))
             .setContentText(reason)
             .setStyle(NotificationCompat.BigTextStyle().bigText("$reason\n\n“${message.body.take(120)}”"))
             .setContentIntent(openConversationIntent(message.conversationId, message.id))
             .setAutoCancel(true)
             .addAction(
-                R.drawable.ic_retry, "Retry",
+                R.drawable.ic_retry, context.getString(R.string.retry),
                 actionIntent(NotificationActionReceiver.ACTION_RETRY, message.conversationId, { putExtra(NotificationActionReceiver.EXTRA_MESSAGE_ID, message.id) }),
             )
             .build()
@@ -245,12 +249,12 @@ class Notifier(
         if (!canPost()) return
         val n = NotificationCompat.Builder(context, CH_FAILED)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Multimedia message from $sender")
+            .setContentTitle(context.getString(R.string.mms_from, sender))
             .setContentText(reason)
             .setContentIntent(openConversationIntent(message.conversationId, message.id))
             .setAutoCancel(true)
             .addAction(
-                R.drawable.ic_download, "Download",
+                R.drawable.ic_download, context.getString(R.string.download),
                 actionIntent(NotificationActionReceiver.ACTION_DOWNLOAD_MMS, message.conversationId, { putExtra(NotificationActionReceiver.EXTRA_MESSAGE_ID, message.id) }),
             )
             .build()
@@ -266,7 +270,7 @@ class Notifier(
         val name = contacts.lookup(address)?.name ?: PhoneNumbers.format(address, iso)
         val n = NotificationCompat.Builder(context, CH_FLASH)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Flash message from $name")
+            .setContentTitle(context.getString(R.string.flash_from, name))
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
