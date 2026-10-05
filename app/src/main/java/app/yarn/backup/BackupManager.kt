@@ -68,7 +68,8 @@ data class BackupMeta(
 
 sealed interface BackupState {
     data object Idle : BackupState
-    data class Running(val label: String, val done: Int, val total: Int) : BackupState
+    /** [percent] = true when [done]/[total] is 0..100 rather than a message count. */
+    data class Running(val label: String, val done: Int, val total: Int, val percent: Boolean = false) : BackupState
     data class Done(val message: String) : BackupState
     data class Failed(val message: String) : BackupState
 }
@@ -111,8 +112,11 @@ class BackupManager(
             _state.value = BackupState.Running(context.getString(R.string.bk_preparing), 0, 0)
             key = drive.backupKey(token)
             val count = write(Uri.fromFile(tmp), key, includeMedia)
-            _state.value = BackupState.Running(context.getString(R.string.bk_uploading), 0, 0)
-            drive.upload(token, tmp, count)
+            val uploading = context.getString(R.string.bk_uploading)
+            _state.value = BackupState.Running(uploading, 0, 100, percent = true)
+            drive.upload(token, tmp, count) { done, total ->
+                if (total > 0) _state.value = BackupState.Running(uploading, (done * 100 / total).toInt(), 100, percent = true)
+            }
             _state.value = BackupState.Done(context.resources.getQuantityString(R.plurals.backed_up_drive_n, count, count))
             tmp.length() to count
         } catch (e: Exception) {
@@ -128,10 +132,13 @@ class BackupManager(
     suspend fun restoreFromGoogle(drive: GoogleDrive, token: String, backup: DriveBackup) = withContext(Dispatchers.IO) {
         val tmp = File(context.cacheDir, "drive-restore.tmp")
         try {
-            _state.value = BackupState.Running(context.getString(R.string.bk_downloading), 0, 0)
+            val downloading = context.getString(R.string.bk_downloading)
+            _state.value = BackupState.Running(downloading, 0, 100, percent = true)
             val key = drive.backupKey(token)
-            drive.download(token, backup, tmp)
-            restore(Uri.fromFile(tmp), key)
+            drive.download(token, backup, tmp) { done, total ->
+                if (total > 0) _state.value = BackupState.Running(downloading, (done * 100 / total).toInt(), 100, percent = true)
+            }
+            restore(Uri.fromFile(tmp), key, backup.messageCount)
         } catch (e: Exception) {
             _state.value = BackupState.Failed(e.message ?: context.getString(R.string.restore_failed))
         } finally {
@@ -200,7 +207,7 @@ class BackupManager(
      * Restores messages into the system store (requires being the default SMS app), skipping
      * duplicates, then re-imports and re-applies conversation settings and learned preferences.
      */
-    suspend fun restore(source: Uri, passphrase: CharArray) = withContext(Dispatchers.IO) {
+    suspend fun restore(source: Uri, passphrase: CharArray, expectedMessages: Int = 0) = withContext(Dispatchers.IO) {
         if (!DefaultSmsApp.isDefault(context)) {
             _state.value = BackupState.Failed(context.getString(R.string.restore_needs_default))
             return@withContext
@@ -225,7 +232,7 @@ class BackupManager(
                                 val m = json.decodeFromString(BackupMessage.serializer(), line)
                                 if (m.kind == MessageKind.MMS) { pendingMms += m; continue }
                                 if (restoreSms(m)) restored++ else skipped++
-                                if ((restored + skipped) % 200 == 0) _state.value = BackupState.Running(context.getString(R.string.bk_restoring), restored + skipped, 0)
+                                if ((restored + skipped) % 50 == 0) _state.value = BackupState.Running(context.getString(R.string.bk_restoring), restored + skipped, maxOf(expectedMessages, restored + skipped))
                             }
                         }
                         entry.name == "meta.json" -> meta = json.decodeFromString(BackupMeta.serializer(), zip.readBytes().decodeToString())

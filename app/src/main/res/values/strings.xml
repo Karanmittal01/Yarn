@@ -735,4 +735,17 @@
         <item quantity="one">Delete after %1$d hour</item>
         <item quantity="other">Delete after %1$d hours</item>
     </plurals>
+    <string name="unsaved_title">Apply your changes?</string>
+    <string name="unsaved_text">You changed the auto-clean settings but didn\'t apply them.</string>
+    <string name="apply">Apply</string>
+    <string name="discard">Discard</string>
+    <string name="apply_auto_clean">Apply auto-clean settings</string>
+    <string name="auto_clean_unsaved">You have changes that aren’t applied yet.</string>
+    <string name="auto_clean_saved">Saved. Auto-clean will follow these settings.</string>
+    <string name="job_sorting">Sorting your messages</string>
+    <string name="job_resorting">Re-sorting all messages</string>
+    <string name="job_count">%1$s of %2$s</string>
+    <string name="resort_all">Re-sort all messages</string>
+    <string name="resort_all_sub">Read every message again and file it by what it says</string>
+    <string name="resort_started">Re-sorting started. You can keep using Yarn.</string>
 </resources>

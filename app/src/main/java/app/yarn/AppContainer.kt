@@ -39,6 +39,7 @@ import app.yarn.telephony.SimManager
 import app.yarn.telephony.TelephonyStore
 import app.yarn.ui.conversation.ShareHolder
 import app.yarn.work.MaintenanceWorker
+import app.yarn.work.ProgressTracker
 import app.yarn.work.SendWorker
 import app.yarn.work.SyncWorker
 import kotlinx.coroutines.CoroutineScope
@@ -82,6 +83,8 @@ class AppContainer(val app: Application) {
     val drive by lazy { GoogleDrive(app) }
     val cleaner by lazy { Cleaner(db, conversations, settings) }
     val shareHolder = ShareHolder()
+    /** Progress of sorting / re-sorting, shown as bars in the inbox and settings. */
+    val progress = ProgressTracker()
 
     private val _isDefaultSmsApp = MutableStateFlow(false)
     val isDefaultSmsApp: StateFlow<Boolean> = _isDefaultSmsApp.asStateFlow()

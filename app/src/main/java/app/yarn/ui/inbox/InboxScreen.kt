@@ -160,6 +160,8 @@ fun InboxScreen(
     val settings by vm.settings.collectAsStateWithLifecycle()
     val spamUnread by vm.spamUnread.collectAsStateWithLifecycle()
     val junk by vm.junk.collectAsStateWithLifecycle()
+    val job by vm.job.collectAsStateWithLifecycle()
+    val backupState by vm.backup.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -274,6 +276,7 @@ fun InboxScreen(
             ) {
                 item(key = "banners", contentType = "banners") {
                     StatusBanners(status, onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } })
+                    WorkBanners(job, backupState, importing = status.sync.running)
                     CleanBanners(
                         report = settings.autoCleanReport, junk = if (status.isDefault) junk else 0,
                         onClean = { onNavigate(InboxDestination.Cleanup) },
@@ -688,6 +691,29 @@ private fun StatusBanners(status: InboxStatus, onSetDefault: () -> Unit) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)) {
             Text(stringResource(R.string.organising, status.sync.imported), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).clip(CircleShape))
+        }
+    }
+}
+
+/** Live bars for sorting, re-sorting and Drive backup / restore, so long jobs are never a mystery. */
+@Composable
+internal fun WorkBanners(job: app.yarn.work.JobProgress?, backup: app.yarn.backup.BackupState, importing: Boolean) {
+    AnimatedVisibility(job != null && !importing) {
+        job?.let { app.yarn.ui.common.JobProgressBar(it, Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
+    }
+    AnimatedVisibility(backup is app.yarn.backup.BackupState.Running) {
+        val b = backup as? app.yarn.backup.BackupState.Running ?: return@AnimatedVisibility
+        val fmt = java.text.NumberFormat.getIntegerInstance()
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+            Row {
+                Text(b.label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                if (b.total > 0) Text(
+                    if (b.percent) "${b.done}%" else stringResource(R.string.job_count, fmt.format(b.done), fmt.format(b.total)),
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            val bar = Modifier.fillMaxWidth().padding(top = 6.dp).height(6.dp).clip(CircleShape)
+            if (b.total > 0) LinearProgressIndicator(progress = { b.done.toFloat() / b.total }, modifier = bar) else LinearProgressIndicator(bar)
         }
     }
 }

@@ -93,7 +93,7 @@ class GoogleDrive(private val context: Context) {
     }
 
     /** Uploads [file] as the new backup, then removes older copies so only the latest is kept. */
-    suspend fun upload(token: String, file: File, messageCount: Int) = withContext(Dispatchers.IO) {
+    suspend fun upload(token: String, file: File, messageCount: Int, onProgress: (Long, Long) -> Unit = { _, _ -> }) = withContext(Dispatchers.IO) {
         val old = find(token, BACKUP_NAME).map { it.getString("id") }
         val meta = JSONObject()
             .put("name", BACKUP_NAME)
@@ -116,16 +116,30 @@ class GoogleDrive(private val context: Context) {
             setRequestProperty("Content-Type", "application/octet-stream")
             connectTimeout = 30_000
             readTimeout = 120_000
-            file.inputStream().use { input -> outputStream.use { input.copyTo(it, 64 * 1024) } }
+            file.inputStream().use { input -> outputStream.use { copyWithProgress(input, it, file.length(), onProgress) } }
         }
         check(put)
         for (id in old) runCatching { request("DELETE", "$API/files/$id", token) }
     }
 
-    suspend fun download(token: String, backup: DriveBackup, target: File) = withContext(Dispatchers.IO) {
+    suspend fun download(token: String, backup: DriveBackup, target: File, onProgress: (Long, Long) -> Unit = { _, _ -> }) = withContext(Dispatchers.IO) {
         val conn = open("GET", "$API/files/${backup.id}?alt=media", token)
         check(conn)
-        conn.inputStream.use { input -> target.outputStream().use { input.copyTo(it, 64 * 1024) } }
+        conn.inputStream.use { input -> target.outputStream().use { copyWithProgress(input, it, backup.sizeBytes, onProgress) } }
+    }
+
+    private fun copyWithProgress(input: java.io.InputStream, output: java.io.OutputStream, total: Long, onProgress: (Long, Long) -> Unit) {
+        val buffer = ByteArray(64 * 1024)
+        var done = 0L
+        var lastReport = 0L
+        while (true) {
+            val n = input.read(buffer)
+            if (n < 0) break
+            output.write(buffer, 0, n)
+            done += n
+            if (done - lastReport >= 256 * 1024 || done == total) { onProgress(done, total); lastReport = done }
+        }
+        onProgress(done, total)
     }
 
     private fun find(token: String, name: String): List<JSONObject> {

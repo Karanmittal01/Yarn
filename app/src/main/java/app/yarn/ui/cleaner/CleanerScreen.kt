@@ -107,6 +107,15 @@ data class CleanerState(
     val foundCount: Int get() = found.values.sum()
 }
 
+/** The three auto-clean choices, edited as a draft and saved together with Apply. */
+data class AutoClean(val codesMinutes: Int, val offersDays: Int, val spamDays: Int) {
+    fun applyTo(s: AppSettings) = s.copy(otpAutoDeleteMinutes = codesMinutes, promoAutoDeleteDays = offersDays, spamAutoDeleteDays = spamDays)
+
+    companion object {
+        fun of(s: AppSettings) = AutoClean(s.otpAutoDeleteMinutes, s.promoAutoDeleteDays, s.spamAutoDeleteDays)
+    }
+}
+
 class CleanerViewModel(private val c: AppContainer) : ViewModel() {
     private val _state = MutableStateFlow(CleanerState())
     val state: StateFlow<CleanerState> = _state
@@ -147,14 +156,45 @@ fun CleanerScreen(vm: CleanerViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { context.container.refreshPlatformState() }
     var confirm by remember { mutableStateOf(false) }
+    // Auto-clean choices are a draft until Apply, so leaving the screen never changes them silently.
+    var draft by remember { mutableStateOf<AutoClean?>(null) }
+    var justSaved by remember { mutableStateOf(false) }
+    var askDiscard by remember { mutableStateOf(false) }
+    val saved = AutoClean.of(settings)
+    val current = draft ?: saved
+    val dirty = draft != null && draft != saved
+    androidx.activity.compose.BackHandler(enabled = dirty) { askDiscard = true }
     CleanerContent(
-        state = state, settings = settings, isDefault = isDefault,
+        state = state, auto = current, dirty = dirty, justSaved = justSaved, isDefault = isDefault,
         onToggle = vm::toggle,
         onClean = { confirm = true },
         onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } },
-        onSettings = { vm.update(it) },
-        onBack = onBack,
+        onAuto = { draft = it; justSaved = false },
+        onApply = {
+            val d = draft ?: return@CleanerContent
+            vm.update { d.applyTo(it) }
+            draft = null
+            justSaved = true
+        },
+        onBack = { if (dirty) askDiscard = true else onBack() },
     )
+    if (askDiscard) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { askDiscard = false },
+            title = { Text(stringResource(R.string.unsaved_title)) },
+            text = { Text(stringResource(R.string.unsaved_text)) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    draft?.let { d -> vm.update { d.applyTo(it) } }
+                    askDiscard = false
+                    onBack()
+                }) { Text(stringResource(R.string.apply)) }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { askDiscard = false; onBack() }) { Text(stringResource(R.string.discard)) }
+            },
+        )
+    }
     if (confirm) {
         val n = state.selectedCount
         ConfirmDialog(
@@ -171,12 +211,15 @@ fun CleanerScreen(vm: CleanerViewModel, onBack: () -> Unit) {
 @Composable
 fun CleanerContent(
     state: CleanerState,
-    settings: AppSettings,
+    auto: AutoClean,
+    dirty: Boolean,
+    justSaved: Boolean,
     isDefault: Boolean,
     onToggle: (JunkKind) -> Unit,
     onClean: () -> Unit,
     onSetDefault: () -> Unit,
-    onSettings: ((AppSettings) -> AppSettings) -> Unit,
+    onAuto: (AutoClean) -> Unit,
+    onApply: () -> Unit,
     onBack: () -> Unit,
 ) {
     val page = settingsPageColor()
@@ -189,7 +232,6 @@ fun CleanerContent(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = page),
             )
         },
-        bottomBar = { CleanBar(state, isDefault, onClean, onSetDefault) },
     ) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
             item { Hero(state) }
@@ -201,21 +243,46 @@ fun CleanerContent(
                     }
                 }
             }
+            // Clean now: its own button, right under what it will clean.
+            item { CleanBar(state, isDefault, onClean, onSetDefault) }
             item { SectionHeader(stringResource(R.string.clean_automatically)) }
             item {
                 SettingsGroup {
                     ChoiceRow(
                         stringResource(R.string.verification_codes), listOf(0 to stringResource(R.string.keep), 10 to pluralStringResource(R.plurals.delete_after_minutes, 10, 10), 60 to pluralStringResource(R.plurals.delete_after_hours, 1, 1), 1440 to pluralStringResource(R.plurals.delete_after_days, 1, 1), 10080 to pluralStringResource(R.plurals.delete_after_days, 7, 7)),
-                        settings.otpAutoDeleteMinutes, icon = Icons.Outlined.Password, tint = Color(0xFF7C5CFF),
-                    ) { v -> onSettings { it.copy(otpAutoDeleteMinutes = v) } }
+                        auto.codesMinutes, icon = Icons.Outlined.Password, tint = Color(0xFF7C5CFF),
+                    ) { v -> onAuto(auto.copy(codesMinutes = v)) }
                     ChoiceRow(
                         stringResource(R.string.offers_promotions), listOf(0 to stringResource(R.string.keep), 7 to pluralStringResource(R.plurals.delete_after_days, 7, 7), 30 to pluralStringResource(R.plurals.delete_after_days, 30, 30), 90 to pluralStringResource(R.plurals.delete_after_days, 90, 90)),
-                        settings.promoAutoDeleteDays, icon = Icons.Outlined.LocalOffer, tint = Color(0xFFFF9500),
-                    ) { v -> onSettings { it.copy(promoAutoDeleteDays = v) } }
+                        auto.offersDays, icon = Icons.Outlined.LocalOffer, tint = Color(0xFFFF9500),
+                    ) { v -> onAuto(auto.copy(offersDays = v)) }
                     ChoiceRow(
                         stringResource(R.string.verdict_spam), listOf(0 to stringResource(R.string.keep), 7 to pluralStringResource(R.plurals.delete_after_days, 7, 7), 30 to pluralStringResource(R.plurals.delete_after_days, 30, 30), 90 to pluralStringResource(R.plurals.delete_after_days, 90, 90)),
-                        settings.spamAutoDeleteDays, icon = Icons.Outlined.Report, tint = Color(0xFFF2453D),
-                    ) { v -> onSettings { it.copy(spamAutoDeleteDays = v) } }
+                        auto.spamDays, icon = Icons.Outlined.Report, tint = Color(0xFFF2453D),
+                    ) { v -> onAuto(auto.copy(spamDays = v)) }
+                }
+            }
+            // Settings: saved only with Apply, and it says so.
+            item {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                    androidx.compose.material3.FilledTonalButton(
+                        onClick = onApply, enabled = dirty,
+                        modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(26.dp),
+                    ) { Text(stringResource(R.string.apply_auto_clean), style = MaterialTheme.typography.titleMedium) }
+                    val note = when {
+                        dirty -> stringResource(R.string.auto_clean_unsaved)
+                        justSaved -> stringResource(R.string.auto_clean_saved)
+                        else -> null
+                    }
+                    note?.let {
+                        Row(Modifier.padding(top = 8.dp, start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            if (justSaved && !dirty) {
+                                Icon(Icons.Outlined.CheckCircle, null, Modifier.size(16.dp), tint = Color(0xFF00A86B))
+                                Spacer(Modifier.size(6.dp))
+                            }
+                            Text(it, style = MaterialTheme.typography.bodySmall, color = if (dirty) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
             }
             item {
@@ -333,13 +400,19 @@ private fun Hero(state: CleanerState) {
 
 @Composable
 private fun CleanBar(state: CleanerState, isDefault: Boolean, onClean: () -> Unit, onSetDefault: () -> Unit) {
-    Surface(color = settingsPageColor()) {
-        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    run {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             when {
-                state.cleaning -> LinearProgressIndicator(
-                    progress = { if (state.total > 0) state.done / state.total.toFloat() else 0f },
-                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
-                )
+                state.cleaning -> {
+                    Text(
+                        stringResource(R.string.hero_cleaning_sub, formatCount(state.done), formatCount(state.total)),
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    LinearProgressIndicator(
+                        progress = { if (state.total > 0) state.done / state.total.toFloat() else 0f },
+                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                    )
+                }
                 !isDefault -> {
                     Text(stringResource(R.string.only_default_delete), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Button(onClick = onSetDefault, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(28.dp)) {

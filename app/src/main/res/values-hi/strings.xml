@@ -734,4 +734,17 @@
         <item quantity="one">%1$d घंटे बाद मिटाएं</item>
         <item quantity="other">%1$d घंटे बाद मिटाएं</item>
     </plurals>
+    <string name="unsaved_title">बदलाव लागू करें?</string>
+    <string name="unsaved_text">आपने ऑटो-क्लीन सेटिंग बदली हैं, पर उन्हें लागू नहीं किया।</string>
+    <string name="apply">लागू करें</string>
+    <string name="discard">छोड़ दें</string>
+    <string name="apply_auto_clean">ऑटो-क्लीन सेटिंग लागू करें</string>
+    <string name="auto_clean_unsaved">आपके कुछ बदलाव अभी लागू नहीं हुए हैं।</string>
+    <string name="auto_clean_saved">सेव हो गया। ऑटो-क्लीन अब इन्हीं सेटिंग के हिसाब से चलेगा।</string>
+    <string name="job_sorting">आपके मैसेज छांटे जा रहे हैं</string>
+    <string name="job_resorting">सभी मैसेज फिर से छांटे जा रहे हैं</string>
+    <string name="job_count">%2$s में से %1$s</string>
+    <string name="resort_all">सभी मैसेज फिर से छांटें</string>
+    <string name="resort_all_sub">हर मैसेज दोबारा पढ़कर सही कैटेगरी में रखें</string>
+    <string name="resort_started">फिर से छांटना शुरू हो गया। आप Yarn इस्तेमाल करते रहें।</string>
 </resources>

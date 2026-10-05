@@ -101,6 +101,10 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), listOf(InboxChip(R.string.chip_all, InboxFilter())))
 
+    /** Sorting / re-sorting progress, and any backup or restore under way. */
+    val job = c.progress.job
+    val backup = c.backup.state
+
     val spamUnread = c.db.conversations().unreadSpam().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     val status: StateFlow<InboxStatus> = combine(

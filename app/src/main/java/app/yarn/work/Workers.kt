@@ -91,9 +91,11 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val c = applicationContext.container
         c.sync.sync()
         var processed = 0
+        val toSort = c.db.messages().unanalyzedCount()
         while (!isStopped) {
             val batch = c.db.messages().unanalyzed(200)
             if (batch.isEmpty()) break
+            c.progress.update(JobKind.SORTING, processed, toSort)
             val touched = HashSet<Long>()
             for (m in batch) {
                 val (updated, entities) = c.engine.annotate(m)
@@ -103,7 +105,9 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             }
             touched.forEach { c.db.conversations().refresh(it) }
             processed += batch.size
+            c.progress.update(JobKind.SORTING, processed, maxOf(toSort, processed))
         }
+        c.progress.finish(JobKind.SORTING)
         runCatching { c.smartSorter.sortRecent(limit = 60) }
         val firstImport = !c.settings.current().initialImportDone
         c.settings.update { it.copy(initialImportDone = true) }
@@ -131,6 +135,9 @@ class ReanalyzeWorker(context: Context, params: WorkerParameters) : CoroutineWor
         c.engine.reload()
         var offset = 0
         val touched = HashSet<Long>()
+        val total = c.db.messages().count()
+        c.progress.update(JobKind.RESORTING, 0, total)
+        try {
         while (!isStopped) {
             val page = c.db.messages().page(500, offset)
             if (page.isEmpty()) break
@@ -142,10 +149,14 @@ class ReanalyzeWorker(context: Context, params: WorkerParameters) : CoroutineWor
                 touched += m.conversationId
             }
             offset += page.size
+            c.progress.update(JobKind.RESORTING, offset, maxOf(total, offset))
         }
         touched.forEach { c.db.conversations().refresh(it) }
         // Let the on-device model take a second look at whatever the rules were unsure about.
         if (!isStopped) runCatching { c.smartSorter.sortRecent(limit = 150) }
+        } finally {
+            c.progress.finish(JobKind.RESORTING)
+        }
         return Result.success()
     }
 

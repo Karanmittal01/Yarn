@@ -50,7 +50,7 @@ class UiSnapshotTest {
         InboxItem(conv(id, title, snippet, cat, unread, addr, pinned), null, business, group, otp)
 
     private val inbox = listOf(
-        item(1, "Kavya Mittal", "Are we still on for dinner tonight?", "PERSONAL", 2, "+919812345678", false, InboxGroup.PERSONAL, pinned = true),
+        item(1, "Karan Mittal", "Are we still on for dinner tonight?", "PERSONAL", 2, "+919812345678", false, InboxGroup.PERSONAL, pinned = true),
         item(2, "SBI Card", "423378 is the OTP for Trxn. of INR 375.00 at AMAZON with your SBI Card", "OTP", 1, "AD-SBICRD-T", true, InboxGroup.OTP, "423378"),
         item(3, "HDFC Bank", "Rs.2,500.00 debited from A/c XX1234 to VPA swiggy@icici", "BANKING", 1, "VM-HDFCBK-S", true, InboxGroup.TRANSACTIONS),
         item(4, "Zepto", "Thank you for ordering from Zepto. Your order is about to be delivered.", "SHOPPING", 0, "JM-ZEPTON-S", true, InboxGroup.SHOPPING),
@@ -236,12 +236,12 @@ class UiSnapshotTest {
     )
 
     @Test fun cleanerLight() = shot(false, "18_cleaner_light") {
-        app.yarn.ui.cleaner.CleanerContent(app.yarn.ui.cleaner.CleanerState(scanning = false, found = found), app.yarn.data.prefs.AppSettings(), true, {}, {}, {}, {}, {})
+        app.yarn.ui.cleaner.CleanerContent(app.yarn.ui.cleaner.CleanerState(scanning = false, found = found), app.yarn.ui.cleaner.AutoClean(10, 30, 7), true, false, true, {}, {}, {}, {}, {}, {})
     }
     @Test fun cleanerDoneDark() = shot(true, "19_cleaner_done_dark") {
         app.yarn.ui.cleaner.CleanerContent(
             app.yarn.ui.cleaner.CleanerState(scanning = false, found = found.mapValues { 0 }, cleaned = 2089),
-            app.yarn.data.prefs.AppSettings(otpAutoDeleteMinutes = 10, promoAutoDeleteDays = 30), true, {}, {}, {}, {}, {},
+            app.yarn.ui.cleaner.AutoClean(10, 30, 30), false, true, true, {}, {}, {}, {}, {}, {},
         )
     }
 
@@ -260,9 +260,31 @@ class UiSnapshotTest {
         app.yarn.ui.settings.SettingsScaffold(androidx.compose.ui.res.stringResource(app.yarn.R.string.settings), {}) { settingsHubItems(app.yarn.data.prefs.AppSettings(), true, {}, {}) }
     }
     @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun hindiCleaner() = shot(false, "25_hi_cleaner") {
-        app.yarn.ui.cleaner.CleanerContent(app.yarn.ui.cleaner.CleanerState(scanning = false, found = found), app.yarn.data.prefs.AppSettings(), true, {}, {}, {}, {}, {})
+        app.yarn.ui.cleaner.CleanerContent(app.yarn.ui.cleaner.CleanerState(scanning = false, found = found), app.yarn.ui.cleaner.AutoClean(10, 30, 7), true, false, true, {}, {}, {}, {}, {}, {})
     }
     @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun hindiOnboarding() = shot(false, "26_hi_onboarding") {
         app.yarn.ui.onboarding.OnboardingContent(0, false, "hi", {}, app.yarn.ui.onboarding.AutoCleanChoice(), {}, {}, {}, {}, {})
+    }
+
+    // ---- Clean up with Apply, re-sort, progress bars ---------------------------------------------
+    @Test @Config(qualifiers = "w411dp-h1350dp-xxhdpi") fun cleanerUnsaved() = shot(true, "27_cleaner_unsaved_dark") {
+        app.yarn.ui.cleaner.CleanerContent(app.yarn.ui.cleaner.CleanerState(scanning = false, found = found), app.yarn.ui.cleaner.AutoClean(10, 7, 7), true, false, true, {}, {}, {}, {}, {}, {})
+    }
+    @Test fun cleanerCleaning() = shot(false, "28_cleaner_cleaning") {
+        app.yarn.ui.cleaner.CleanerContent(app.yarn.ui.cleaner.CleanerState(scanning = false, found = found, cleaning = true, done = 1240, total = 2089), app.yarn.ui.cleaner.AutoClean(10, 30, 30), false, true, true, {}, {}, {}, {}, {}, {})
+    }
+    @Test fun smartResort() = shot(true, "29_smart_features_resorting_dark") {
+        app.yarn.ui.settings.SettingsScaffold("Smart features", {}) {
+            smartFeatureItems(app.yarn.data.prefs.AppSettings(), {}, {}, {}, job = app.yarn.work.JobProgress(app.yarn.work.JobKind.RESORTING, 3120, 8450))
+        }
+    }
+    @Test fun smartResortIdle() = shot(false, "30_smart_features_resort_button") {
+        app.yarn.ui.settings.SettingsScaffold("Smart features", {}) { smartFeatureItems(app.yarn.data.prefs.AppSettings(), {}, {}, {}) }
+    }
+    @Test fun inboxProgress() = shot(false, "31_inbox_progress_bars") {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 24.dp)) {
+            app.yarn.ui.inbox.WorkBanners(app.yarn.work.JobProgress(app.yarn.work.JobKind.RESORTING, 3120, 8450), app.yarn.backup.BackupState.Running("Uploading to Google Drive", 45, 100, percent = true), importing = false)
+            inbox.take(4).forEach { ConversationRow(it, false, false, {}, {}) }
+        }
     }
 }

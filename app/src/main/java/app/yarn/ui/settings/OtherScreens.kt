@@ -398,7 +398,12 @@ private fun BackupProgress(state: BackupState, checking: Boolean) {
         when (state) {
             is BackupState.Running -> {
                 Text(
-                    state.label + if (state.total > 0) " · ${state.done} / ${state.total}" else if (state.done > 0) " · ${state.done}" else "",
+                    state.label + when {
+                        state.percent -> " · ${state.done}%"
+                        state.total > 0 -> " · ${java.text.NumberFormat.getIntegerInstance().format(state.done)} / ${java.text.NumberFormat.getIntegerInstance().format(state.total)}"
+                        state.done > 0 -> " · ${state.done}"
+                        else -> ""
+                    },
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (state.total > 0) LinearProgressIndicator(progress = { state.done.toFloat() / state.total }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))

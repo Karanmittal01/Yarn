@@ -329,6 +329,12 @@ abstract class MessageDao {
     @Query("SELECT id FROM conversations WHERE unreadCount > 0 AND blocked = 0 AND spam = 0")
     abstract suspend fun unreadConversationIds(): List<Long>
 
+    @Query("SELECT COUNT(*) FROM messages WHERE analyzed = 0")
+    abstract suspend fun unanalyzedCount(): Int
+
+    @Query("SELECT COUNT(*) FROM messages")
+    abstract suspend fun count(): Int
+
     @Query("SELECT * FROM messages WHERE analyzed = 0 ORDER BY date DESC LIMIT :limit")
     abstract suspend fun unanalyzed(limit: Int): List<MessageEntity>
 

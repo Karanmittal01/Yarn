@@ -30,6 +30,8 @@ import app.yarn.work.ReanalyzeWorker
 import com.google.mlkit.nl.translate.TranslateLanguage
 import java.util.Locale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.foundation.layout.padding
 import app.yarn.R
 
 /**
@@ -41,8 +43,19 @@ fun AiSettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var confirmReset by remember { mutableStateOf(false) }
+    val job by vm.c.progress.job.collectAsStateWithLifecycle()
+    val started = stringResource(R.string.resort_started)
     SettingsScaffold(stringResource(R.string.smart_features), onBack) {
-        smartFeatureItems(s, update = { t -> vm.update(t) }, onRecheck = { ReanalyzeWorker.enqueue(context) }, onReset = { confirmReset = true })
+        smartFeatureItems(
+            s, update = { t -> vm.update(t) }, onRecheck = { ReanalyzeWorker.enqueue(context) }, onReset = { confirmReset = true },
+            job = job,
+            onResort = {
+                // Fresh look at everything: the on-device model gets to re-check what it sorted before.
+                vm.launch { db.messages().resetModelCategories() }
+                ReanalyzeWorker.enqueue(context)
+                android.widget.Toast.makeText(context, started, android.widget.Toast.LENGTH_SHORT).show()
+            },
+        )
     }
 
     if (confirmReset) {
@@ -59,6 +72,8 @@ internal fun LazyListScope.smartFeatureItems(
     update: ((AppSettings) -> AppSettings) -> Unit,
     onRecheck: () -> Unit,
     onReset: () -> Unit,
+    job: app.yarn.work.JobProgress? = null,
+    onResort: () -> Unit = {},
 ) {
     val on = s.aiEnabled
     item {
@@ -102,6 +117,16 @@ internal fun LazyListScope.smartFeatureItems(
         }
     }
     item { Spacer(Modifier.height(20.dp)) }
+    item {
+        SettingsGroup {
+            if (job != null) {
+                app.yarn.ui.common.JobProgressBar(job, Modifier.padding(horizontal = 16.dp, vertical = 14.dp))
+            } else {
+                ClickRow(stringResource(R.string.resort_all), stringResource(R.string.resort_all_sub), icon = Icons.Outlined.Refresh, tint = Color(0xFF7C5CFF), onClick = onResort)
+            }
+        }
+    }
+    item { Spacer(Modifier.height(12.dp)) }
     item {
         SettingsGroup {
             ClickRow(stringResource(R.string.forget_learned), destructive = true) { onReset() }
