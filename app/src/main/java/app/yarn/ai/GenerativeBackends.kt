@@ -99,7 +99,7 @@ class GeminiNanoService(@Suppress("unused") private val context: Context) {
     }
 
     /**
-     * Sorts an SMS into one of Yarn's four inbox groups. Used only for messages the built-in
+     * Sorts an SMS into one of Yarn's inbox groups. Used only for messages the built-in
      * rules are unsure about. Returns null when the model is unavailable or answers unclearly.
      */
     suspend fun classify(sender: String, header: String, text: String): String? {
@@ -109,15 +109,16 @@ class GeminiNanoService(@Suppress("unused") private val context: Context) {
             OTP: contains a one-time password, verification code, login code or delivery PIN.
             TRANSACTIONS: money moved or is owed: debited, credited, paid, spent, charged, refunded, cashback credited, wallet or gift card balance, bill or EMI due, investments. This includes payments from Zomato, Swiggy, Amazon, Uber or any app, not just banks.
             SHOPPING: the progress of an order: placed, confirmed, packed, shipped, out for delivery, delivered, failed delivery, return pickup, cancelled.
-            UPDATES: travel bookings, rides, appointments, government notices, telecom or app service notices, account changes (login alerts, card blocked, KYC done) and safety advice ("we never ask for your OTP", "beware of fraud"). Banks send these too: no money moved means it is not TRANSACTIONS.
+            TRAVEL: trips and rides: train PNRs, flights, boarding, gates, buses, hotels, cabs and bike rides (driver arriving), travel bookings and changes.
+            UPDATES: appointments, government notices, telecom or app service notices, account changes (login alerts, card blocked, KYC done) and safety advice ("we never ask for your OTP", "beware of fraud"). Banks send these too: no money moved means it is not TRANSACTIONS.
             OFFERS: advertising: sales, discounts, coupon codes, cashback offers, loan or card offers, pre-approved loans, "eligible for" a card, reward points to redeem, lounge or voucher perks to claim, new plans, "order now", "shop now", "apply now" — even when a bank sends it.
             The sender header ends in -P (promotional, always OFFERS), -S (service), -T (transactional) or -G (government); for -S and -T read the message itself.
             Sender: $sender ($header)
             Message: ${text.take(600)}
-            Answer with one word: PERSONAL, OTP, TRANSACTIONS, SHOPPING, UPDATES or OFFERS.
+            Answer with one word: PERSONAL, OTP, TRANSACTIONS, SHOPPING, TRAVEL, UPDATES or OFFERS.
         """.trimIndent()
         val answer = generate(prompt, maxTokens = 4, temperature = 0f)?.uppercase() ?: return null
-        return listOf("TRANSACTIONS", "SHOPPING", "PERSONAL", "UPDATES", "OFFERS", "OTP").firstOrNull { answer.contains(it) }
+        return listOf("TRANSACTIONS", "SHOPPING", "PERSONAL", "TRAVEL", "UPDATES", "OFFERS", "OTP").firstOrNull { answer.contains(it) }
     }
 
     companion object {

@@ -747,4 +747,5 @@
     <string name="resort_all">सभी मैसेज फिर से छांटें</string>
     <string name="resort_all_sub">हर मैसेज दोबारा पढ़कर सही कैटेगरी में रखें</string>
     <string name="resort_started">फिर से छांटना शुरू हो गया। आप Yarn इस्तेमाल करते रहें।</string>
+    <string name="group_travel">यात्रा</string>
 </resources>

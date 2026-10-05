@@ -43,6 +43,7 @@ enum class InboxGroup(@androidx.annotation.StringRes val label: Int, val kind: C
     OTP(R.string.group_otp, CategoryGroup.OTP, Category.OTP),
     TRANSACTIONS(R.string.group_transactions, CategoryGroup.TRANSACTIONS, Category.BANKING),
     SHOPPING(R.string.group_shopping, CategoryGroup.SHOPPING, Category.SHOPPING),
+    TRAVEL(R.string.group_travel, CategoryGroup.TRAVEL, Category.TRAVEL),
     UPDATES(R.string.group_updates, CategoryGroup.UPDATES, Category.UPDATES),
     OFFERS(R.string.group_offers, CategoryGroup.OFFERS, Category.PROMOTIONS);
 

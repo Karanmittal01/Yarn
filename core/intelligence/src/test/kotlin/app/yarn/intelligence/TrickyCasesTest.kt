@@ -43,8 +43,8 @@ class TrickyCasesTest {
         // Service notices
         Triple("VM-AIRTEL-S", "Your Airtel Xstream Fiber will be under maintenance tomorrow 2-4 AM.", setOf(U)),
         Triple("AD-HDFCBK-S", "Dear Customer, HDFC Bank NetBanking will be unavailable on 5 Oct from 1 AM to 4 AM due to maintenance.", setOf(T, U)),
-        Triple("JX-IRCTCI-S", "Your train 12951 is running late by 45 mins. Expected arrival at New Delhi 09:15.", setOf(U)),
-        Triple("VM-GOIBIB-S", "Your hotel booking at Taj Fort Aguada, Goa for 12-14 Oct is confirmed. Booking ID GO12345.", setOf(U)),
+        Triple("JX-IRCTCI-S", "Your train 12951 is running late by 45 mins. Expected arrival at New Delhi 09:15.", setOf(CategoryGroup.TRAVEL)),
+        Triple("VM-GOIBIB-S", "Your hotel booking at Taj Fort Aguada, Goa for 12-14 Oct is confirmed. Booking ID GO12345.", setOf(CategoryGroup.TRAVEL)),
         // People
         Triple("+919811117777", "Zomato se order karte hain aaj?", setOf(P)),
         Triple("+919811118888", "Can you send me the OTP that came on your phone?", setOf(P, null)),

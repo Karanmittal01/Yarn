@@ -75,9 +75,9 @@ class IndianSmsCorpusTest {
         c("AX-XPRSBS-S", "Your XpressBees shipment 13579246801 is in transit and will be delivered by tomorrow.", CategoryGroup.SHOPPING),
 
         // ---- Updates: travel, government, telecom service notices, appointments ----------------
-        c("AD-IRCTCI-S", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed. Departure 16:55 on 12-03-25.", CategoryGroup.UPDATES),
-        c("VM-INDIGO-S", "Web check-in is open for your IndiGo flight 6E 2134 BLR-DEL on 12 Mar, 06:10. Check in: goindigo.in", CategoryGroup.UPDATES),
-        c("AX-UBERIN-S", "Your Uber driver Ramesh is arriving in a white Swift DL1AB1234.", CategoryGroup.UPDATES),
+        c("AD-IRCTCI-S", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed. Departure 16:55 on 12-03-25.", CategoryGroup.TRAVEL),
+        c("VM-INDIGO-S", "Web check-in is open for your IndiGo flight 6E 2134 BLR-DEL on 12 Mar, 06:10. Check in: goindigo.in", CategoryGroup.TRAVEL),
+        c("AX-UBERIN-S", "Your Uber driver Ramesh is arriving in a white Swift DL1AB1234.", CategoryGroup.TRAVEL),
         c("JD-UIDAI-G", "Your Aadhaar update request has been successfully processed. Download e-Aadhaar from myaadhaar.uidai.gov.in", CategoryGroup.UPDATES),
         c("AD-APOLLO-S", "Your appointment with Dr. Sharma is confirmed for 12 Mar at 10:30 AM at Apollo Clinic, Indiranagar.", CategoryGroup.UPDATES),
         c("AD-AIRTEL-S", "Your Airtel prepaid plan expires in 2 days. Recharge to continue enjoying uninterrupted services.", CategoryGroup.UPDATES, CategoryGroup.TRANSACTIONS),
@@ -90,7 +90,7 @@ class IndianSmsCorpusTest {
         c("AX-LENSKT-P", "Flat 50% off on eyeglasses this week. Visit your nearest Lenskart store or shop online.", CategoryGroup.OFFERS),
         c("VK-HDFCBK-S", "Your HDFC Bank Credit Card XX1234 has been blocked as requested. A new card will be dispatched in 7 days.", CategoryGroup.TRANSACTIONS, CategoryGroup.UPDATES),
         c("AD-SBIINB-S", "Dear Customer, periodic KYC update for your SBI account is due. Please visit your home branch with your documents.", CategoryGroup.TRANSACTIONS),
-        c("JD-OLACAB-S", "Your Ola ride is confirmed. Driver Suresh, KA01AB1234, arriving in 4 mins.", CategoryGroup.UPDATES),
+        c("JD-OLACAB-S", "Your Ola ride is confirmed. Driver Suresh, KA01AB1234, arriving in 4 mins.", CategoryGroup.TRAVEL),
         c("VM-MMTRIP-P", "Flat 25% off on domestic flights! Use code MMTSALE. Book now on MakeMyTrip.", CategoryGroup.OFFERS),
         c("VM-BMSHOW-S", "Your BookMyShow booking for Pushpa 2 at PVR Forum on 12 Mar, 7:30 PM is confirmed. Booking ID ABC1234.", CategoryGroup.UPDATES, CategoryGroup.SHOPPING),
         c("AX-CANBNK-T", "Your a/c XX1234 debited for Rs.2000.00 on 05-03-25 for ATM withdrawal. -Canara Bank", CategoryGroup.TRANSACTIONS),

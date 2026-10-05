@@ -57,11 +57,11 @@ class UiSnapshotTest {
         item(5, "Swiggy", "Your Swiggy order from Behrouz Biryani is on the way!", "SHOPPING", 0, "AD-SWIGGY-S", true, InboxGroup.SHOPPING),
         item(6, "Mom", "Call me when you're free", "PERSONAL", 0, "+919800000002", false, InboxGroup.PERSONAL),
         item(7, "Zepto", "Sale is LIVE! Get flat 50% off on fruits & veggies. Order now", "PROMOTIONS", 0, "JM-ZEPTON-P", true, InboxGroup.OFFERS),
-        item(8, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.UPDATES),
+        item(8, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.TRAVEL),
         item(9, "CDSL", "Credit in a/c *89040843 through IPO/FPO for 107 shares", "BANKING", 0, "JX-CDSLTX-S", true, InboxGroup.TRANSACTIONS),
     )
     private val chips = listOf(app.yarn.ui.inbox.InboxChip(app.yarn.R.string.chip_all, app.yarn.data.repo.InboxFilter(), unread = 4)) +
-        listOf(InboxGroup.PERSONAL to 2, InboxGroup.OTP to 1, InboxGroup.TRANSACTIONS to 1, InboxGroup.SHOPPING to 0, InboxGroup.UPDATES to 0, InboxGroup.OFFERS to 0)
+        listOf(InboxGroup.PERSONAL to 2, InboxGroup.OTP to 1, InboxGroup.TRANSACTIONS to 1, InboxGroup.SHOPPING to 0, InboxGroup.TRAVEL to 1, InboxGroup.UPDATES to 0, InboxGroup.OFFERS to 0)
             .map { (g, n) -> app.yarn.ui.inbox.InboxChip(g.label, g.filter, g, n) }
 
     private fun shot(dark: Boolean, name: String, content: @androidx.compose.runtime.Composable () -> Unit) {
@@ -285,6 +285,25 @@ class UiSnapshotTest {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 24.dp)) {
             app.yarn.ui.inbox.WorkBanners(app.yarn.work.JobProgress(app.yarn.work.JobKind.RESORTING, 3120, 8450), app.yarn.backup.BackupState.Running("Uploading to Google Drive", 45, 100, percent = true), importing = false)
             inbox.take(4).forEach { ConversationRow(it, false, false, {}, {}) }
+        }
+    }
+
+    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+    @Test fun travelTab() = shot(true, "32_travel_tab_dark") {
+        val travel = listOf(
+            item(21, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed. Dep 16:55", "TRAVEL", 1, "AD-IRCTCI-S", true, InboxGroup.TRAVEL),
+            item(22, "IndiGo", "Web check-in is open for your flight 6E 2134 DEL-BOM on 06 Oct.", "TRAVEL", 0, "JM-INDIGO-S", true, InboxGroup.TRAVEL),
+            item(23, "Uber", "Your Uber driver Sunil has arrived. Look for a grey WagonR DL1CA1234.", "TRAVEL", 0, "VM-UBERIN-S", true, InboxGroup.TRAVEL),
+            item(24, "MakeMyTrip", "Your hotel booking at Taj Fort Aguada is confirmed for 10-12 Oct.", "TRAVEL", 0, "VK-MKMTRP-S", true, InboxGroup.TRAVEL),
+        )
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 24.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                Modifier.padding(horizontal = 16.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+            ) { chips.forEach { c -> app.yarn.ui.inbox.GroupChip(c, selected = c.group == InboxGroup.TRAVEL) {} } }
+            androidx.compose.foundation.layout.Spacer(Modifier.size(16.dp))
+            travel.forEach { ConversationRow(it, false, false, {}, {}) }
         }
     }
 }

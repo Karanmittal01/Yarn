@@ -140,10 +140,10 @@ class MessageTypeCorpusTest {
         c("AD-SBIINB-S", "Dear Customer, interest of Rs 412 has been credited to your SBI savings account XX1234.", T),
 
         // ---- Updates --------------------------------------------------------------------------------
-        c("AD-IRCTCI-S", "PNR 2345678901 Train 12627 Dt 05-10-26 Coach S5 Seat 34 confirmed. Have a happy journey.", U),
-        c("VM-INDIGO-S", "Your IndiGo flight 6E 512 from BLR to DEL on 05 Oct is on time. Gate closes 25 mins before departure.", U),
-        c("JD-OLACAB-S", "Your Ola driver Ravi is arriving in 3 mins in a white Dzire KA05AB1234.", U),
-        c("AD-RAPIDO-S", "Your Rapido captain Suresh is on the way. Bike KA01XY9876.", U),
+        c("AD-IRCTCI-S", "PNR 2345678901 Train 12627 Dt 05-10-26 Coach S5 Seat 34 confirmed. Have a happy journey.", CategoryGroup.TRAVEL),
+        c("VM-INDIGO-S", "Your IndiGo flight 6E 512 from BLR to DEL on 05 Oct is on time. Gate closes 25 mins before departure.", CategoryGroup.TRAVEL),
+        c("JD-OLACAB-S", "Your Ola driver Ravi is arriving in 3 mins in a white Dzire KA05AB1234.", CategoryGroup.TRAVEL),
+        c("AD-RAPIDO-S", "Your Rapido captain Suresh is on the way. Bike KA01XY9876.", CategoryGroup.TRAVEL),
         c("VM-APOLLO-S", "Your appointment with Dr. Rao at Apollo Hospital is confirmed for 5 Oct, 11:00 AM.", U),
         c("JK-UIDAI-G", "Your Aadhaar has been successfully updated. Download your updated Aadhaar from myaadhaar.uidai.gov.in", U),
         c("VM-EPFOHO-G", "Your PF passbook has been updated for Sep-26.", U),

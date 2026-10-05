@@ -748,4 +748,5 @@
     <string name="resort_all">Re-sort all messages</string>
     <string name="resort_all_sub">Read every message again and file it by what it says</string>
     <string name="resort_started">Re-sorting started. You can keep using Yarn.</string>
+    <string name="group_travel">Travel</string>
 </resources>

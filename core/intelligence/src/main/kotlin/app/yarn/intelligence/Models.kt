@@ -111,7 +111,7 @@ data class Analysis(
 }
 
 /** The six groups people see in the inbox; each fine-grained [Category] belongs to one. */
-enum class CategoryGroup { PERSONAL, OTP, TRANSACTIONS, SHOPPING, UPDATES, OFFERS }
+enum class CategoryGroup { PERSONAL, OTP, TRANSACTIONS, SHOPPING, TRAVEL, UPDATES, OFFERS }
 
 val Category.group: CategoryGroup?
     get() = when (this) {
@@ -119,7 +119,8 @@ val Category.group: CategoryGroup?
         Category.OTP -> CategoryGroup.OTP
         Category.BANKING, Category.PAYMENTS, Category.BILLS -> CategoryGroup.TRANSACTIONS
         Category.SHOPPING, Category.DELIVERY -> CategoryGroup.SHOPPING
-        Category.TRAVEL, Category.UPDATES -> CategoryGroup.UPDATES
+        Category.TRAVEL -> CategoryGroup.TRAVEL
+        Category.UPDATES -> CategoryGroup.UPDATES
         Category.PROMOTIONS -> CategoryGroup.OFFERS
         Category.SPAM -> null
     }

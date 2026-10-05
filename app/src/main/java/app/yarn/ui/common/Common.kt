@@ -21,7 +21,7 @@ import androidx.compose.material.icons.automirrored.outlined.Message
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Campaign
-import androidx.compose.material.icons.outlined.Flight
+import androidx.compose.material.icons.outlined.Luggage
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Inventory2
@@ -176,6 +176,7 @@ object CategoryUi {
         InboxGroup.OTP -> Icons.Outlined.Password
         InboxGroup.TRANSACTIONS -> Icons.Outlined.AccountBalance
         InboxGroup.SHOPPING -> Icons.Outlined.ShoppingBag
+        InboxGroup.TRAVEL -> Icons.Outlined.Luggage
         InboxGroup.UPDATES -> Icons.Outlined.Inventory2
         InboxGroup.OFFERS -> Icons.Outlined.LocalOffer
     }
