@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.outlined.Message
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Campaign
+import androidx.compose.material.icons.outlined.Flight
 import androidx.compose.material.icons.outlined.Luggage
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Info
