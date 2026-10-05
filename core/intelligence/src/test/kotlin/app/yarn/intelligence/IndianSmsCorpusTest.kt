@@ -88,7 +88,7 @@ class IndianSmsCorpusTest {
         c("VM-DOMINO-S", "Your Domino's order is out for delivery and will reach you in 15 mins.", CategoryGroup.SHOPPING),
         c("AD-DOMINO-P", "Buy 1 Get 1 free on all medium pizzas this weekend! Order now: dominos.co.in", CategoryGroup.OFFERS),
         c("AX-LENSKT-P", "Flat 50% off on eyeglasses this week. Visit your nearest Lenskart store or shop online.", CategoryGroup.OFFERS),
-        c("VK-HDFCBK-S", "Your HDFC Bank Credit Card XX1234 has been blocked as requested. A new card will be dispatched in 7 days.", CategoryGroup.TRANSACTIONS),
+        c("VK-HDFCBK-S", "Your HDFC Bank Credit Card XX1234 has been blocked as requested. A new card will be dispatched in 7 days.", CategoryGroup.TRANSACTIONS, CategoryGroup.UPDATES),
         c("AD-SBIINB-S", "Dear Customer, periodic KYC update for your SBI account is due. Please visit your home branch with your documents.", CategoryGroup.TRANSACTIONS),
         c("JD-OLACAB-S", "Your Ola ride is confirmed. Driver Suresh, KA01AB1234, arriving in 4 mins.", CategoryGroup.UPDATES),
         c("VM-MMTRIP-P", "Flat 25% off on domestic flights! Use code MMTSALE. Book now on MakeMyTrip.", CategoryGroup.OFFERS),

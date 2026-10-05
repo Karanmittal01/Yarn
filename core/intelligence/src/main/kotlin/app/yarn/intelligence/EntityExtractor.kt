@@ -78,6 +78,7 @@ class EntityExtractor(
             // Skip money, account fragments, phone chunks, years and times.
             if (CURRENCY_BEFORE.containsMatchIn(before)) return@mapNotNull null
             if (ACCOUNT_BEFORE.containsMatchIn(before)) return@mapNotNull null
+            if (REFERENCE_NUMBER_BEFORE.containsMatchIn(before) && !before.contains("otp") && !before.contains("code")) return@mapNotNull null
             if (after.startsWith(":") && after.drop(1).take(2).all { it.isDigit() }) return@mapNotNull null
             if (after.trimStart().startsWith("rs") || after.trimStart().startsWith("inr")) return@mapNotNull null
             if (before.endsWith("+") || (before.trimEnd().lastOrNull()?.isDigit() == true && before.endsWith(" "))) {
@@ -414,8 +415,11 @@ class EntityExtractor(
 
         private val OTP_KEYWORD = Regex(
             "(?i)\\b(otp|one[- ]time[- ](?:password|passcode|pin|code)|verification|verify|security code|login code|" +
-                "sign[- ]?in code|auth(?:entication|orization)? code|access code|confirmation code|passcode|pin|code|2fa|mfa|tan)\\b",
+                "sign[- ]?in code|auth(?:entication|orization)? code|access code|confirmation code|passcode|pin|code|2fa|mfa|tan)\\b|" +
+                "(ओटीपी|सत्यापन कोड|वेरिफ़िकेशन कोड)",
         )
+        /** Reference numbers (application, booking, ARN…) that sit next to the word "verification". */
+        private val REFERENCE_NUMBER_BEFORE = Regex("(?i)(?:\\barn|\\bref(?:erence)?|application|booking|pnr|ticket|\\bid|\\d-)\\s*(?:no\\.?|number)?\\s*[:#.]?\\s*$")
         private val OTP_CANDIDATE = Regex("(?<![\\d.,/:])(?:[A-Z]-)?(\\d{4,8})(?![\\d.,/]\\d)|(?<![\\d.,])(\\d{3})[- ](\\d{3})(?![\\d])")
         private val STRONG_OTP = Regex(
             "(?i)(?:\\d{4,8}\\s+is\\s+(?:your|the)|(?:otp|code|pin|passcode)\\s*(?:is|:|-)\\s*(?:[A-Z]-)?\\d)",

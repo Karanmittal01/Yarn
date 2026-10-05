@@ -109,8 +109,8 @@ class GeminiNanoService(@Suppress("unused") private val context: Context) {
             OTP: contains a one-time password, verification code, login code or delivery PIN.
             TRANSACTIONS: money moved or is owed: debited, credited, paid, spent, charged, refunded, cashback credited, wallet or gift card balance, bill or EMI due, investments. This includes payments from Zomato, Swiggy, Amazon, Uber or any app, not just banks.
             SHOPPING: the progress of an order: placed, confirmed, packed, shipped, out for delivery, delivered, failed delivery, return pickup, cancelled.
-            UPDATES: travel bookings, rides, appointments, government notices, telecom or app service notices.
-            OFFERS: advertising: sales, discounts, coupon codes, cashback offers, loan or card offers, new plans, "order now", "shop now", "apply now".
+            UPDATES: travel bookings, rides, appointments, government notices, telecom or app service notices, account changes (login alerts, card blocked, KYC done) and safety advice ("we never ask for your OTP", "beware of fraud"). Banks send these too: no money moved means it is not TRANSACTIONS.
+            OFFERS: advertising: sales, discounts, coupon codes, cashback offers, loan or card offers, pre-approved loans, "eligible for" a card, reward points to redeem, lounge or voucher perks to claim, new plans, "order now", "shop now", "apply now" — even when a bank sends it.
             The sender header ends in -P (promotional, always OFFERS), -S (service), -T (transactional) or -G (government); for -S and -T read the message itself.
             Sender: $sender ($header)
             Message: ${text.take(600)}

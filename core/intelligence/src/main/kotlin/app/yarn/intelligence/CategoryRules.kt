@@ -25,13 +25,13 @@ object CategoryRules {
     private val RULES = listOf(
         // ---- One-time codes ---------------------------------------------------------------------
         r(Category.OTP, 3.5f, "Mentions a one-time password", "otp", "one[- ]time (?:password|passcode|pin|code)", "verification code", "security code",
-            "login code", "auth(?:entication)? code", "2fa", "passcode", "(?:delivery |secret |security |ride )?pin is", "code to verify", "is your (?:\\w+ )?code", "code is", "code for (?:login|logging in|verification|sign[- ]?in)"),
+            "login code", "auth(?:entication)? code", "2fa", "passcode", "(?:delivery |secret |security |ride )?pin is", "code to verify", "is your (?:\\w+ )?code", "code is", "code for (?:login|logging in|verification|sign[- ]?in)", "ओटीपी", "सत्यापन कोड"),
         r(Category.OTP, 1.5f, "Asks you not to share a code", "do not share", "don't share", "dont share", "never share", "valid (?:for|till) \\d+ ?(?:min|minutes|mins|seconds)"),
 
         // ---- Banks, cards, investments ----------------------------------------------------------
         r(Category.BANKING, 2.5f, "Mentions an account debit/credit", "debited", "credited", "a/c", "acct", "account balance", "avl bal", "avl\\.? bal", "available balance",
             "avl limit", "available limit", "withdrawn", "withdrawal", "atm", "neft", "imps", "rtgs", "ach", "wire transfer", "spent on", "spent at",
-            "(?:txn|trxn|transaction|purchase) (?:of|for) $MONEY"),
+            "(?:txn|trxn|transaction|purchase) (?:of|for) $MONEY", "डेबिट", "क्रेडिट", "जमा", "निकासी", "खाते"),
         r(Category.BANKING, 1.8f, "Mentions a card or bank account", "credit card", "debit card", "card ending", "card xx\\d+", "savings account", "current account", "net ?banking",
             "statement", "emi", "loan account", "cheque", "kyc", "home branch", "card (?:has been |is )?(?:blocked|activated|dispatched|delivered)", "bank"),
         r(Category.BANKING, 2.2f, "Mentions investments", "demat", "ipo", "fpo", "sip", "mutual fund", "folio", "nav", "dividend", "allotment", "allotted",
@@ -48,8 +48,9 @@ object CategoryRules {
             "(?:has been |was |is )?charged (?:to|on) your", "charged $MONEY", "$MONEY (?:has been |was )?charged"),
 
         r(Category.BILLS, 2.5f, "Mentions a bill or due date", "bill (?:of|for|is|amount|generated)", "due date", "due on", "is due", "amount due", "amt due", "overdue",
-            "postpaid", "electricity", "gas bill", "water bill", "broadband", "premium (?:of $MONEY )?(?:for|is|due)", "insurance premium", "autopay", "auto-debit",
-            "mandate", "subscription renew(?:s|al|ed)", "plan expires", "validity (?:ends|expires)"),
+            "postpaid", "electricity bill", "gas bill", "water bill", "broadband", "premium (?:of $MONEY )?(?:for|is|due)", "insurance premium", "autopay", "auto-debit",
+            "mandate", "subscription renew(?:s|al|ed)", "plan expires", "validity (?:ends|expires)",
+            "emi (?:of|for|is|was)", "bounced", "pay immediately"),
 
         // ---- Orders, food, groceries, deliveries ------------------------------------------------
         r(Category.SHOPPING, 3f, "Talks about your order", "your order(?!s| now| to (?:buy|sell))", "your (?!next |first )(?:\\w+ ){1,2}order(?!s| now| to (?:buy|sell))", "order (?:#|no\\.?|id|number) ?[a-z]*\\d[\\w-]*",
@@ -60,7 +61,7 @@ object CategoryRules {
         r(Category.DELIVERY, 2.8f, "Mentions a shipment", "shipped", "out for delivery", "delivered", "dispatched", "in transit", "tracking", "track (?:your|it)",
             "awb", "courier", "parcel", "package", "shipment", "delivery (?:partner|agent|executive|associate|attempt|scheduled|slot|boy)",
             "arriving (?:today|tomorrow|by|in)", "will (?:arrive|reach you)", "scheduled for delivery", "picked up",
-            "unable to deliver", "could not deliver", "couldn't deliver", "delivery (?:failed|attempted|was attempted|rescheduled)", "attempted delivery",
+            "unable to deliver", "could not deliver", "डिलीवर", "ऑर्डर", "couldn't deliver", "delivery (?:failed|attempted|was attempted|rescheduled)", "attempted delivery",
             "on (?:its|the) way", "reached your location", "near your location", "valet"),
 
         // ---- Travel ---------------------------------------------------------------------------
@@ -77,12 +78,20 @@ object CategoryRules {
             "download (?:the )?app", "install now", "click to apply", "open now", "recharge now", "subscribe now", "visit (?:our|your nearest)", "don't miss", "dont miss",
             "abhi order", "t&c", "t&cs", "tnc", "\\*t&c apply", "pay now", "add money", "try now", "check it out", "claim now"),
         r(Category.PROMOTIONS, 1.6f, "Creates urgency to buy", "hurry", "limited (?:time|period|stock|offer)", "ends (?:today|tonight|soon|at midnight|in)", "last (?:day|chance|few hours)",
-            "today only", "only today", "sirf aaj", "missing out", "your cart misses you", "left in your cart", "back in stock", "new arrivals?", "just launched",
+            "today only", "only today", "sirf aaj", "this (?:diwali|festive season|weekend|holi|navratri)", "missing out", "your cart misses you", "left in your cart", "back in stock", "new arrivals?", "just launched",
             "craving", "hungry\\?", "new on \\w+", "now available", "delivered in \\d+ ?(?:min|mins|minutes)", "in just \\d+ ?(?:min|mins|minutes)"),
         r(Category.PROMOTIONS, 1.6f, "Advertises a loan, card or plan", "pre-?approved", "eligible for", "instant (?:loan|personal loan|credit)", "loan (?:of )?up ?to",
             "lifetime free", "get (?:an? )?(?:loan|credit card|card)", "upgrade to", "interest rates? (?:starting|as low)", "unlimited (?:5g|data|calls)",
             "5g unlimited", "with $MONEY plan", "$MONEY plan", "recharge (?:before|with)",
             "(?:\\d+ )?months? (?:of )?\\w+ free", "earn \\d+ ?% cashback"),
+        r(Category.PROMOTIONS, 2.4f, "Advertises a financial product or perk", "reward points? (?:are|is) waiting", "redeem (?:them|it|now|your)", "coins (?:are|is) expiring",
+            "complimentary", "exclusive (?:for you|benefits?|offers?|dining|deals?)", "unlock (?:exclusive|special)", "zero (?:joining|annual|processing|forex)",
+            "lounge (?:access|voucher)", "claim (?:it|now|your|before|by)", "plan your", "attractive (?:rates?|interest)", "earn up ?to", "open an? (?:\\w+ )?account (?:in|online|now|today)",
+            "know more", "avail (?:now|it|today)", "no (?:documents?|income proof|paperwork)(?: (?:needed|required))?", "home loans?", "at \\d+(?:\\.\\d+)?% p\\.?a",
+            "apply (?:today|online)", "test ride", "unbelievable price", "best prices?", "lowest prices?", "save up ?to", "compare plans", "for less",
+            "get it in minutes", "order from top", "metal card", "\\dx rewards", "welcome (?:rewards|benefits|bonus)", "convert (?:your|it|now|to)", "easy emis?", "low interest", "book a test ride", "is waiting for you", "upgrade",
+            "(?:now |starting )?at (?:just |only )?$MONEY", "$MONEY only", "only $MONEY", "subscribe (?:now|today)", "free (?:delivery|movie|lounge)",
+            "ऑफ़र", "ऑफर", "छूट", "सेल", "पाएं", "अभी रिचार्ज", "धमाका"),
         r(Category.PROMOTIONS, 1.2f, "Has an opt-out footer", "unsubscribe", "opt[- ]?out", "reply stop", "txt stop", "sms stop", "to stop (?:receiving|these)"),
 
         // ---- Service notices ------------------------------------------------------------------
@@ -90,6 +99,17 @@ object CategoryRules {
             "has been (?:updated|approved|activated|registered|processed)", "successfully", "alert", "notification", "status", "results?", "report", "renewal",
             "booking (?:id|is confirmed|confirmed)", "is confirmed"),
 
+        // Safety advice ("We never ask for your OTP") is a notice, not a transaction or a code.
+        r(Category.UPDATES, 4f, "Safety advice from the sender", "never (?:asks?|calls?|call you|ask you|requests?|send)", "will never (?:ask|call|send|request)",
+            "beware", "fraud(?:sters?| alerts?| calls?)", "cyber ?(?:crime|fraud)", "report (?:cyber )?fraud", "stay (?:safe|alert)", "be (?:aware|alert|cautious)",
+            "do not (?:disclose|respond|click|install|scan)", "don't click", "cautions?", "fake (?:customer care|calls?|links?|numbers?)", "only for making payments",
+            "never need to enter", "kehta hai", "सावधान", "धोखेबाज़", "कभी भी"),
+        // Account and service changes where no money moved.
+        r(Category.UPDATES, 2.6f, "Account or service change", "logged in", "login (?:alert|detected)", "new device",
+            "(?:has been|have been|was) (?:blocked|unblocked|enabled|disabled|linked|delinked|changed|registered|submitted|closed|issued|activated|deactivated|completed|updated|approved)",
+            "successfully (?:linked|registered|updated|changed|submitted|completed|closed|logged)", "will be unavailable", "scheduled maintenance", "as requested",
+            "supply will be (?:disrupted|interrupted|affected)", "power (?:cut|outage|shutdown)", "for maintenance",
+            "nominee", "\\bnoc\\b", "under (?:police )?verification", "policy (?:has been )?issued", "will mature", "auto-?renewed", "kyc (?:has been|is) (?:completed|updated|verified)"),
         r(Category.WORK, 2.4f, "Mentions work topics", "meeting", "standup", "stand-up", "deadline", "client", "project", "office", "manager", "shift", "deploy",
             "invoice approved", "sprint", "presentation", "conference call", "team", "colleague", "payroll", "salary"),
 
@@ -104,12 +124,13 @@ object CategoryRules {
     private val MONEY_LEAD = Regex(
         "(?i)(?:debited|credited|deducted|refunded|refund (?:of|for|has|is|amount)|\\bpaid\\b|payment (?:of|received|successful|is successful|done|failed)|" +
             "\\bspent\\b|charged|transferred|withdrawn|gift card (?:has|of|worth|is)|\\b\\w+ money (?:is|has)|cashback (?:of|has been|credited|is credited)|" +
-            "added to your \\w* ?(?:balance|wallet|account))",
+            "added to your \\w* ?(?:balance|wallet|account)|has been executed|units allotted|\\bsip of|recharge (?:of (?:rs|inr|₹)|successful|is successful)|emi (?:of|for) (?:rs|inr|₹)|bounced|डेबिट|जमा)",
     )
     private val ORDER_LEAD = Regex(
-        "(?i)(?:your (?!next |first )(?:\\w+ ){0,2}order(?!s| now| to (?:buy|sell))|order (?:#|no\\.|id|number|is|has|was|of|for|from|\\d)|shipped|shipment|dispatched|packed|" +
+        "(?i)(?:your (?!next |first )(?:\\w+ ){0,2}order(?!s| now| to (?:buy|sell))|order (?:#|no\\.|id|number|is|has|was|\\d)|shipped|shipment|dispatched|packed|" +
             "out for delivery|return pickup|parcel|package|courier|unable to deliver|(?:has been|was|is|got) delivered|delivered (?:to|at|today|successfully)|order delivered)",
     )
+    private val DISCOUNT = Regex("(?i)\\d+ ?% ?(?:off|discount|cashback)|use (?:code|coupon)|promo ?code|flat $MONEY off|up ?to $MONEY off")
     private val SERVICE = listOf(Category.OTP, Category.BANKING, Category.PAYMENTS, Category.BILLS, Category.SHOPPING, Category.DELIVERY, Category.TRAVEL)
 
     data class Scores(val probabilities: Map<Category, Float>, val reasons: Map<Category, List<String>>) {
@@ -175,6 +196,14 @@ object CategoryRules {
             for (c in SERVICE + Category.PROMOTIONS + Category.UPDATES) if (c != Category.OTP) scale(c, 0.5f)
         }
 
+        // Did money actually move or fall due? Mentions of "account" or "card" alone don't count.
+        val moneyEvidence = MONEY_LEAD.containsMatchIn(text) || get(Category.BILLS) >= 2.5f ||
+            entities.any { it.type == EntityType.AMOUNT && it.attributes["direction"] in setOf("debit", "credit", "due", "balance") }
+        if (otp == null && !moneyEvidence) { scale(Category.BANKING, 0.4f); scale(Category.PAYMENTS, 0.5f) }
+
+        // A discount or promo code is an advert, unless money moved or an order is under way.
+        if (otp == null && !moneyEvidence && DISCOUNT.containsMatchIn(text) && !ORDER_LEAD.containsMatchIn(text)) add(Category.PROMOTIONS, 3f, "Offers a discount")
+
         // What the message is about, before we look at who sent it.
         val promo = get(Category.PROMOTIONS)
         val service = SERVICE.maxOf { get(it) }
@@ -186,8 +215,9 @@ object CategoryRules {
             when {
                 marketing -> add(Category.PROMOTIONS, 1f, "Marketing from $name")
                 brand == Category.BANKING || brand == Category.PAYMENTS -> {
-                    // "Anything from the bank" is a transaction unless it is clearly an advert.
-                    add(brand, 3f, "Sent by $name")
+                    // A bank's name only tips money messages into Transactions; banks also send
+                    // safety advice, service notices and adverts, which are filed by what they say.
+                    add(brand, if (moneyEvidence) 3f else 0.6f, "Sent by $name")
                 }
                 else -> add(brand, 1.2f, "Sent by $name")
             }
@@ -209,18 +239,20 @@ object CategoryRules {
         // When a message talks about both money and an order, its opening line says what it is
         // ("Payment of Rs 185 from Zomato Money…" is a transaction; "Your order is on the way…" is shopping).
         // Only for businesses (people mention money and orders casually) and never over a real code.
+        // Banks don't ship orders: "a new card will be dispatched" is a service notice.
+        val bankSender = brand == Category.BANKING || brand == Category.PAYMENTS
         if (sender.isBusinessLike && otp == null) {
             val moneyAt = MONEY_LEAD.find(text)?.range?.first
             val orderAt = ORDER_LEAD.find(text)?.range?.first
             if (moneyAt != null && (orderAt == null || moneyAt < orderAt)) add(Category.PAYMENTS, 5f, "Money moved")
-            if (orderAt != null && (moneyAt == null || orderAt < moneyAt)) add(Category.SHOPPING, 5f, "About your order")
+            if (orderAt != null && !bankSender && (moneyAt == null || orderAt < moneyAt)) add(Category.SHOPPING, 5f, "About your order")
         }
 
         // Real activity beats marketing lines in footers ("Get 10% cashback on your next order").
         val txn = maxOf(get(Category.OTP), get(Category.BANKING), get(Category.PAYMENTS))
         val order = maxOf(get(Category.SHOPPING), get(Category.DELIVERY))
         val strongEvidence = (entities.any { it.type == EntityType.AMOUNT && it.attributes["direction"] in setOf("debit", "credit") }) ||
-            entities.any { it.type == EntityType.ACCOUNT_REF } || order >= 5f
+            (moneyEvidence && entities.any { it.type == EntityType.ACCOUNT_REF }) || order >= 5f
         if (sender.commercialSuffix != CommercialSuffix.PROMOTIONAL && strongEvidence && maxOf(txn, order) >= 3.5f) scale(Category.PROMOTIONS, 0.35f)
 
         // A small prior so short, keyword-free messages default sensibly.

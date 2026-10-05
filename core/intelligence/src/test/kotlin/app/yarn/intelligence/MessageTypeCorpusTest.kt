@@ -135,7 +135,7 @@ class MessageTypeCorpusTest {
         c("JM-GROWWS-S", "SIP of Rs 2,000 in Parag Parikh Flexi Cap Fund has been processed. Units will be allotted at NAV of 01-Oct.", T),
         c("AD-CDSLTX-S", "CDSL: Debit in a/c *89040843 for 10 shares of INFY on 01-10-26.", T),
         c("VK-PAYTMB-S", "Rs 65 deducted from your Paytm FASTag for toll at Kherki Daula. Balance Rs 435.", T),
-        c("JD-HDFCBK-S", "Your HDFC Bank Debit Card XX1234 has been blocked as per your request.", T),
+        c("JD-HDFCBK-S", "Your HDFC Bank Debit Card XX1234 has been blocked as per your request.", T, U),
         c("VM-ICICIB-S", "Your ICICI Bank Credit Card XX5678 statement for Sep-26 is now available. Total due Rs 9,870.", T),
         c("AD-SBIINB-S", "Dear Customer, interest of Rs 412 has been credited to your SBI savings account XX1234.", T),
 
