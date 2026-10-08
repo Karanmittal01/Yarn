@@ -22,6 +22,7 @@ import app.yarn.telephony.SystemBlockList
 import app.yarn.telephony.TelephonyStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -76,14 +77,27 @@ class ConversationRepository(
         scope.launch { db.blocks().observe().collect { blockRules = it } }
     }
 
-    fun observe(filter: InboxFilter): Flow<List<ConversationEntity>> {
+    /** The OTP tab also lists chats that got a code in the last day, even if newer messages followed. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    fun observe(filter: InboxFilter): Flow<List<ConversationEntity>> =
+        if (filter.view == InboxView.CATEGORY && Category.OTP in filter.categories) {
+            freshCodeCutoff().flatMapLatest { since -> observe(filter, since) }
+        } else {
+            observe(filter, null)
+        }
+
+    private fun observe(filter: InboxFilter, codesSince: Long?): Flow<List<ConversationEntity>> {
         val base = "blocked = 0 AND (messageCount > 0 OR (draft IS NOT NULL AND draft != ''))"
         val live = "$base AND archived = 0 AND spam = 0"
         val where = when (filter.view) {
             InboxView.ALL -> live
             InboxView.IMPORTANT -> "$live AND ((unreadCount > 0 AND importance >= 65) OR starred = 1)"
             InboxView.UNREAD -> "$live AND unreadCount > 0"
-            InboxView.CATEGORY -> "$live AND category IN (${filter.categories.joinToString(",") { "'${it.name}'" }})"
+            InboxView.CATEGORY -> {
+                val inCategory = "category IN (${filter.categories.joinToString(",") { "'${it.name}'" }})"
+                if (codesSince == null) "$live AND $inCategory"
+                else "$live AND ($inCategory OR id IN (SELECT conversationId FROM messages WHERE category = 'OTP' AND outgoing = 0 AND date > $codesSince))"
+            }
             InboxView.ARCHIVED -> "$base AND archived = 1 AND spam = 0"
             InboxView.SPAM -> "$base AND spam = 1"
             InboxView.BLOCKED -> "blocked = 1"
@@ -341,3 +355,14 @@ class ConversationRepository(
 }
 
 private const val DELETE_BATCH = 400
+
+/** How long a received code keeps its chat in the OTP tab, whatever arrives after it. */
+const val FRESH_CODE_MS = 24 * 60 * 60 * 1000L
+
+/** Emits "now minus a day", refreshed every few minutes so chats drop out of the OTP tab on time. */
+fun freshCodeCutoff(): Flow<Long> = kotlinx.coroutines.flow.flow {
+    while (true) {
+        emit(System.currentTimeMillis() - FRESH_CODE_MS)
+        kotlinx.coroutines.delay(10 * 60 * 1000L)
+    }
+}

@@ -3,6 +3,7 @@ package app.yarn.data.db
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -107,5 +108,21 @@ class DatabaseTest {
         msg(12, "PROMOTIONS") // replied-to chat
         msg(13, "PROMOTIONS") // filed as personal
         assertThat(db.messages().junkIds(listOf("PROMOTIONS"), before = 5_000)).containsExactly(junk)
+    }
+
+    @Test
+    fun recentCodeKeepsChatInOtpTab() = runTest {
+        // A cab chat: a code at 10:15, then "arriving now" at 10:43 (newest message isn't a code).
+        db.conversations().upsert(ConversationEntity(id = 20, addresses = listOf("JX-RMATIC-S"), category = "TRAVEL", unreadCount = 1, messageCount = 2))
+        db.messages().insert(MessageEntity(conversationId = 20, providerId = 200, address = "JX-RMATIC-S", body = "Check In OTP: 1992", date = 10_000, outgoing = false, status = MessageStatus.RECEIVED, category = "OTP"))
+        db.messages().insert(MessageEntity(conversationId = 20, providerId = 201, address = "JX-RMATIC-S", body = "arriving now", date = 12_000, outgoing = false, status = MessageStatus.RECEIVED, category = "TRAVEL"))
+        // A chat whose code is older than the cut-off.
+        db.conversations().upsert(ConversationEntity(id = 21, addresses = listOf("AD-OLDOTP-S"), category = "UPDATES", messageCount = 1))
+        db.messages().insert(MessageEntity(conversationId = 21, providerId = 210, address = "AD-OLDOTP-S", body = "OTP 1234", date = 1_000, outgoing = false, status = MessageStatus.RECEIVED, category = "OTP"))
+
+        val fresh = db.conversations().codeTotals(since = 5_000).first()
+        assertThat(fresh.total).isEqualTo(1)
+        assertThat(fresh.unread).isEqualTo(1)
+        assertThat(db.conversations().codeTotals(since = 20_000).first().total).isEqualTo(0)
     }
 }

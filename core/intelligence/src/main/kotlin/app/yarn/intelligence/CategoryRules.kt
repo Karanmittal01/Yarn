@@ -66,7 +66,11 @@ object CategoryRules {
 
         // ---- Travel ---------------------------------------------------------------------------
         r(Category.TRAVEL, 2.8f, "Mentions travel", "flight", "boarding", "pnr", "check-?in", "gate", "departure", "arrival", "train", "coach", "berth", "hotel",
-            "itinerary", "cab", "ride", "captain", "bike [a-z]{2}\\d", "your driver", "driver \\w+", "uber", "ola", "rapido", "airport", "terminal", "e-ticket", "ticket booked", "bus ticket"),
+            "itinerary", "cab", "ride", "captain", "(?:bike|bus|cab|vehicle) [a-z]{2}\\d{1,2}[a-z]{0,3}\\d{1,4}", "your driver", "driver \\w+", "uber", "ola", "rapido", "airport", "terminal", "e-ticket", "ticket booked", "bus ticket",
+            // Office cabs and shuttles (Routematic, MoveInSync…): pickups, drops and the vehicle.
+            "pick ?up details", "drop details", "next pick ?up", "your pick(?:up)?", "vehicle ?(?:#|no\\.?|number|type)", "vehicle (?:has reached|is arriving|has arrived|assigned|is on)",
+            "arriving now", "has reached [a-z]", "\\d seater", "eta ?:", "shuttle?", "boarding point", "drop (?:location|point|time|is scheduled)",
+            "your (?:pick ?up|drop) (?:is|has|for)", "(?:login|logout) shift", "your (?:\\w+ )?bus (?:will|is|has)"),
 
         // ---- Marketing ------------------------------------------------------------------------
         r(Category.PROMOTIONS, 2.6f, "Looks like marketing", "sale", "sale is live", "offer", "offers", "discount", "discounts", "\\d+ ?% ?off", "up ?to \\d+ ?%",

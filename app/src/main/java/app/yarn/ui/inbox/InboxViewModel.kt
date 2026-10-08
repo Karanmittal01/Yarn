@@ -87,8 +87,11 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     }
 
     /** Only groups that actually contain conversations are offered as filters. */
-    val chips: StateFlow<List<InboxChip>> = combine(c.db.conversations().totalsByCategory(), _filter) { totals, current ->
-        val byName = totals.associateBy { it.category }
+    private val codeTotals = app.yarn.data.repo.freshCodeCutoff().flatMapLatest { c.db.conversations().codeTotals(it) }
+
+    val chips: StateFlow<List<InboxChip>> = combine(c.db.conversations().totalsByCategory(), codeTotals, _filter) { totals, codes, current ->
+        // The OTP tab also counts chats that got a code in the last day (see ConversationRepository.observe).
+        val byName = totals.associateBy { it.category } + ("OTP" to codes)
         val unreadAll = totals.sumOf { it.unread }
         buildList {
             add(InboxChip(R.string.chip_all, InboxFilter()))

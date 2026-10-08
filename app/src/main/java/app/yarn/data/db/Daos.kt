@@ -19,8 +19,19 @@ data class CategoryTotal(val category: String, val total: Int, val unread: Int)
 
 @Dao
 abstract class ConversationDao {
-    @RawQuery(observedEntities = [ConversationEntity::class])
+    @RawQuery(observedEntities = [ConversationEntity::class, MessageEntity::class])
     abstract fun observe(query: SupportSQLiteQuery): Flow<List<ConversationEntity>>
+
+    /**
+     * Totals for the OTP tab: chats whose newest message is a code, plus chats that received a code
+     * since [since] even if other messages followed it.
+     */
+    @Query(
+        "SELECT 'OTP' AS category, COUNT(*) AS total, COALESCE(SUM(CASE WHEN unreadCount > 0 THEN 1 ELSE 0 END), 0) AS unread FROM conversations " +
+            "WHERE archived = 0 AND spam = 0 AND blocked = 0 AND messageCount > 0 AND (category = 'OTP' OR id IN " +
+            "(SELECT conversationId FROM messages WHERE category = 'OTP' AND outgoing = 0 AND date > :since))",
+    )
+    abstract fun codeTotals(since: Long): Flow<CategoryTotal>
 
     @Query("SELECT * FROM conversations WHERE id = :id")
     abstract suspend fun get(id: Long): ConversationEntity?
