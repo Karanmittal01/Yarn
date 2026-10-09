@@ -1,3 +1,2 @@
-Chats with a fresh code now stay in the OTP tab for a day, so office cab and delivery codes are easy to find.
-Office cab, shuttle and pickup updates now go to Travel.
-Messages are re-sorted automatically after this update.
+Each tab now shows only its own kind of message: the OTP tab lists just codes, and the same chat's other messages stay in Travel, Transactions and so on. Open a chat from a tab to see only those messages, or tap Show all.
+Codes now show right under the sender's name with one-tap copy.
