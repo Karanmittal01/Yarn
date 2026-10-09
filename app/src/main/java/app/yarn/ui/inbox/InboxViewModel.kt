@@ -71,50 +71,60 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
             list.mapNotNull { f -> codeIn(f.body, f.date)?.let { f.conversationId to (it to f.date) } }.toMap()
         }
 
+    /** The section (tab) being shown, if it lists only part of each chat. Personal shows chats whole. */
+    val section: StateFlow<InboxGroup?> = _filter.map { sectionOf(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, sectionOf(initial))
+
     val items: StateFlow<List<InboxItem>?> = _filter
-        .flatMapLatest { c.conversations.observe(it) }
+        .flatMapLatest { f -> c.conversations.observe(f).map { sectionOf(f) to it } }
         .combine(c.contacts.version) { list, _ -> list }
         .combine(freshCodes) { list, codes -> list to codes }
-        .combine(c.sims.sims) { (list, codes), sims -> list.map { toItem(it, sims, codes[it.id]) } }
+        .combine(c.sims.sims) { (pair, codes), sims ->
+            val (section, list) = pair
+            list.map { toItem(it, sims, section, codes[it.id]) }
+        }
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private fun codeIn(body: String, date: Long): String? =
         c.engine.extract(body, date).firstOrNull { it.type == EntityType.OTP }?.value
 
-    private fun toItem(c0: ConversationEntity, sims: List<SimInfo>, fresh: Pair<String, Long>?): InboxItem {
+    private fun toItem(c0: ConversationEntity, sims: List<SimInfo>, section: InboxGroup?, fresh: Pair<String, Long>?): InboxItem {
         val address = c0.addresses.firstOrNull().orEmpty()
         val category = Category.fromName(c0.category)
         val business = !c0.isGroup && SenderNames.isBusiness(address)
-        // Messages not yet analysed have no category of their own, so fall back to the chat's latest text.
-        val code = fresh ?: if (category == Category.OTP && !c0.snippetFromMe &&
-            System.currentTimeMillis() - c0.lastMessageAt < app.yarn.data.repo.FRESH_CODE_MS
-        ) codeIn(c0.snippet, c0.lastMessageAt)?.let { it to c0.lastMessageAt } else null
+        val code = when (section) {
+            // The OTP tab's rows are codes, so every one shows its code (greyed once it's old).
+            InboxGroup.OTP -> codeIn(c0.snippet, c0.lastMessageAt)?.let { it to c0.lastMessageAt }
+            // Other sections show only their own kind of message.
+            null -> fresh ?: if (category == Category.OTP && !c0.snippetFromMe &&
+                System.currentTimeMillis() - c0.lastMessageAt < app.yarn.data.repo.FRESH_CODE_MS
+            ) codeIn(c0.snippet, c0.lastMessageAt)?.let { it to c0.lastMessageAt } else null
+            else -> null
+        }
         return InboxItem(
             conversation = c0,
             photoUri = if (c0.isGroup || business) null else c.contacts.lookup(address)?.photoUri,
             isBusiness = business,
-            group = InboxGroup.of(category),
+            group = section ?: InboxGroup.of(category),
             otpCode = code?.first,
             sim = if (sims.size > 1) sims.firstOrNull { it.subId == c0.lastSubId } else null,
             codeAt = code?.second ?: 0,
         )
     }
 
-    /** Only groups that actually contain conversations are offered as filters. */
-    private val codeTotals = app.yarn.data.repo.freshCodeCutoff().flatMapLatest { c.db.conversations().codeTotals(it) }
-
-    val chips: StateFlow<List<InboxChip>> = combine(c.db.conversations().totalsByCategory(), codeTotals, _filter) { totals, codes, current ->
-        // The OTP tab also counts chats that got a code in the last day (see ConversationRepository.observe).
-        val byName = totals.associateBy { it.category } + ("OTP" to codes)
+    /** Only groups that actually contain messages are offered as filters. */
+    val chips: StateFlow<List<InboxChip>> = combine(c.db.conversations().totalsByCategory(), c.db.conversations().sectionCategories(), _filter) { totals, sections, current ->
         val unreadAll = totals.sumOf { it.unread }
+        // A chat counts once per section it has messages in, and as unread there only if that part is unread.
+        val bySection = sections.groupBy { Category.fromName(it.category)?.let(InboxGroup::of) }
         buildList {
             add(InboxChip(R.string.chip_all, InboxFilter()))
             if (unreadAll > 0 || current.view == InboxView.UNREAD) add(InboxChip(R.string.filter_unread, InboxFilter(InboxView.UNREAD), unread = unreadAll))
             InboxGroup.entries.forEach { g ->
-                val total = g.categories.sumOf { byName[it.name]?.total ?: 0 }
-                val unread = g.categories.sumOf { byName[it.name]?.unread ?: 0 }
-                if (total > 0 || current == g.filter) add(InboxChip(g.label, g.filter, g, unread))
+                val rows = bySection[g].orEmpty()
+                val unread = rows.filter { it.unread > 0 }.map { it.conversationId }.toSet().size
+                if (rows.isNotEmpty() || current == g.filter) add(InboxChip(g.label, g.filter, g, unread))
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), listOf(InboxChip(R.string.chip_all, InboxFilter())))
@@ -177,13 +187,20 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
         _events.tryEmit(UndoEvent(if (archived) c.app.resources.getQuantityString(R.plurals.n_archived, it.size, it.size) else c.app.resources.getQuantityString(R.plurals.n_moved_inbox, it.size, it.size)) { c.conversations.setArchived(it, !archived) })
     }
 
+    /** In a section, only that section's messages go; the rest of each chat stays in its own tab. */
     fun delete(ids: Set<Long> = selected()) = act(ids) {
-        c.conversations.delete(it)
-        _events.tryEmit(UndoEvent(c.app.resources.getQuantityString(R.plurals.n_conversations_deleted, it.size, it.size), null))
+        val section = section.value
+        if (section == null) {
+            c.conversations.delete(it)
+            _events.tryEmit(UndoEvent(c.app.resources.getQuantityString(R.plurals.n_conversations_deleted, it.size, it.size), null))
+        } else {
+            val n = c.conversations.deleteSection(it, section.categories)
+            _events.tryEmit(UndoEvent(c.app.resources.getQuantityString(R.plurals.n_messages_deleted, n, n), null))
+        }
     }
 
-    fun markRead(ids: Set<Long> = selected()) = act(ids) { c.conversations.markRead(it) }
-    fun markUnread(ids: Set<Long> = selected()) = act(ids) { c.conversations.markUnread(it) }
+    fun markRead(ids: Set<Long> = selected()) = act(ids) { c.conversations.markRead(it, section.value?.categories.orEmpty()) }
+    fun markUnread(ids: Set<Long> = selected()) = act(ids) { c.conversations.markUnread(it, section.value?.categories.orEmpty()) }
 
     fun markAllRead() {
         viewModelScope.launch {
@@ -243,6 +260,10 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     fun runUndo(e: UndoEvent) { e.undo?.let { u -> viewModelScope.launch { u() } } }
 
     companion object {
+        fun sectionOf(f: InboxFilter): InboxGroup? =
+            if (f.view != InboxView.CATEGORY) null
+            else InboxGroup.entries.firstOrNull { it.categories == f.categories && it != InboxGroup.PERSONAL }
+
         private const val CLEAN_HINT_SNOOZE_MS = 30 * 86_400_000L
     }
 }

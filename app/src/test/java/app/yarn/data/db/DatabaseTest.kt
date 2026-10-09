@@ -2,6 +2,9 @@ package app.yarn.data.db
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import androidx.sqlite.db.SimpleSQLiteQuery
+import app.yarn.data.repo.sectionQuery
+import app.yarn.intelligence.Category
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -110,24 +113,72 @@ class DatabaseTest {
         assertThat(db.messages().junkIds(listOf("PROMOTIONS"), before = 5_000)).containsExactly(junk)
     }
 
-    @Test
-    fun recentCodeKeepsChatInOtpTab() = runTest {
-        // A cab chat: a code at 10:15, then "arriving now" at 10:43 (newest message isn't a code).
-        db.conversations().upsert(ConversationEntity(id = 20, addresses = listOf("JX-RMATIC-S"), category = "TRAVEL", unreadCount = 1, messageCount = 2))
+    private fun section(vararg cats: Category) =
+        db.conversations().observeSections(SimpleSQLiteQuery(sectionQuery(cats.toSet())))
+
+    private suspend fun cab() {
+        // A cab chat: check-in code, a pickup notice after it, then a check-out code (unread).
+        db.conversations().upsert(ConversationEntity(id = 20, addresses = listOf("JX-RMATIC-S"), category = "OTP", unreadCount = 1, messageCount = 3))
         db.messages().insert(MessageEntity(conversationId = 20, providerId = 200, address = "JX-RMATIC-S", body = "Check In OTP: 1992", date = 10_000, outgoing = false, status = MessageStatus.RECEIVED, category = "OTP"))
-        db.messages().insert(MessageEntity(conversationId = 20, providerId = 201, address = "JX-RMATIC-S", body = "arriving now", date = 12_000, outgoing = false, status = MessageStatus.RECEIVED, category = "TRAVEL"))
-        // A chat whose code is older than the cut-off.
-        db.conversations().upsert(ConversationEntity(id = 21, addresses = listOf("AD-OLDOTP-S"), category = "UPDATES", messageCount = 1))
-        db.messages().insert(MessageEntity(conversationId = 21, providerId = 210, address = "AD-OLDOTP-S", body = "OTP 1234", date = 1_000, outgoing = false, status = MessageStatus.RECEIVED, category = "OTP"))
+        db.messages().insert(MessageEntity(conversationId = 20, providerId = 201, address = "JX-RMATIC-S", body = "Pickup Details ETA 11:37", date = 11_000, outgoing = false, status = MessageStatus.RECEIVED, category = "TRAVEL"))
+        db.messages().insert(MessageEntity(conversationId = 20, providerId = 202, address = "JX-RMATIC-S", body = "Check Out OTP: 4471", date = 12_000, outgoing = false, status = MessageStatus.RECEIVED, category = "OTP", read = false))
+    }
 
-        val fresh = db.conversations().codeTotals(since = 5_000).first()
-        assertThat(fresh.total).isEqualTo(1)
-        assertThat(fresh.unread).isEqualTo(1)
-        assertThat(db.conversations().codeTotals(since = 20_000).first().total).isEqualTo(0)
+    @Test
+    fun sectionsSplitAChatByKindOfMessage() = runTest {
+        cab()
+        val otp = section(Category.OTP).first().single()
+        assertThat(otp.sectionSnippet).isEqualTo("Check Out OTP: 4471")
+        assertThat(otp.sectionUnread).isEqualTo(1)
+        // The same chat is in Travel too, showing only its travel message, which is read.
+        val travel = section(Category.TRAVEL).first().single()
+        assertThat(travel.sectionSnippet).isEqualTo("Pickup Details ETA 11:37")
+        assertThat(travel.sectionDate).isEqualTo(11_000)
+        assertThat(travel.sectionUnread).isEqualTo(0)
+        assertThat(section(Category.BANKING).first()).isEmpty()
+        // Chips count the chat in both sections.
+        assertThat(db.conversations().sectionCategories().first().map { it.category to it.unread })
+            .containsExactly("OTP" to 1, "TRAVEL" to 0)
+        // A chat the user moved to Travel stays there whole.
+        db.conversations().setCategory(listOf(20L), "TRAVEL", locked = true)
+        assertThat(section(Category.OTP).first()).isEmpty()
+        assertThat(section(Category.TRAVEL).first().single().sectionSnippet).isEqualTo("Check Out OTP: 4471")
+    }
 
-        // The inbox row shows the newest code even though a later message wasn't a code.
-        db.messages().insert(MessageEntity(conversationId = 20, providerId = 202, address = "JX-RMATIC-S", body = "Check Out OTP: 4471", date = 11_000, outgoing = false, status = MessageStatus.RECEIVED, category = "OTP"))
+    @Test
+    fun sectionActionsOnlyTouchTheirMessages() = runTest {
+        cab()
+        db.messages().insert(MessageEntity(conversationId = 20, providerId = 203, address = "JX-RMATIC-S", body = "Vehicle arriving now", date = 13_000, outgoing = false, status = MessageStatus.RECEIVED, category = "TRAVEL", read = false))
+        db.messages().markReadIn(listOf(20L), listOf("OTP"))
+        assertThat(section(Category.OTP).first().single().sectionUnread).isEqualTo(0)
+        assertThat(section(Category.TRAVEL).first().single().sectionUnread).isEqualTo(1)
+        assertThat(db.messages().idsIn(listOf(20L), listOf("OTP"))).hasSize(2)
+        // Opening from a section pages through that section plus anything sent.
+        db.messages().insert(MessageEntity(conversationId = 20, address = "JX-RMATIC-S", body = "ok", date = 14_000, outgoing = true, status = MessageStatus.SENT))
+        val page = db.messages().pagingIn(20, listOf("OTP")).load(
+            androidx.paging.PagingSource.LoadParams.Refresh(null, 50, false),
+        ) as androidx.paging.PagingSource.LoadResult.Page
+        assertThat(page.data.map { it.message.body }).containsExactly("ok", "Check Out OTP: 4471", "Check In OTP: 1992").inOrder()
+    }
+
+    @Test
+    fun personalKeepsPeopleChatsWhole() = runTest {
+        seed()
+        db.conversations().refresh(1)
+        // A chat where only messages were sent so far.
+        db.conversations().upsert(ConversationEntity(id = 2, addresses = listOf("+15550101"), category = "PERSONAL", messageCount = 1))
+        db.messages().insert(MessageEntity(conversationId = 2, address = "+15550101", body = "Hi!", date = 3_000, outgoing = true, status = MessageStatus.SENT))
+        cab()
+        val rows = section(Category.PERSONAL).first()
+        assertThat(rows.map { it.conversation.id }).containsExactly(1L, 2L)
+        assertThat(rows.first { it.conversation.id == 1L }.conversation.snippet).isEqualTo("Sure, see you there")
+    }
+
+    @Test
+    fun freshCodesPickTheNewestCode() = runTest {
+        cab()
         val codes = db.conversations().freshCodes(since = 5_000).first()
         assertThat(codes.map { it.conversationId to it.body }).containsExactly(20L to "Check Out OTP: 4471")
+        assertThat(db.conversations().freshCodes(since = 20_000).first()).isEmpty()
     }
 }

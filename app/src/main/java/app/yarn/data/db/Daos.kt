@@ -2,6 +2,7 @@ package app.yarn.data.db
 
 import androidx.paging.PagingSource
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -19,21 +20,38 @@ data class CategoryTotal(val category: String, val total: Int, val unread: Int)
 
 data class FreshCode(val conversationId: Long, val body: String, val date: Long)
 
+/** A chat as one inbox section sees it: only that section's newest message, time and unread count. */
+data class SectionRow(
+    @Embedded val conversation: ConversationEntity,
+    val sectionSnippet: String,
+    val sectionDate: Long,
+    val sectionUnread: Int,
+    val sectionAttachments: Boolean,
+)
+
+/** How many of a chat's received messages, and unread ones, sit in [category]. */
+data class ConversationCategory(val conversationId: Long, val category: String, val unread: Int)
+
 @Dao
 abstract class ConversationDao {
     @RawQuery(observedEntities = [ConversationEntity::class, MessageEntity::class])
     abstract fun observe(query: SupportSQLiteQuery): Flow<List<ConversationEntity>>
 
+    @RawQuery(observedEntities = [ConversationEntity::class, MessageEntity::class])
+    abstract fun observeSections(query: SupportSQLiteQuery): Flow<List<SectionRow>>
+
     /**
-     * Totals for the OTP tab: chats whose newest message is a code, plus chats that received a code
-     * since [since] even if other messages followed it.
+     * Which categories each live chat's received messages fall into, for the section chips. A chat
+     * the user moved to a category counts there as a whole.
      */
     @Query(
-        "SELECT 'OTP' AS category, COUNT(*) AS total, COALESCE(SUM(CASE WHEN unreadCount > 0 THEN 1 ELSE 0 END), 0) AS unread FROM conversations " +
-            "WHERE archived = 0 AND spam = 0 AND blocked = 0 AND messageCount > 0 AND (category = 'OTP' OR id IN " +
-            "(SELECT conversationId FROM messages WHERE category = 'OTP' AND outgoing = 0 AND date > :since))",
+        "SELECT m.conversationId AS conversationId, CASE WHEN k.categoryLocked = 1 THEN k.category ELSE m.category END AS category, " +
+            "SUM(CASE WHEN m.read = 0 THEN 1 ELSE 0 END) AS unread FROM messages m JOIN conversations k ON k.id = m.conversationId " +
+            "WHERE m.outgoing = 0 AND k.archived = 0 AND k.spam = 0 AND k.blocked = 0 GROUP BY m.conversationId, 2 " +
+            "UNION ALL SELECT id AS conversationId, category, unreadCount AS unread FROM conversations " +
+            "WHERE archived = 0 AND spam = 0 AND blocked = 0 AND category = 'PERSONAL' AND (messageCount > 0 OR (draft IS NOT NULL AND draft != ''))",
     )
-    abstract fun codeTotals(since: Long): Flow<CategoryTotal>
+    abstract fun sectionCategories(): Flow<List<ConversationCategory>>
 
     /** The newest code each chat received since [since], so the inbox can show it without opening the chat. */
     @Query(
@@ -196,6 +214,14 @@ abstract class MessageDao {
     @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY date DESC, id DESC")
     abstract fun paging(conversationId: Long): PagingSource<Int, MessageWithAttachments>
 
+    /** One section of a chat: received messages in [categories], plus anything the user sent. */
+    @Transaction
+    @Query("SELECT * FROM messages WHERE conversationId = :conversationId AND (outgoing = 1 OR category IN (:categories)) ORDER BY date DESC, id DESC")
+    abstract fun pagingIn(conversationId: Long, categories: Collection<String>): PagingSource<Int, MessageWithAttachments>
+
+    @Query("SELECT id FROM messages WHERE conversationId IN (:conversationIds) AND outgoing = 0 AND category IN (:categories)")
+    abstract suspend fun idsIn(conversationIds: Collection<Long>, categories: Collection<String>): List<Long>
+
     @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY date DESC, id DESC LIMIT :limit")
     abstract suspend fun recent(conversationId: Long, limit: Int): List<MessageEntity>
 
@@ -272,6 +298,18 @@ abstract class MessageDao {
 
     @Query("UPDATE messages SET read = 0 WHERE id = (SELECT id FROM messages WHERE conversationId = :conversationId AND outgoing = 0 ORDER BY date DESC LIMIT 1)")
     abstract suspend fun markLatestUnread(conversationId: Long)
+
+    @Query("UPDATE messages SET read = 1, seen = 1 WHERE conversationId IN (:conversationIds) AND read = 0 AND outgoing = 0 AND category IN (:categories)")
+    abstract suspend fun markReadIn(conversationIds: Collection<Long>, categories: Collection<String>)
+
+    @Query("SELECT providerId FROM messages WHERE conversationId IN (:conversationIds) AND read = 0 AND outgoing = 0 AND category IN (:categories) AND kind = :kind AND providerId IS NOT NULL")
+    abstract suspend fun unreadProviderIdsIn(conversationIds: Collection<Long>, categories: Collection<String>, kind: Int): List<Long>
+
+    @Query("SELECT * FROM messages WHERE conversationId = :conversationId AND outgoing = 0 AND category IN (:categories) ORDER BY date DESC LIMIT 1")
+    abstract suspend fun latestIncomingIn(conversationId: Long, categories: Collection<String>): MessageEntity?
+
+    @Query("UPDATE messages SET read = 0 WHERE id = :id")
+    abstract suspend fun markUnread(id: Long)
 
     @Query("UPDATE messages SET starred = :starred WHERE id IN (:ids)")
     abstract suspend fun setStarred(ids: Collection<Long>, starred: Boolean)

@@ -18,6 +18,7 @@ import app.yarn.data.db.ConversationEntity
 import app.yarn.data.db.MessageEntity
 import app.yarn.data.db.MessageStatus
 import app.yarn.data.db.MessageWithAttachments
+import app.yarn.data.repo.InboxGroup
 import app.yarn.intelligence.Category
 import app.yarn.intelligence.SpamVerdict
 import app.yarn.intelligence.SummaryMessage
@@ -34,7 +35,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
@@ -80,14 +83,31 @@ sealed interface RewriteUi {
 
 data class ScamWarning(val verdict: SpamVerdict, val reasons: List<String>)
 
-@OptIn(FlowPreview::class)
-class ConversationViewModel(private val c: AppContainer, val conversationId: Long) : ViewModel() {
+/**
+ * [openedFrom] is the inbox section the chat was opened from: at first only that kind of message is
+ * shown (and marked read), until the user asks to see the whole chat.
+ */
+@OptIn(FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+class ConversationViewModel(private val c: AppContainer, val conversationId: Long, openedFrom: InboxGroup? = null) : ViewModel() {
     val conversation: StateFlow<ConversationEntity?> = c.db.conversations().observe(conversationId)
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    val messages: Flow<PagingData<MessageWithAttachments>> = Pager(
-        PagingConfig(pageSize = 40, prefetchDistance = 40, enablePlaceholders = true, initialLoadSize = 80),
-    ) { c.db.messages().paging(conversationId) }.flow.cachedIn(viewModelScope)
+    private val _section = MutableStateFlow(openedFrom)
+
+    /** The section being shown, or null for the whole chat. A chat the user moved to a category is always whole. */
+    val section: StateFlow<InboxGroup?> = combine(_section, conversation) { s, conv -> s?.takeUnless { conv?.categoryLocked == true } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, openedFrom)
+
+    fun showWholeChat() {
+        _section.value = null
+        markReadNow()
+    }
+
+    val messages: Flow<PagingData<MessageWithAttachments>> = section.flatMapLatest { s ->
+        Pager(PagingConfig(pageSize = 40, prefetchDistance = 40, enablePlaceholders = true, initialLoadSize = 80)) {
+            if (s == null) c.db.messages().paging(conversationId) else c.db.messages().pagingIn(conversationId, s.categories.map { it.name })
+        }.flow
+    }.cachedIn(viewModelScope)
 
     val sims: StateFlow<List<SimInfo>> = c.sims.sims
     val isDefault = c.isDefaultSmsApp
@@ -148,7 +168,7 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
         // Refresh smart replies, scam warnings and read state whenever the thread changes.
         viewModelScope.launch {
             conversation.filterNotNull().map { it.lastMessageAt to it.unreadCount }.distinctUntilChanged().collect { (_, unread) ->
-                if (visible && unread > 0) c.conversations.markRead(listOf(conversationId))
+                if (visible && unread > 0) c.conversations.markRead(listOf(conversationId), section.value?.categories.orEmpty())
                 refreshInsights()
             }
         }
@@ -162,9 +182,10 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     }
 
     private fun markReadNow() {
+        val categories = section.value?.categories.orEmpty()
         c.scope.launch {
-            c.conversations.markRead(listOf(conversationId))
-            c.notifier.cancel(conversationId)
+            c.conversations.markRead(listOf(conversationId), categories)
+            if (categories.isEmpty()) c.notifier.cancel(conversationId)
         }
     }
 

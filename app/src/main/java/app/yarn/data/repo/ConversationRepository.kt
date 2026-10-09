@@ -22,7 +22,7 @@ import app.yarn.telephony.SystemBlockList
 import app.yarn.telephony.TelephonyStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -77,34 +77,45 @@ class ConversationRepository(
         scope.launch { db.blocks().observe().collect { blockRules = it } }
     }
 
-    /** The OTP tab also lists chats that got a code in the last day, even if newer messages followed. */
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    fun observe(filter: InboxFilter): Flow<List<ConversationEntity>> =
-        if (filter.view == InboxView.CATEGORY && Category.OTP in filter.categories) {
-            freshCodeCutoff().flatMapLatest { since -> observe(filter, since) }
-        } else {
-            observe(filter, null)
-        }
-
-    private fun observe(filter: InboxFilter, codesSince: Long?): Flow<List<ConversationEntity>> {
+    fun observe(filter: InboxFilter): Flow<List<ConversationEntity>> {
         val base = "blocked = 0 AND (messageCount > 0 OR (draft IS NOT NULL AND draft != ''))"
         val live = "$base AND archived = 0 AND spam = 0"
+        if (filter.view == InboxView.CATEGORY) return observeSection(filter.categories)
         val where = when (filter.view) {
-            InboxView.ALL -> live
+            InboxView.ALL, InboxView.CATEGORY -> live
             InboxView.IMPORTANT -> "$live AND ((unreadCount > 0 AND importance >= 65) OR starred = 1)"
             InboxView.UNREAD -> "$live AND unreadCount > 0"
-            InboxView.CATEGORY -> {
-                val inCategory = "category IN (${filter.categories.joinToString(",") { "'${it.name}'" }})"
-                if (codesSince == null) "$live AND $inCategory"
-                else "$live AND ($inCategory OR id IN (SELECT conversationId FROM messages WHERE category = 'OTP' AND outgoing = 0 AND date > $codesSince))"
-            }
             InboxView.ARCHIVED -> "$base AND archived = 1 AND spam = 0"
             InboxView.SPAM -> "$base AND spam = 1"
             InboxView.BLOCKED -> "blocked = 1"
             InboxView.STARRED -> "$base AND starred = 1"
         }
-        val order = if (filter.view == InboxView.ALL || filter.view == InboxView.CATEGORY) "pinned DESC, pinnedAt DESC, lastMessageAt DESC" else "lastMessageAt DESC"
+        val order = if (filter.view == InboxView.ALL) "pinned DESC, pinnedAt DESC, lastMessageAt DESC" else "lastMessageAt DESC"
         return db.conversations().observe(SimpleSQLiteQuery("SELECT * FROM conversations WHERE $where ORDER BY $order"))
+    }
+
+    /**
+     * A section lists every chat with a received message of its kind, so a bank chat can be in
+     * OTP, Transactions and Offers at once. Each row shows only that section's newest message and
+     * unread count. A chat the user moved to a category stays there as a whole. Personal shows
+     * people's chats in full.
+     */
+    private fun observeSection(categories: Set<Category>): Flow<List<ConversationEntity>> {
+        val personal = Category.PERSONAL in categories
+        return db.conversations().observeSections(SimpleSQLiteQuery(sectionQuery(categories))).map { rows ->
+            if (personal) rows.map { it.conversation }
+            else rows.map { r ->
+                r.conversation.copy(
+                    snippet = r.sectionSnippet.take(200).ifBlank { if (r.sectionAttachments) "Attachment" else "" },
+                    snippetFromMe = false,
+                    snippetStatus = app.yarn.data.db.MessageStatus.RECEIVED,
+                    lastMessageAt = r.sectionDate,
+                    unreadCount = r.sectionUnread,
+                    draft = null,
+                    hasFailed = false,
+                )
+            }
+        }
     }
 
     override suspend fun ensure(threadId: Long, addresses: List<String>) {
@@ -194,6 +205,44 @@ class ConversationRepository(
     }
 
     // ---- bulk conversation actions ----------------------------------------------------------
+
+    /**
+     * Reads one section of these chats ([categories]), leaving their other messages unread. Chats the
+     * user moved to a category are one section, so they're read whole.
+     */
+    suspend fun markRead(conversationIds: Collection<Long>, categories: Set<Category>) {
+        if (categories.isEmpty()) return markRead(conversationIds)
+        val (locked, open) = db.conversations().getAll(conversationIds).partition { it.categoryLocked }
+        markRead(locked.map { it.id })
+        val ids = open.map { it.id }
+        if (ids.isEmpty()) return
+        val names = categories.map { it.name }
+        val sms = db.messages().unreadProviderIdsIn(ids, names, MessageKind.SMS)
+        val mms = db.messages().unreadProviderIdsIn(ids, names, MessageKind.MMS)
+        db.messages().markReadIn(ids, names)
+        providerLock.withLock { store.markRead(sms, mms) }
+        ids.forEach { db.conversations().refresh(it); if (db.conversations().get(it)?.unreadCount == 0) notifier.cancel(it) }
+    }
+
+    suspend fun markUnread(conversationIds: Collection<Long>, categories: Set<Category>) {
+        if (categories.isEmpty()) return markUnread(conversationIds)
+        for (c in db.conversations().getAll(conversationIds)) {
+            if (c.categoryLocked) { markUnread(listOf(c.id)); continue }
+            val latest = db.messages().latestIncomingIn(c.id, categories.map { it.name }) ?: continue
+            db.messages().markUnread(latest.id)
+            latest.providerId?.let { pid -> providerLock.withLock { store.markUnread(latest.kind, pid) } }
+            db.conversations().refresh(c.id)
+        }
+    }
+
+    /** Deletes one section of these chats; the rest of each chat stays where it belongs. Returns how many messages went. */
+    suspend fun deleteSection(conversationIds: Collection<Long>, categories: Set<Category>): Int {
+        val (locked, open) = db.conversations().getAll(conversationIds).partition { it.categoryLocked }
+        if (locked.isNotEmpty()) delete(locked.map { it.id })
+        val ids = if (open.isEmpty()) emptyList() else db.messages().idsIn(open.map { it.id }, categories.map { it.name })
+        deleteMessages(ids)
+        return ids.size + locked.sumOf { it.messageCount }
+    }
 
     suspend fun markRead(conversationIds: Collection<Long>) {
         if (conversationIds.isEmpty()) return
@@ -356,13 +405,34 @@ class ConversationRepository(
 
 private const val DELETE_BATCH = 400
 
-/** How long a received code keeps its chat in the OTP tab, whatever arrives after it. */
+private fun sqlList(categories: Collection<Category>) = categories.joinToString(",") { "'${it.name}'" }
+
+/** How long a received code stays on its chat's row in the inbox, whatever arrives after it. */
 const val FRESH_CODE_MS = 24 * 60 * 60 * 1000L
 
-/** Emits "now minus a day", refreshed every few minutes so chats drop out of the OTP tab on time. */
+/** Emits "now minus a day", refreshed every few minutes so old codes leave the inbox rows on time. */
 fun freshCodeCutoff(): Flow<Long> = kotlinx.coroutines.flow.flow {
     while (true) {
         emit(System.currentTimeMillis() - FRESH_CODE_MS)
         kotlinx.coroutines.delay(10 * 60 * 1000L)
+    }
+}
+
+/** SQL for one inbox section's rows (see [ConversationRepository.observe]); returns [app.yarn.data.db.SectionRow]s. */
+internal fun sectionQuery(categories: Set<Category>): String {
+    val names = sqlList(categories)
+    val inSection = "((k.categoryLocked = 0 AND m.category IN ($names)) OR (k.categoryLocked = 1 AND k.category IN ($names)))"
+    val section = "SELECT m.conversationId AS cid, m.body AS body, MAX(m.date) AS date, m.hasAttachments AS att, " +
+        "SUM(CASE WHEN m.read = 0 THEN 1 ELSE 0 END) AS unread FROM messages m JOIN conversations k ON k.id = m.conversationId " +
+        "WHERE m.outgoing = 0 AND $inSection GROUP BY m.conversationId"
+    val live = "c.blocked = 0 AND c.archived = 0 AND c.spam = 0 AND (c.messageCount > 0 OR (c.draft IS NOT NULL AND c.draft != ''))"
+    val columns = "SELECT c.*, COALESCE(s.body, '') AS sectionSnippet, COALESCE(s.date, 0) AS sectionDate, " +
+        "COALESCE(s.unread, 0) AS sectionUnread, COALESCE(s.att, 0) AS sectionAttachments FROM conversations c "
+    // Personal also keeps chats with nothing received yet (only sent messages or a draft).
+    return if (Category.PERSONAL in categories) {
+        columns + "LEFT JOIN ($section) s ON s.cid = c.id WHERE $live AND (s.cid IS NOT NULL OR c.category IN ($names)) " +
+            "ORDER BY c.pinned DESC, c.pinnedAt DESC, c.lastMessageAt DESC"
+    } else {
+        columns + "JOIN ($section) s ON s.cid = c.id WHERE $live ORDER BY c.pinned DESC, c.pinnedAt DESC, s.date DESC"
     }
 }

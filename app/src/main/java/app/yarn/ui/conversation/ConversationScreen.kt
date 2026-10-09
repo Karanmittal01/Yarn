@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -104,6 +105,7 @@ fun ConversationScreen(
     val subId by vm.subId.collectAsStateWithLifecycle()
     val smart by vm.smartReplies.collectAsStateWithLifecycle()
     val scam by vm.scam.collectAsStateWithLifecycle()
+    val section by vm.section.collectAsStateWithLifecycle()
     val selection by vm.selection.collectAsStateWithLifecycle()
     val translations by vm.translations.collectAsStateWithLifecycle()
     val languages by vm.languages.collectAsStateWithLifecycle()
@@ -293,6 +295,7 @@ fun ConversationScreen(
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             scam?.let { warning -> ScamBanner(warning, onNotSpam = { vm.markSpam(false) }, onBlock = { vm.block() }) }
+            section?.let { SectionBar(it, onShowAll = vm::showWholeChat) }
             LazyColumn(state = listState, reverseLayout = true, modifier = Modifier.weight(1f).fillMaxWidth()) {
                 items(count = items.itemCount, key = { index -> items.peek(index)?.message?.id ?: -index.toLong() - 1 }) { index ->
                     val item = items[index]
@@ -381,6 +384,24 @@ private fun ReplyBlocker(text: String, action: String?, onAction: (() -> Unit)?)
             Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
             if (action != null && onAction != null) TextButton(onClick = onAction) { Text(action) }
         }
+    }
+}
+
+/** Shown when the chat was opened from a section tab and only that kind of message is listed. */
+@Composable
+internal fun SectionBar(section: app.yarn.data.repo.InboxGroup, onShowAll: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 2.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(app.yarn.ui.common.CategoryUi.groupIcon(section), null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(10.dp))
+        Text(
+            stringResource(R.string.section_only, stringResource(section.label)),
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onShowAll) { Text(stringResource(R.string.show_all_messages)) }
     }
 }
 

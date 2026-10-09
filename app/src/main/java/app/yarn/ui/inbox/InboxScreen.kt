@@ -114,6 +114,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.yarn.data.db.MessageStatus
 import app.yarn.data.prefs.SwipeAction
+import app.yarn.data.repo.InboxGroup
 import app.yarn.data.repo.InboxView
 import app.yarn.intelligence.Category
 import app.yarn.telephony.DefaultSmsApp
@@ -145,7 +146,8 @@ fun InboxScreen(
     vm: InboxViewModel,
     title: String,
     selectedConversation: Long?,
-    onOpen: (Long) -> Unit,
+    /** Opens a chat; in a section tab, only that section's messages ([InboxGroup]) are shown at first. */
+    onOpen: (Long, InboxGroup?) -> Unit,
     onNewMessage: (() -> Unit)?,
     onSearch: (() -> Unit)?,
     onNavigate: (InboxDestination) -> Unit,
@@ -155,6 +157,7 @@ fun InboxScreen(
     val items by vm.items.collectAsStateWithLifecycle()
     val filter by vm.filter.collectAsStateWithLifecycle()
     val selection by vm.selection.collectAsStateWithLifecycle()
+    val section by vm.section.collectAsStateWithLifecycle()
     val chips by vm.chips.collectAsStateWithLifecycle()
     val status by vm.status.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
@@ -307,7 +310,7 @@ fun InboxScreen(
                                 item = item,
                                 selected = id in selection,
                                 highlighted = id == selectedConversation,
-                                onClick = { if (selecting) vm.toggle(id) else onOpen(id) },
+                                onClick = { if (selecting) vm.toggle(id) else onOpen(id, section) },
                                 onLongClick = { vm.toggle(id) },
                                 onCopyCode = vm::copyCode,
                             )
@@ -323,8 +326,9 @@ fun InboxScreen(
 
     confirmDelete?.let { ids ->
         ConfirmDialog(
-            title = pluralStringResource(R.plurals.delete_conversations_title, ids.size, ids.size),
-            text = stringResource(R.string.delete_conversations_text),
+            title = section?.let { pluralStringResource(R.plurals.delete_section_title, ids.size, ids.size, stringResource(it.label)) }
+                ?: pluralStringResource(R.plurals.delete_conversations_title, ids.size, ids.size),
+            text = if (section != null) stringResource(R.string.delete_section_text) else stringResource(R.string.delete_conversations_text),
             confirm = stringResource(R.string.delete),
             destructive = true,
             onConfirm = { vm.delete(ids) },

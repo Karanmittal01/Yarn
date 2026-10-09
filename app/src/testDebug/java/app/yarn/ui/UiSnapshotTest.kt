@@ -114,22 +114,46 @@ class UiSnapshotTest {
         }
     }
 
+    // The OTP tab lists only codes; RMATIC's cab chat is here for its codes and in Travel for its pickups.
     private val otpTab = listOf(
-        item(1, "RMATIC", "09 Oct 20:00 Logout Check in successful. Please use OTP 9896 to check out from the cab.", "TRAVEL", 1, "JX-RMATIC-S", true, InboxGroup.TRAVEL, "9896"),
+        item(1, "RMATIC", "09 Oct 20:00 Logout Check in successful. Please use OTP 9896 to check out from the cab.", "OTP", 1, "JX-RMATIC-S", true, InboxGroup.OTP, "9896"),
         item(2, "Blue Dart", "Your Blue Dart Secure Delivery Code is 692079 and its valid for next 30 minutes.", "OTP", 0, "BZ-BLUDRT-S", true, InboxGroup.OTP, "692079"),
         item(6, "YEIDAP", "Your one time password for Allottee Login to YEIDA citizen charter portal is 486731.", "OTP", 0, "VM-YEIDAP-S", true, InboxGroup.OTP, "486731"),
-        item(9, "RMATIC", "Pickup Details for 09 Oct 13:30 ETA:11:37 Vehicle No HR55AB1234", "TRAVEL", 0, "JX-RMATIC-T", true, InboxGroup.TRAVEL, "1992"),
+        item(9, "Equitas Bank", "OTP 558210 for reward redemption of Amazon Pay E-Gift Card through Equitas Xchange.", "OTP", 0, "VM-EQUTAS-S", true, InboxGroup.OTP, "558210"),
         item(14, "PNB", "101073 is your OTP for purchase of INR 1,499.00 at FLIPKART", "OTP", 0, "AD-PNBSMS-S", true, InboxGroup.OTP, "101073"),
     )
+    private val travelTab = listOf(
+        item(3, "RMATIC", "Pickup Details for 09 Oct 13:30 ETA:11:37 Vehicle No HR55AB1234, Driver Ramesh", "TRAVEL", 0, "JX-RMATIC-S", true, InboxGroup.TRAVEL),
+        item(8, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.TRAVEL),
+        item(20, "Uber", "Your Uber trip receipt for Oct 8: Rs 312.40", "TRAVEL", 0, "VM-UBERIN-S", true, InboxGroup.TRAVEL),
+    )
 
-    @Test fun inboxCodes() = shot(true, "33_inbox_codes_dark") {
-        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 12.dp)) {
-            otpTab.forEach { ConversationRow(it, false, false, {}, {}) }
+    @androidx.compose.runtime.Composable
+    private fun TabMock(rows: List<InboxItem>, selected: InboxGroup) {
+        val header = app.yarn.ui.inbox.inboxHeaderColor()
+        Column(Modifier.fillMaxSize().background(header)) {
+            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.messages), {}, 0, true, {}, {})
+            androidx.compose.foundation.lazy.LazyRow(
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                state = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = chips.indexOfFirst { it.group == selected }.coerceAtLeast(1) - 1),
+            ) { items(chips.size) { i -> app.yarn.ui.inbox.GroupChip(chips[i], selected = chips[i].group == selected) {} } }
+            Column(
+                Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .background(MaterialTheme.colorScheme.surface).padding(top = 10.dp),
+            ) { rows.forEach { ConversationRow(it, false, false, {}, {}) } }
         }
     }
-    @Test fun inboxCodesLight() = shot(false, "34_inbox_codes_light") {
-        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 12.dp)) {
-            otpTab.forEach { ConversationRow(it, false, false, {}, {}) }
+
+    @Test fun otpTabDark() = shot(true, "33_otp_tab_only_codes_dark") { TabMock(otpTab, InboxGroup.OTP) }
+    @Test fun travelTabCab() = shot(true, "34_travel_tab_same_cab_chat_dark") { TabMock(travelTab, InboxGroup.TRAVEL) }
+    @Test fun otpTabLight() = shot(false, "35_otp_tab_only_codes_light") { TabMock(otpTab, InboxGroup.OTP) }
+    @Test fun chatFromOtpTab() = shot(true, "36_chat_opened_from_otp_dark") {
+        val noop = app.yarn.ui.conversation.BubbleCallbacks({}, {}, {}, {}, {}, { _, _ -> })
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 32.dp)) {
+            app.yarn.ui.conversation.SectionBar(InboxGroup.OTP) {}
+            app.yarn.ui.conversation.MessageBubble(msg(1, "09 Oct 09:58 Login Check in successful. Please use OTP 1992 to check in to the cab.", false, 1, 700), null, false, false, null, false, noop)
+            app.yarn.ui.conversation.MessageBubble(msg(2, "09 Oct 20:00 Logout Check in successful. Please use OTP 9896 to check out from the cab.", false, 1, 20), null, false, false, null, false, noop)
         }
     }
 

@@ -749,4 +749,11 @@
     <string name="resort_all_sub">Read every message again and file it by what it says</string>
     <string name="resort_started">Re-sorting started. You can keep using Yarn.</string>
     <string name="group_travel">Travel</string>
+    <string name="section_only">Only %1$s messages</string>
+    <string name="show_all_messages">Show all</string>
+    <plurals name="delete_section_title">
+        <item quantity="one">Delete %2$s messages from %1$d chat?</item>
+        <item quantity="other">Delete %2$s messages from %1$d chats?</item>
+    </plurals>
+    <string name="delete_section_text">Only these messages are deleted. The rest of each chat stays in its own tab. This can\'t be undone.</string>
 </resources>

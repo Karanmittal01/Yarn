@@ -28,6 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.yarn.data.repo.InboxFilter
+import app.yarn.data.repo.InboxGroup
 import app.yarn.data.repo.InboxView
 import app.yarn.ui.cleaner.CleanerScreen
 import app.yarn.ui.cleaner.CleanerViewModel
@@ -59,7 +60,8 @@ import androidx.compose.ui.res.stringResource
 import app.yarn.R
 
 @Serializable object HomeRoute
-@Serializable data class ChatRoute(val id: Long, val messageId: Long = -1)
+/** [section] is an [app.yarn.data.repo.InboxGroup] name when the chat was opened from that tab. */
+@Serializable data class ChatRoute(val id: Long, val messageId: Long = -1, val section: String = "")
 @Serializable data class NewChatRoute(val recipients: String = "")
 @Serializable object SearchRoute
 @Serializable object SettingsRoute
@@ -90,7 +92,8 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
         composable<HomeRoute> { HomePane(nav) }
         composable<ChatRoute> { entry ->
             val r = entry.toRoute<ChatRoute>()
-            val vm = yarnViewModel(key = "chat-${r.id}") { ConversationViewModel(it, r.id) }
+            val section = app.yarn.data.repo.InboxGroup.entries.firstOrNull { it.name == r.section }
+            val vm = yarnViewModel(key = "chat-${r.id}-${r.section}") { ConversationViewModel(it, r.id, section) }
             ConversationScreen(
                 vm = vm,
                 highlightMessageId = r.messageId.takeIf { it > 0 },
@@ -142,7 +145,7 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
                     else -> stringResource(R.string.messages)
                 },
                 selectedConversation = null,
-                onOpen = { nav.navigate(ChatRoute(it)) },
+                onOpen = { id, _ -> nav.navigate(ChatRoute(id)) },
                 onNewMessage = null,
                 onSearch = null,
                 onNavigate = {},
@@ -162,6 +165,7 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
 private fun HomePane(nav: NavHostController) {
     val inboxVm = yarnViewModel(key = "inbox") { InboxViewModel(it, InboxFilter()) }
     var selected by rememberSaveable { mutableStateOf<Long?>(null) }
+    var selectedSection by rememberSaveable { mutableStateOf("") }
     val onNavigate: (InboxDestination) -> Unit = { d ->
         when (d) {
             InboxDestination.Starred -> nav.navigate(StarredRoute)
@@ -178,7 +182,7 @@ private fun HomePane(nav: NavHostController) {
         if (!twoPane) {
             InboxScreen(
                 vm = inboxVm, title = stringResource(R.string.messages), selectedConversation = null,
-                onOpen = { nav.navigate(ChatRoute(it)) }, onNewMessage = { nav.navigate(NewChatRoute()) },
+                onOpen = { id, section -> nav.navigate(ChatRoute(id, section = section?.name.orEmpty())) }, onNewMessage = { nav.navigate(NewChatRoute()) },
                 onSearch = { nav.navigate(SearchRoute) }, onNavigate = onNavigate,
             )
         } else {
@@ -186,7 +190,7 @@ private fun HomePane(nav: NavHostController) {
                 Box(Modifier.width((width * 0.38f).coerceIn(320.dp, 440.dp)).fillMaxHeight()) {
                     InboxScreen(
                         vm = inboxVm, title = stringResource(R.string.messages), selectedConversation = selected,
-                        onOpen = { selected = it }, onNewMessage = { nav.navigate(NewChatRoute()) },
+                        onOpen = { id, section -> selected = id; selectedSection = section?.name.orEmpty() }, onNewMessage = { nav.navigate(NewChatRoute()) },
                         onSearch = { nav.navigate(SearchRoute) }, onNavigate = onNavigate,
                     )
                 }
@@ -201,7 +205,8 @@ private fun HomePane(nav: NavHostController) {
                             }
                         }
                     } else {
-                        val vm = yarnViewModel(key = "chat-$id") { ConversationViewModel(it, id) }
+                        val section = app.yarn.data.repo.InboxGroup.entries.firstOrNull { it.name == selectedSection }
+                        val vm = yarnViewModel(key = "chat-$id-$selectedSection") { ConversationViewModel(it, id, section) }
                         ConversationScreen(
                             vm = vm, highlightMessageId = null, onBack = null,
                             onForward = { nav.navigate(NewChatRoute()) }, onClosed = { selected = null },

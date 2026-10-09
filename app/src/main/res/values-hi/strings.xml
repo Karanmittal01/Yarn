@@ -748,4 +748,11 @@
     <string name="resort_all_sub">हर मैसेज दोबारा पढ़कर सही कैटेगरी में रखें</string>
     <string name="resort_started">फिर से छांटना शुरू हो गया। आप Yarn इस्तेमाल करते रहें।</string>
     <string name="group_travel">यात्रा</string>
+    <string name="section_only">सिर्फ़ %1$s मैसेज</string>
+    <string name="show_all_messages">सभी दिखाएँ</string>
+    <plurals name="delete_section_title">
+        <item quantity="one">%1$d चैट से %2$s मैसेज मिटाएँ?</item>
+        <item quantity="other">%1$d चैट से %2$s मैसेज मिटाएँ?</item>
+    </plurals>
+    <string name="delete_section_text">सिर्फ़ यही मैसेज मिटेंगे। चैट के बाकी मैसेज अपने टैब में रहेंगे। इसे वापस नहीं किया जा सकता।</string>
 </resources>
