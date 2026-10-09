@@ -573,6 +573,11 @@ fun ConversationRow(
                 )
             }
             Spacer(Modifier.height(2.dp))
+            // A code goes straight under the name so it can be read or copied without opening the chat.
+            item.otpCode?.let { code ->
+                CodeChip(code, fresh = System.currentTimeMillis() - item.codeAt < CODE_LIKELY_VALID_MS, onCopy = { onCopyCode(code) })
+                Spacer(Modifier.height(5.dp))
+            }
             Row(verticalAlignment = Alignment.Top) {
                 when {
                     c.hasFailed -> Icon(Icons.Outlined.ErrorOutline, null, Modifier.padding(top = 2.dp, end = 5.dp).size(16.dp), tint = MaterialTheme.colorScheme.error)
@@ -583,7 +588,7 @@ fun ConversationRow(
                     preview,
                     style = previewStyle,
                     // Two lines, so the start of a long bank or order message is actually readable.
-                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    maxLines = if (item.otpCode != null) 1 else 2, overflow = TextOverflow.Ellipsis,
                     color = if (unread) strong else quiet,
                     fontWeight = if (unread) FontWeight.Medium else FontWeight.Normal,
                     modifier = Modifier.weight(1f),
@@ -593,24 +598,30 @@ fun ConversationRow(
                     Box(Modifier.padding(top = 6.dp).size(9.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
                 }
             }
-            item.otpCode?.let { code ->
-                val copyDesc = stringResource(R.string.copy_code_n, code)
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    Modifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
-                        .clickable { onCopyCode(code) }
-                        .padding(horizontal = 12.dp, vertical = 5.dp)
-                        .semantics(mergeDescendants = true) { contentDescription = copyDesc },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Outlined.ContentCopy, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(8.dp))
-                    Text(code, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.5.sp)
-                }
-            }
         }
+    }
+}
+
+/** Most codes expire within half an hour; after that the chip stays but turns quiet. */
+private const val CODE_LIKELY_VALID_MS = 30 * 60_000L
+
+@Composable
+private fun CodeChip(code: String, fresh: Boolean, onCopy: () -> Unit) {
+    val copyDesc = stringResource(R.string.copy_code_n, code)
+    val ink = if (fresh) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    val fill = if (fresh) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceContainerHighest
+    Row(
+        Modifier
+            .clip(CircleShape)
+            .background(fill)
+            .clickable(onClick = onCopy)
+            .padding(horizontal = 12.dp, vertical = 5.dp)
+            .semantics(mergeDescendants = true) { contentDescription = copyDesc },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(code, style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, lineHeight = 22.sp), fontWeight = FontWeight.Bold, color = ink, letterSpacing = 2.sp)
+        Spacer(Modifier.width(8.dp))
+        Icon(Icons.Outlined.ContentCopy, null, Modifier.size(15.dp), tint = ink)
     }
 }
 

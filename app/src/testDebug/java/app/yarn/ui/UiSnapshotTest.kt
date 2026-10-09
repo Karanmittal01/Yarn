@@ -47,7 +47,7 @@ class UiSnapshotTest {
         ConversationEntity(id = id, addresses = listOf(addr), displayName = title, snippet = snippet, category = cat, unreadCount = unread, lastMessageAt = now - id * 600_000, messageCount = 3, pinned = pinned)
 
     private fun item(id: Long, title: String, snippet: String, cat: String, unread: Int, addr: String, business: Boolean, group: InboxGroup, otp: String? = null, pinned: Boolean = false) =
-        InboxItem(conv(id, title, snippet, cat, unread, addr, pinned), null, business, group, otp)
+        InboxItem(conv(id, title, snippet, cat, unread, addr, pinned), null, business, group, otp, codeAt = if (otp != null) now - id * 600_000 else 0)
 
     private val inbox = listOf(
         item(1, "Karan Mittal", "Are we still on for dinner tonight?", "PERSONAL", 2, "+919812345678", false, InboxGroup.PERSONAL, pinned = true),
@@ -111,6 +111,25 @@ class UiSnapshotTest {
                     item { app.yarn.ui.inbox.InboxCount(inbox) }
                 }
             }
+        }
+    }
+
+    private val otpTab = listOf(
+        item(1, "RMATIC", "09 Oct 20:00 Logout Check in successful. Please use OTP 9896 to check out from the cab.", "TRAVEL", 1, "JX-RMATIC-S", true, InboxGroup.TRAVEL, "9896"),
+        item(2, "Blue Dart", "Your Blue Dart Secure Delivery Code is 692079 and its valid for next 30 minutes.", "OTP", 0, "BZ-BLUDRT-S", true, InboxGroup.OTP, "692079"),
+        item(6, "YEIDAP", "Your one time password for Allottee Login to YEIDA citizen charter portal is 486731.", "OTP", 0, "VM-YEIDAP-S", true, InboxGroup.OTP, "486731"),
+        item(9, "RMATIC", "Pickup Details for 09 Oct 13:30 ETA:11:37 Vehicle No HR55AB1234", "TRAVEL", 0, "JX-RMATIC-T", true, InboxGroup.TRAVEL, "1992"),
+        item(14, "PNB", "101073 is your OTP for purchase of INR 1,499.00 at FLIPKART", "OTP", 0, "AD-PNBSMS-S", true, InboxGroup.OTP, "101073"),
+    )
+
+    @Test fun inboxCodes() = shot(true, "33_inbox_codes_dark") {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 12.dp)) {
+            otpTab.forEach { ConversationRow(it, false, false, {}, {}) }
+        }
+    }
+    @Test fun inboxCodesLight() = shot(false, "34_inbox_codes_light") {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 12.dp)) {
+            otpTab.forEach { ConversationRow(it, false, false, {}, {}) }
         }
     }
 

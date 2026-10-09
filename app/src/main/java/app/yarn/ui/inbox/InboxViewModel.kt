@@ -43,6 +43,8 @@ data class InboxItem(
     val otpCode: String?,
     /** SIM of the latest message, set only on phones with more than one active SIM. */
     val sim: SimInfo? = null,
+    /** When [otpCode] arrived; older codes are shown quieter since they have probably expired. */
+    val codeAt: Long = 0,
 )
 
 data class InboxChip(@androidx.annotation.StringRes val label: Int, val filter: InboxFilter, val group: InboxGroup? = null, val unread: Int = 0)
@@ -62,27 +64,40 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     private val _filter = MutableStateFlow(initial)
     val filter: StateFlow<InboxFilter> = _filter
 
+    /** The newest code per chat from the last day, so it can be copied straight from the list. */
+    private val freshCodes = app.yarn.data.repo.freshCodeCutoff()
+        .flatMapLatest { c.db.conversations().freshCodes(it) }
+        .map { list ->
+            list.mapNotNull { f -> codeIn(f.body, f.date)?.let { f.conversationId to (it to f.date) } }.toMap()
+        }
+
     val items: StateFlow<List<InboxItem>?> = _filter
         .flatMapLatest { c.conversations.observe(it) }
         .combine(c.contacts.version) { list, _ -> list }
-        .combine(c.sims.sims) { list, sims -> list.map { toItem(it, sims) } }
+        .combine(freshCodes) { list, codes -> list to codes }
+        .combine(c.sims.sims) { (list, codes), sims -> list.map { toItem(it, sims, codes[it.id]) } }
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    private fun toItem(c0: ConversationEntity, sims: List<SimInfo>): InboxItem {
+    private fun codeIn(body: String, date: Long): String? =
+        c.engine.extract(body, date).firstOrNull { it.type == EntityType.OTP }?.value
+
+    private fun toItem(c0: ConversationEntity, sims: List<SimInfo>, fresh: Pair<String, Long>?): InboxItem {
         val address = c0.addresses.firstOrNull().orEmpty()
         val category = Category.fromName(c0.category)
         val business = !c0.isGroup && SenderNames.isBusiness(address)
-        val otp = if (category == Category.OTP && !c0.snippetFromMe && System.currentTimeMillis() - c0.lastMessageAt < OTP_FRESH_MS) {
-            c.engine.extract(c0.snippet, c0.lastMessageAt).firstOrNull { it.type == EntityType.OTP }?.value
-        } else null
+        // Messages not yet analysed have no category of their own, so fall back to the chat's latest text.
+        val code = fresh ?: if (category == Category.OTP && !c0.snippetFromMe &&
+            System.currentTimeMillis() - c0.lastMessageAt < app.yarn.data.repo.FRESH_CODE_MS
+        ) codeIn(c0.snippet, c0.lastMessageAt)?.let { it to c0.lastMessageAt } else null
         return InboxItem(
             conversation = c0,
             photoUri = if (c0.isGroup || business) null else c.contacts.lookup(address)?.photoUri,
             isBusiness = business,
             group = InboxGroup.of(category),
-            otpCode = otp,
+            otpCode = code?.first,
             sim = if (sims.size > 1) sims.firstOrNull { it.subId == c0.lastSubId } else null,
+            codeAt = code?.second ?: 0,
         )
     }
 
@@ -228,7 +243,6 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     fun runUndo(e: UndoEvent) { e.undo?.let { u -> viewModelScope.launch { u() } } }
 
     companion object {
-        private const val OTP_FRESH_MS = 30 * 60_000L
         private const val CLEAN_HINT_SNOOZE_MS = 30 * 86_400_000L
     }
 }

@@ -17,6 +17,8 @@ data class CategoryCount(val category: String, val unread: Int)
 
 data class CategoryTotal(val category: String, val total: Int, val unread: Int)
 
+data class FreshCode(val conversationId: Long, val body: String, val date: Long)
+
 @Dao
 abstract class ConversationDao {
     @RawQuery(observedEntities = [ConversationEntity::class, MessageEntity::class])
@@ -32,6 +34,13 @@ abstract class ConversationDao {
             "(SELECT conversationId FROM messages WHERE category = 'OTP' AND outgoing = 0 AND date > :since))",
     )
     abstract fun codeTotals(since: Long): Flow<CategoryTotal>
+
+    /** The newest code each chat received since [since], so the inbox can show it without opening the chat. */
+    @Query(
+        "SELECT conversationId, body, MAX(date) AS date FROM messages " +
+            "WHERE category = 'OTP' AND outgoing = 0 AND date > :since GROUP BY conversationId",
+    )
+    abstract fun freshCodes(since: Long): Flow<List<FreshCode>>
 
     @Query("SELECT * FROM conversations WHERE id = :id")
     abstract suspend fun get(id: Long): ConversationEntity?

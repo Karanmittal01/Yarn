@@ -124,5 +124,10 @@ class DatabaseTest {
         assertThat(fresh.total).isEqualTo(1)
         assertThat(fresh.unread).isEqualTo(1)
         assertThat(db.conversations().codeTotals(since = 20_000).first().total).isEqualTo(0)
+
+        // The inbox row shows the newest code even though a later message wasn't a code.
+        db.messages().insert(MessageEntity(conversationId = 20, providerId = 202, address = "JX-RMATIC-S", body = "Check Out OTP: 4471", date = 11_000, outgoing = false, status = MessageStatus.RECEIVED, category = "OTP"))
+        val codes = db.conversations().freshCodes(since = 5_000).first()
+        assertThat(codes.map { it.conversationId to it.body }).containsExactly(20L to "Check Out OTP: 4471")
     }
 }
