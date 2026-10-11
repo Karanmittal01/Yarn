@@ -36,6 +36,10 @@ class BigInboxCorpusTest {
         // A statement with an amount due is a bill: Transactions.
         c("AX-MYSBIC-S", "E-statement of SBI Credit Card ending XX95 dated 01/10/2026 has been mailed. If not received, SMS ENRS to 5676791. Total Amt Due Rs 16477; Min Amt Due Rs 15856; Payable by 21/10/2026. Click https://sbicard.com/quickpaynet to pay your bill", T),
 
+        // A gift voucher delivered with its code and value is money received, not an OTP.
+        c("AD-SHPWSE-S", "Dear Karan Mittal, Congratulations, your Amazon Pay E-Gift Voucher is here. Order B0HMRKICLXFC. Voucher Details: ID 6014883594308747. Additional Details: Code 7F6Q-RG66VD-7FNK. Value: 1000. Valid till 11-10-2027. Check your email for redemption steps and terms of use. Team ShopWise powered by CustCap", T, S),
+        c("VM-EQUTAS-S", "Reward redemption for Amazon Pay E-Gift Card through Equitas Xchange is successful. Voucher code AB12-CD34-EF56, value Rs 500, valid till 31-12-2026.", T, S),
+
         // ---- Bank safety advisories -> Updates ------------------------------------------------------
         c("VM-SBIINB-S", "SBI never asks for your card details, PIN, OTP or password over call, SMS or email. Beware of fraudsters. Report cyber fraud at 1930.", U),
         c("AD-ICICIB-S", "ICICI Bank never asks for your OTP, CVV or PIN. Do not share them with anyone, even if they claim to be from the bank.", U),

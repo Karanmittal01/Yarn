@@ -43,7 +43,9 @@ object CategoryRules {
             "(?:debited|credited|deducted|added|refunded) (?:from|to|in|into) your \\w+ (?:money|wallet|pay|balance|account)",
             "\\w+ (?:money|pay|wallet) (?:balance|is credited|has been credited|credited|debited)", "(?:money|pay) balance",
             "refund (?:of|for|has been|is|was|amount)", "refunded", "cashback (?:of|has been|is|credited|received|added)", "cashback credited",
-            "gift card (?:of|worth|has been|is|was|added|credited|redeemed|balance)", "gift card has", "added to your (?:\\w+ )?(?:account|wallet|balance)",
+            "gift card (?:of|worth|has been|is|was|added|credited|redeemed|balance)", "gift card has",
+            // A voucher that has actually arrived (with its code), not one being offered.
+            "(?:gift ?)?(?:card|voucher) is here", "voucher (?:details|code|id|pin) ?:?", "redemption (?:[\\w-]+ ){0,8}(?:is )?successful", "added to your (?:\\w+ )?(?:account|wallet|balance)",
             "balance (?:is|of)", "recharge (?:of|successful|is successful|done)", "fastag",
             "(?:has been |was |is )?charged (?:to|on) your", "charged $MONEY", "$MONEY (?:has been |was )?charged"),
 
@@ -131,7 +133,7 @@ object CategoryRules {
     // Money actually moved (not just a price in an advert).
     private val MONEY_LEAD = Regex(
         "(?i)(?:debited|credited|deducted|refunded|refund (?:of|for|has|is|amount)|\\bpaid\\b|payment (?:of|received|successful|is successful|done|failed)|" +
-            "\\bspent\\b|charged|transferred|withdrawn|gift card (?:has|of|worth|is)|\\b\\w+ money (?:is|has)|cashback (?:of|has been|credited|is credited)|" +
+            "\\bspent\\b|charged|transferred|withdrawn|gift card (?:has|of|worth|is)|(?:card|voucher) is here|voucher details|redemption (?:[\\w-]+ ){0,8}(?:is )?successful|\\b\\w+ money (?:is|has)|cashback (?:of|has been|credited|is credited)|" +
             "added to your \\w* ?(?:balance|wallet|account)|has been executed|units allotted|\\bsip of|recharge (?:of (?:rs|inr|₹)|successful|is successful)|emi (?:of|for) (?:rs|inr|₹)|bounced|declined|levied|charges of (?:rs|inr|₹)|डेबिट|जमा)",
     )
     private val ORDER_LEAD = Regex(

@@ -70,6 +70,8 @@ class EntityExtractor(
     private fun otps(text: String): List<Entity> {
         val keywords = OTP_KEYWORD.findAll(text).toList()
         if (keywords.isEmpty()) return emptyList()
+        // "Code" or "PIN" on a voucher, gift card or coupon is something to redeem, not a code to type in.
+        if (VOUCHER_CONTEXT.containsMatchIn(text) && keywords.all { it.value.lowercase() in GENERIC_CODE_WORDS }) return emptyList()
         val candidates = OTP_CANDIDATE.findAll(text).mapNotNull { m ->
             val code = m.groupValues[1].ifEmpty { m.groupValues[2] + m.groupValues[3] }
             if (code.isEmpty()) return@mapNotNull null
@@ -77,6 +79,7 @@ class EntityExtractor(
             val after = text.substring(m.range.last + 1, minOf(text.length, m.range.last + 12)).lowercase()
             // Skip money, account fragments, phone chunks, years and times.
             if (CURRENCY_BEFORE.containsMatchIn(before)) return@mapNotNull null
+            if (VALUE_BEFORE.containsMatchIn(before)) return@mapNotNull null
             if (ACCOUNT_BEFORE.containsMatchIn(before)) return@mapNotNull null
             if (REFERENCE_NUMBER_BEFORE.containsMatchIn(before) && !before.contains("otp") && !before.contains("code")) return@mapNotNull null
             if (after.startsWith(":") && after.drop(1).take(2).all { it.isDigit() }) return@mapNotNull null
@@ -425,6 +428,10 @@ class EntityExtractor(
             "(?i)(?:\\d{4,8}\\s+is\\s+(?:your|the)|(?:otp|code|pin|passcode)\\s*(?:is|:|-)\\s*(?:[A-Z]-)?\\d)",
         )
         private val OTP_VALIDITY = Regex("(?i)valid(?:\\s+only)?\\s+(?:for|till|upto|up to|within)\\s+(\\d{1,3})\\s*(min|mins|minutes|hrs|hours|hour)")
+        /** "Value: 1000", "worth 500", "balance 250": amounts written without a currency sign. */
+        private val VALUE_BEFORE = Regex("(?i)\\b(?:value|worth|amount|amt|balance|bal|points|denomination|mrp|price|limit)\\s*(?:of|is)?\\s*[:=-]?\\s*$")
+        private val VOUCHER_CONTEXT = Regex("(?i)\\b(?:e-?gift|gift ?(?:card|voucher)|vouchers?|coupons?|promo ?code|redeem|redemption)\\b")
+        private val GENERIC_CODE_WORDS = setOf("code", "pin")
         private val CURRENCY_BEFORE = Regex("(₹|rs\\.?|inr|\\$|usd|€|£|eur|gbp)\\s*$")
         private val ACCOUNT_BEFORE = Regex("(a/c|acct|account|card|ending|xx|\\*\\*|no\\.)\\s*[:#]?\\s*$")
 

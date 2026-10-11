@@ -27,6 +27,14 @@ class EntityExtractorTest {
     fun noOtpWithoutContext() {
         assertThat(of("Meet me at gate 1234 at 5pm", EntityType.OTP)).isEmpty()
         assertThat(of("Rs 5000 debited from a/c XX1234", EntityType.OTP)).isEmpty()
+        // A gift voucher's code and value are not a one-time code.
+        val voucher = "Dear Karan Mittal, Congratulations, your Amazon Pay E-Gift Voucher is here. Order B0HMRKICLXFG. Voucher Details: ID 6014883596215687. " +
+            "Additional Details: Code WDQT-UD6J8U-VUJV. Value: 1000. Valid till 11-10-2027. Check your email for redemption steps and terms of use. Team ShopWise powered by CustCap"
+        assertThat(of(voucher, EntityType.OTP)).isEmpty()
+        assertThat(of("Your gift card PIN is 4821 and card number 6001220012345678. Balance 500.", EntityType.OTP)).isEmpty()
+        assertThat(of("Code: ABCD12, worth 2500 on your next order", EntityType.OTP)).isEmpty()
+        // A real OTP still counts, even about a voucher.
+        assertThat(of("Use OTP 482913 to redeem your Amazon voucher. Do not share it.", EntityType.OTP).single().value).isEqualTo("482913")
     }
 
     @Test
