@@ -408,9 +408,9 @@ private const val DELETE_BATCH = 400
 private fun sqlList(categories: Collection<Category>) = categories.joinToString(",") { "'${it.name}'" }
 
 /** How long a received code stays on its chat's row in the inbox, whatever arrives after it. */
-const val FRESH_CODE_MS = 24 * 60 * 60 * 1000L
+const val FRESH_CODE_MS = 4 * 60 * 60 * 1000L
 
-/** Emits "now minus a day", refreshed every few minutes so old codes leave the inbox rows on time. */
+/** Emits "now minus [FRESH_CODE_MS]", refreshed every few minutes so old codes leave the inbox rows on time. */
 fun freshCodeCutoff(): Flow<Long> = kotlinx.coroutines.flow.flow {
     while (true) {
         emit(System.currentTimeMillis() - FRESH_CODE_MS)

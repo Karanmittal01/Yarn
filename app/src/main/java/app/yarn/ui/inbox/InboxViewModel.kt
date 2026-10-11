@@ -64,7 +64,7 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     private val _filter = MutableStateFlow(initial)
     val filter: StateFlow<InboxFilter> = _filter
 
-    /** The newest code per chat from the last day, so it can be copied straight from the list. */
+    /** The newest code per chat from the last few hours, so it can be copied straight from the list. */
     private val freshCodes = app.yarn.data.repo.freshCodeCutoff()
         .flatMapLatest { c.db.conversations().freshCodes(it) }
         .map { list ->
@@ -94,8 +94,10 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
         val category = Category.fromName(c0.category)
         val business = !c0.isGroup && SenderNames.isBusiness(address)
         val code = when (section) {
-            // The OTP tab's rows are codes, so every one shows its code (greyed once it's old).
-            InboxGroup.OTP -> codeIn(c0.snippet, c0.lastMessageAt)?.let { it to c0.lastMessageAt }
+            // The OTP tab's rows are codes; each shows its code for a few hours (greyed after half an hour).
+            InboxGroup.OTP -> if (System.currentTimeMillis() - c0.lastMessageAt < app.yarn.data.repo.FRESH_CODE_MS) {
+                codeIn(c0.snippet, c0.lastMessageAt)?.let { it to c0.lastMessageAt }
+            } else null
             // Other sections show only their own kind of message.
             null -> fresh ?: if (category == Category.OTP && !c0.snippetFromMe &&
                 System.currentTimeMillis() - c0.lastMessageAt < app.yarn.data.repo.FRESH_CODE_MS
