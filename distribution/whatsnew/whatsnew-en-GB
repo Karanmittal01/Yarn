@@ -1,2 +1,2 @@
-Each tab now shows only its own kind of message: the OTP tab lists just codes, and the same chat's other messages stay in Travel, Transactions and so on. Open a chat from a tab to see only those messages, or tap Show all.
-Codes now show right under the sender's name with one-tap copy.
+Gift vouchers and coupon codes are no longer mistaken for OTPs; delivered vouchers now go to Transactions.
+The code button on inbox rows now disappears 4 hours after the code arrives.
