@@ -22,6 +22,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import app.yarn.data.prefs.AppSettings
+import app.yarn.data.prefs.NotifyMode
+import app.yarn.data.prefs.notifyFor
+import app.yarn.data.repo.InboxGroup
+import app.yarn.ui.common.CategoryUi
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Backup
@@ -223,26 +228,55 @@ fun NotificationsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val context = LocalContext.current
     SettingsScaffold(stringResource(R.string.notifications), onBack) {
-        item { SectionHeader(stringResource(R.string.content)) }
-        item {
-            SettingsGroup {
-                SwitchRow(stringResource(R.string.show_previews), stringResource(R.string.show_previews_sub), s.showNotificationPreviews) { v -> vm.update { it.copy(showNotificationPreviews = v) } }
-            }
+        notificationItems(s, { vm.update(it) }) {
+            context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
         }
-        item { SectionHeader(stringResource(R.string.which_notify)) }
-        item {
-            SettingsGroup {
-                SwitchRow(stringResource(R.string.offers_promotions), stringResource(R.string.delivered_silently), s.notifyPromotions) { v -> vm.update { it.copy(notifyPromotions = v) } }
-                SwitchRow(stringResource(R.string.suspected_spam), null, s.notifySpam) { v -> vm.update { it.copy(notifySpam = v) } }
-            }
+    }
+}
+
+internal fun androidx.compose.foundation.lazy.LazyListScope.notificationItems(
+    s: AppSettings,
+    update: ((AppSettings) -> AppSettings) -> Unit,
+    onSystemSettings: () -> Unit,
+) {
+    item { SectionHeader(stringResource(R.string.content)) }
+    item {
+        SettingsGroup {
+            SwitchRow(stringResource(R.string.show_previews), stringResource(R.string.show_previews_sub), s.showNotificationPreviews) { v -> update { it.copy(showNotificationPreviews = v) } }
         }
-        item { Spacer(Modifier.height(8.dp)) }
-        item {
-            SettingsGroup {
-                ClickRow(stringResource(R.string.sounds_vibration), stringResource(R.string.open_android_notif)) {
-                    context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+    }
+    item { SectionHeader(stringResource(R.string.which_notify)) }
+    item {
+        SettingsGroup {
+            val modes = listOf(
+                NotifyMode.SOUND to stringResource(R.string.notify_mode_sound),
+                NotifyMode.SILENT to stringResource(R.string.notify_mode_silent),
+                NotifyMode.OFF to stringResource(R.string.notify_mode_off),
+            )
+            // Sets every tab at once; shows a value only while all tabs agree.
+            val all = InboxGroup.entries.map { s.notifyFor(it.kind) }.distinct().singleOrNull()
+            ChoiceRow<NotifyMode?>(stringResource(R.string.notify_all_tabs), modes, all, icon = Icons.Outlined.Notifications) { m ->
+                if (m != null) update { it.copy(notifyTabs = InboxGroup.entries.associate { g -> g.kind to m }) }
+            }
+            InboxGroup.entries.forEach { g ->
+                ChoiceRow(stringResource(g.label), modes, s.notifyFor(g.kind), icon = CategoryUi.groupIcon(g)) { m ->
+                    update { it.copy(notifyTabs = it.notifyTabs + (g.kind to m)) }
                 }
             }
+            SwitchRow(stringResource(R.string.suspected_spam), null, s.notifySpam) { v -> update { it.copy(notifySpam = v) } }
+        }
+    }
+    item {
+        Text(
+            stringResource(R.string.notify_tabs_hint),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
+        )
+    }
+    item { Spacer(Modifier.height(8.dp)) }
+    item {
+        SettingsGroup {
+            ClickRow(stringResource(R.string.sounds_vibration), stringResource(R.string.open_android_notif), onClick = onSystemSettings)
         }
     }
 }

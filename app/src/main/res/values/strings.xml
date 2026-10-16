@@ -756,4 +756,9 @@
         <item quantity="other">Delete %2$s messages from %1$d chats?</item>
     </plurals>
     <string name="delete_section_text">Only these messages are deleted. The rest of each chat stays in its own tab. This can\'t be undone.</string>
+    <string name="notify_mode_sound">Sound — pops up with a sound</string>
+    <string name="notify_mode_silent">Silent — in the notification shade, no sound</string>
+    <string name="notify_mode_off">Off — no notification</string>
+    <string name="notify_all_tabs">All tabs</string>
+    <string name="notify_tabs_hint">Messages always arrive in Yarn. This only decides how each tab tells you.</string>
 </resources>

@@ -27,7 +27,10 @@ import app.yarn.data.db.ConversationEntity
 import app.yarn.data.db.MessageEntity
 import app.yarn.data.db.YarnDatabase
 import app.yarn.data.prefs.SettingsRepository
+import app.yarn.data.prefs.NotifyMode
+import app.yarn.data.prefs.notifyFor
 import app.yarn.intelligence.Category
+import app.yarn.intelligence.group
 import app.yarn.telephony.PhoneNumbers
 import app.yarn.telephony.SimManager
 
@@ -127,12 +130,15 @@ class Notifier(
         if (conversation.muted || conversation.blocked) return
         val latest = unread.last()
         val category = Category.fromName(latest.category) ?: Category.PERSONAL
+        // Each tab rings, stays quiet or stays off as the user chose in Settings → Notifications.
+        val group = category.group
         val channel = when {
-            conversation.spam -> if (s.notifySpam) CH_SPAM else return
-            category == Category.PROMOTIONS -> if (s.notifyPromotions) CH_QUIET else return
-            category == Category.OTP -> CH_OTP
-            category == Category.UPDATES || category == Category.SHOPPING -> if (latest.important) CH_MESSAGES else CH_QUIET
-            else -> CH_MESSAGES
+            conversation.spam || group == null -> if (s.notifySpam) CH_SPAM else return
+            else -> when (s.notifyFor(group)) {
+                NotifyMode.OFF -> return
+                NotifyMode.SILENT -> CH_QUIET
+                NotifyMode.SOUND -> if (category == Category.OTP) CH_OTP else CH_MESSAGES
+            }
         }
         val iso = PhoneNumbers.countryIso(context)
         val me = Person.Builder().setName(context.getString(R.string.you)).setKey("me").build()

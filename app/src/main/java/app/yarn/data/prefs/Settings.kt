@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import app.yarn.intelligence.CategoryGroup
 import app.yarn.intelligence.SpamSensitivity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -18,6 +19,23 @@ import java.util.Locale
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 enum class SwipeAction { NONE, ARCHIVE, DELETE, READ, PIN }
+
+/** How a tab's new messages notify: pop up with sound, sit quietly in the shade, or not at all. */
+enum class NotifyMode { SOUND, SILENT, OFF }
+
+/** Out of the box, people, codes, money and trips ring; shopping and updates are quiet; offers stay off. */
+val DEFAULT_NOTIFY: Map<CategoryGroup, NotifyMode> = mapOf(
+    CategoryGroup.PERSONAL to NotifyMode.SOUND,
+    CategoryGroup.OTP to NotifyMode.SOUND,
+    CategoryGroup.TRANSACTIONS to NotifyMode.SOUND,
+    CategoryGroup.SHOPPING to NotifyMode.SILENT,
+    CategoryGroup.TRAVEL to NotifyMode.SOUND,
+    CategoryGroup.UPDATES to NotifyMode.SILENT,
+    CategoryGroup.OFFERS to NotifyMode.OFF,
+)
+
+/** How a message from tab [group] should notify. */
+fun AppSettings.notifyFor(group: CategoryGroup): NotifyMode = notifyTabs[group] ?: DEFAULT_NOTIFY.getValue(group)
 
 data class AppSettings(
     val onboardingDone: Boolean = false,
@@ -29,7 +47,8 @@ data class AppSettings(
     val autoDownloadMmsRoaming: Boolean = false,
     val sendDelaySeconds: Int = 0,
     val showNotificationPreviews: Boolean = true,
-    val notifyPromotions: Boolean = false,
+    /** Per tab; see [notifyFor]. */
+    val notifyTabs: Map<CategoryGroup, NotifyMode> = DEFAULT_NOTIFY,
     val notifySpam: Boolean = false,
     val otpCopyAction: Boolean = true,
     val aiEnabled: Boolean = true,
@@ -86,7 +105,9 @@ class SettingsRepository(private val context: Context) {
         val autoDownloadMmsRoaming = booleanPreferencesKey("auto_download_mms_roaming")
         val sendDelay = intPreferencesKey("send_delay")
         val previews = booleanPreferencesKey("notification_previews")
+        /** Before per-tab choices: whether offers notified (silently). Read once to carry the choice over. */
         val notifyPromotions = booleanPreferencesKey("notify_promotions")
+        val notifyTabs = stringPreferencesKey("notify_tabs")
         val notifySpam = booleanPreferencesKey("notify_spam")
         val otpCopy = booleanPreferencesKey("otp_copy")
         val aiEnabled = booleanPreferencesKey("ai_enabled")
@@ -140,7 +161,7 @@ class SettingsRepository(private val context: Context) {
             p[K.autoDownloadMmsRoaming] = s.autoDownloadMmsRoaming
             p[K.sendDelay] = s.sendDelaySeconds
             p[K.previews] = s.showNotificationPreviews
-            p[K.notifyPromotions] = s.notifyPromotions
+            p[K.notifyTabs] = s.notifyTabs.entries.joinToString(",") { "${it.key.name}:${it.value.name}" }
             p[K.notifySpam] = s.notifySpam
             p[K.otpCopy] = s.otpCopyAction
             p[K.aiEnabled] = s.aiEnabled
@@ -178,6 +199,17 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
+    private fun readNotifyTabs(p: Preferences, defaults: Map<CategoryGroup, NotifyMode>): Map<CategoryGroup, NotifyMode> {
+        val legacyOffers = p[K.notifyPromotions]?.let { if (it) NotifyMode.SILENT else NotifyMode.OFF }
+        val stored = p[K.notifyTabs].orEmpty().split(',').mapNotNull { pair ->
+            val (g, m) = pair.split(':').takeIf { it.size == 2 } ?: return@mapNotNull null
+            val group = runCatching { CategoryGroup.valueOf(g) }.getOrNull() ?: return@mapNotNull null
+            val mode = runCatching { NotifyMode.valueOf(m) }.getOrNull() ?: return@mapNotNull null
+            group to mode
+        }.toMap()
+        return defaults + (legacyOffers?.let { mapOf(CategoryGroup.OFFERS to it) } ?: emptyMap()) + stored
+    }
+
     private fun readFrom(p: Preferences, d: AppSettings): AppSettings = AppSettings(
         onboardingDone = p[K.onboardingDone] ?: d.onboardingDone,
         theme = p[K.theme]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: d.theme,
@@ -188,7 +220,7 @@ class SettingsRepository(private val context: Context) {
         autoDownloadMmsRoaming = p[K.autoDownloadMmsRoaming] ?: d.autoDownloadMmsRoaming,
         sendDelaySeconds = p[K.sendDelay] ?: d.sendDelaySeconds,
         showNotificationPreviews = p[K.previews] ?: d.showNotificationPreviews,
-        notifyPromotions = p[K.notifyPromotions] ?: d.notifyPromotions,
+        notifyTabs = readNotifyTabs(p, d.notifyTabs),
         notifySpam = p[K.notifySpam] ?: d.notifySpam,
         otpCopyAction = p[K.otpCopy] ?: d.otpCopyAction,
         aiEnabled = p[K.aiEnabled] ?: d.aiEnabled,

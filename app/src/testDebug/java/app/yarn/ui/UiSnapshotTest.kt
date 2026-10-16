@@ -24,6 +24,7 @@ import app.yarn.ui.inbox.InboxItem
 import app.yarn.ui.settings.NavRow
 import app.yarn.ui.settings.settingsHubItems
 import app.yarn.ui.settings.smartFeatureItems
+import app.yarn.ui.settings.notificationItems
 import app.yarn.ui.settings.backupItems
 import app.yarn.ui.settings.SettingsGroup
 import app.yarn.ui.theme.YarnTheme
@@ -167,6 +168,15 @@ class UiSnapshotTest {
     }
     @Test fun smartLight() = shot(false, "5_smart_features_light") {
         app.yarn.ui.settings.SettingsScaffold("Smart features", {}) { smartFeatureItems(app.yarn.data.prefs.AppSettings(), {}, {}, {}) }
+    }
+    private val myNotify = app.yarn.data.prefs.AppSettings(
+        notifyTabs = app.yarn.data.prefs.DEFAULT_NOTIFY + (app.yarn.intelligence.CategoryGroup.OFFERS to app.yarn.data.prefs.NotifyMode.SILENT),
+    )
+    @Test fun notificationsDark() = shot(true, "37_notifications_per_tab_dark") {
+        app.yarn.ui.settings.SettingsScaffold("Notifications", {}) { notificationItems(myNotify, {}, {}) }
+    }
+    @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun notificationsHindi() = shot(false, "38_notifications_per_tab_hindi") {
+        app.yarn.ui.settings.SettingsScaffold("सूचनाएं", {}) { notificationItems(myNotify, {}, {}) }
     }
     @Test fun selectionLight() = shot(false, "6_selected_row_light") {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 24.dp)) {

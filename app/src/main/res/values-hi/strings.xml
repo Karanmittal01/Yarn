@@ -755,4 +755,9 @@
         <item quantity="other">%1$d चैट से %2$s मैसेज मिटाएँ?</item>
     </plurals>
     <string name="delete_section_text">सिर्फ़ यही मैसेज मिटेंगे। चैट के बाकी मैसेज अपने टैब में रहेंगे। इसे वापस नहीं किया जा सकता।</string>
+    <string name="notify_mode_sound">आवाज़ — आवाज़ के साथ दिखे</string>
+    <string name="notify_mode_silent">चुपचाप — सूचनाओं में दिखे, आवाज़ नहीं</string>
+    <string name="notify_mode_off">बंद — कोई सूचना नहीं</string>
+    <string name="notify_all_tabs">सभी टैब</string>
+    <string name="notify_tabs_hint">मैसेज Yarn में हमेशा आएंगे। यह सिर्फ़ तय करता है कि हर टैब आपको कैसे बताए।</string>
 </resources>
