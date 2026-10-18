@@ -496,3 +496,27 @@ interface BlockDao {
     @Query("SELECT * FROM block_rules")
     suspend fun all(): List<BlockRuleEntity>
 }
+
+@Dao
+abstract class BinDao {
+    @Insert
+    abstract suspend fun insertAll(items: List<BinEntity>): List<Long>
+
+    @Query("SELECT * FROM bin ORDER BY deletedAt DESC, date DESC")
+    abstract fun observe(): Flow<List<BinEntity>>
+
+    @Query("SELECT COUNT(*) FROM bin")
+    abstract fun count(): Flow<Int>
+
+    @Query("SELECT * FROM bin WHERE id IN (:ids)")
+    abstract suspend fun getAll(ids: Collection<Long>): List<BinEntity>
+
+    @Query("SELECT * FROM bin WHERE deletedAt < :before")
+    abstract suspend fun olderThan(before: Long): List<BinEntity>
+
+    @Query("SELECT * FROM bin")
+    abstract suspend fun all(): List<BinEntity>
+
+    @Query("DELETE FROM bin WHERE id IN (:ids)")
+    abstract suspend fun delete(ids: Collection<Long>)
+}

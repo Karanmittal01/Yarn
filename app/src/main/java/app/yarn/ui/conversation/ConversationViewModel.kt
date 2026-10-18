@@ -143,6 +143,12 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     private val _events = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val events: SharedFlow<String> = _events
 
+    /** "Moved to the bin" messages, with the bin ids that Undo brings back. */
+    private val _undo = MutableSharedFlow<Pair<String, List<Long>>>(extraBufferCapacity = 4)
+    val undo: SharedFlow<Pair<String, List<Long>>> = _undo
+
+    fun restoreFromBin(binIds: List<Long>) { c.scope.launch { c.conversations.restoreFromBin(binIds) } }
+
     val settings = c.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, app.yarn.data.prefs.AppSettings())
 
     @Volatile private var visible = false
@@ -273,7 +279,12 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     fun deleteSelected() {
         val ids = _selection.value
         clearSelection()
-        viewModelScope.launch { c.conversations.deleteMessages(ids); _events.tryEmit(c.app.resources.getQuantityString(R.plurals.n_messages_deleted, ids.size, ids.size)) }
+        viewModelScope.launch {
+            val kept = c.conversations.deleteMessages(ids)
+            val res = c.app.resources
+            if (kept.isEmpty()) _events.tryEmit(res.getQuantityString(R.plurals.n_messages_deleted, ids.size, ids.size))
+            else _undo.tryEmit(res.getQuantityString(R.plurals.moved_to_bin_n, ids.size, ids.size) to kept)
+        }
     }
 
     fun starSelected(starred: Boolean) {

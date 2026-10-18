@@ -202,6 +202,24 @@ class TelephonyStore(private val context: Context) {
         return safeInsert(Telephony.Sms.CONTENT_URI, values)?.let(ContentUris::parseId)
     }
 
+    /** Puts a sent SMS back into the system store (restoring from the bin). Returns its row id and thread. */
+    fun insertSentSms(address: String, body: String, date: Long, dateSent: Long, subId: Int): Pair<Long, Long>? {
+        val threadId = runCatching { threadIdFor(setOf(address)) }.getOrNull() ?: return null
+        val values = ContentValues().apply {
+            put(Telephony.Sms.ADDRESS, address)
+            put(Telephony.Sms.BODY, body)
+            put(Telephony.Sms.DATE, date)
+            put(Telephony.Sms.DATE_SENT, dateSent)
+            put(Telephony.Sms.READ, 1)
+            put(Telephony.Sms.SEEN, 1)
+            put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_SENT)
+            put(Telephony.Sms.THREAD_ID, threadId)
+            put(Telephony.Sms.SUBSCRIPTION_ID, subId)
+        }
+        val uri = safeInsert(Telephony.Sms.CONTENT_URI, values) ?: return null
+        return ContentUris.parseId(uri) to threadId
+    }
+
     fun updateSmsType(id: Long, type: Int, errorCode: Int = 0) {
         val values = ContentValues().apply {
             put(Telephony.Sms.TYPE, type)

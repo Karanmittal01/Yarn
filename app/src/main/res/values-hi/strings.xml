@@ -760,4 +760,59 @@
     <string name="notify_mode_off">बंद — कोई सूचना नहीं</string>
     <string name="notify_all_tabs">सभी टैब</string>
     <string name="notify_tabs_hint">मैसेज Yarn में हमेशा आएंगे। यह सिर्फ़ तय करता है कि हर टैब आपको कैसे बताए।</string>
+    <string name="recycle_bin">रीसायकल बिन</string>
+    <string name="bin_empty_state">बिन खाली है</string>
+    <string name="bin_empty_state_sub">आप जो मैसेज मिटाते हैं, वे यहाँ रहते हैं ताकि आप उन्हें वापस ला सकें।</string>
+    <plurals name="bin_keeps_days">
+        <item quantity="one">मिटाने के %1$d दिन बाद मैसेज हमेशा के लिए हट जाते हैं।</item>
+        <item quantity="other">मिटाने के %1$d दिन बाद मैसेज हमेशा के लिए हट जाते हैं।</item>
+    </plurals>
+    <string name="bin_keeps_forever">बिन खाली करने तक मैसेज यहाँ रहते हैं।</string>
+    <string name="bin_off_note">बिन बंद है, इसलिए मिटाए गए मैसेज तुरंत हट जाते हैं। इसे क्लीन अप में चालू करें।</string>
+    <string name="empty_bin">बिन खाली करें</string>
+    <string name="empty_bin_q">बिन खाली करें?</string>
+    <plurals name="empty_bin_text">
+        <item quantity="one">%1$d मैसेज हमेशा के लिए मिट जाएगा। इसे वापस नहीं किया जा सकता।</item>
+        <item quantity="other">%1$d मैसेज हमेशा के लिए मिट जाएंगे। इसे वापस नहीं किया जा सकता।</item>
+    </plurals>
+    <string name="delete_forever">हमेशा के लिए मिटाएँ</string>
+    <plurals name="delete_forever_q">
+        <item quantity="one">%1$d मैसेज हमेशा के लिए मिटाएँ?</item>
+        <item quantity="other">%1$d मैसेज हमेशा के लिए मिटाएँ?</item>
+    </plurals>
+    <string name="delete_forever_text">इसे वापस नहीं किया जा सकता।</string>
+    <string name="restore_all">सब वापस लाएँ</string>
+    <plurals name="bin_restored_n">
+        <item quantity="one">%1$d मैसेज वापस आ गया</item>
+        <item quantity="other">%1$d मैसेज वापस आ गए</item>
+    </plurals>
+    <string name="deleted_when">%1$s मिटाया गया</string>
+    <plurals name="moved_to_bin_n">
+        <item quantity="one">%1$d मैसेज बिन में गया</item>
+        <item quantity="other">%1$d मैसेज बिन में गए</item>
+    </plurals>
+    <plurals name="chats_to_bin_n">
+        <item quantity="one">%1$d चैट बिन में गई</item>
+        <item quantity="other">%1$d चैट बिन में गईं</item>
+    </plurals>
+    <plurals name="to_bin_note">
+        <item quantity="one">ये %1$d दिन के लिए बिन में जाएंगे, ताकि आप इन्हें वापस ला सकें।</item>
+        <item quantity="other">ये %1$d दिन के लिए बिन में जाएंगे, ताकि आप इन्हें वापस ला सकें।</item>
+    </plurals>
+    <string name="to_bin_forever">ये बिन में जाएंगे, ताकि आप बिन खाली करने तक इन्हें वापस ला सकें।</string>
+    <string name="section_delete_lead">सिर्फ़ यही मैसेज मिटेंगे; चैट के बाकी मैसेज अपने टैब में रहेंगे।</string>
+    <string name="final_delete_note">ये इस फ़ोन से हमेशा के लिए हट जाएंगे।</string>
+    <plurals name="bin_count">
+        <item quantity="one">%1$d मैसेज</item>
+        <item quantity="other">%1$d मैसेज</item>
+    </plurals>
+    <string name="bin_open_sub_empty">खाली है। मिटाए गए मैसेज यहाँ रहते हैं।</string>
+    <string name="empty_bin_auto">बिन खाली करें</string>
+    <plurals name="bin_after_days">
+        <item quantity="one">%1$d दिन बाद</item>
+        <item quantity="other">%1$d दिन बाद</item>
+    </plurals>
+    <string name="bin_never">कभी नहीं, मैं खुद खाली करूँगा</string>
+    <string name="bin_off">बिन इस्तेमाल न करें</string>
+    <string name="bin_mms_note">फ़ोटो वाले मैसेज सिर्फ़ Yarn में वापस आते हैं।</string>
 </resources>

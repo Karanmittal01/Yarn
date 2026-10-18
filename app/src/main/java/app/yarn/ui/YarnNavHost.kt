@@ -68,6 +68,7 @@ import app.yarn.R
 @Serializable data class SettingsSubRoute(val page: String)
 @Serializable data class FolderRoute(val view: String)
 @Serializable object StarredRoute
+@Serializable object BinRoute
 
 /** Navigation requests coming from outside the UI (notifications, share sheet, other apps). */
 sealed interface ExternalNav {
@@ -126,7 +127,7 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
                 SettingsPage.MESSAGING -> MessagingScreen(vm, back)
                 SettingsPage.AI -> AiSettingsScreen(vm, back)
                 SettingsPage.PRIVACY -> PrivacyScreen(vm, back)
-                SettingsPage.CLEANUP -> CleanerScreen(yarnViewModel { CleanerViewModel(it) }, back)
+                SettingsPage.CLEANUP -> CleanerScreen(yarnViewModel { CleanerViewModel(it) }, back, onOpenBin = { nav.navigate(BinRoute) })
                 SettingsPage.BLOCKED -> BlockedScreen(vm, back) { nav.navigate(FolderRoute(InboxView.BLOCKED.name)) }
                 SettingsPage.BACKUP -> BackupScreen(vm, back)
                 SettingsPage.ABOUT -> AboutScreen(back)
@@ -153,6 +154,9 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
                 showChips = false,
             )
         }
+        composable<BinRoute> {
+            app.yarn.ui.bin.BinScreen(yarnViewModel { app.yarn.ui.bin.BinViewModel(it) }, onBack = { nav.popBackStack() })
+        }
         composable<StarredRoute> {
             val vm = yarnViewModel { SettingsViewModel(it) }
             StarredScreen(vm, onBack = { nav.popBackStack() }) { id, msg -> nav.navigate(ChatRoute(id, msg)) }
@@ -174,6 +178,7 @@ private fun HomePane(nav: NavHostController) {
             InboxDestination.Blocked -> nav.navigate(FolderRoute(InboxView.BLOCKED.name))
             InboxDestination.Settings -> nav.navigate(SettingsRoute)
             InboxDestination.Cleanup -> nav.navigate(SettingsSubRoute(SettingsPage.CLEANUP.name))
+            InboxDestination.Bin -> nav.navigate(BinRoute)
         }
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {

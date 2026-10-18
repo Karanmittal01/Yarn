@@ -30,6 +30,7 @@ import app.yarn.data.db.YarnDatabase
 import app.yarn.data.prefs.SettingsRepository
 import app.yarn.data.repo.Cleaner
 import app.yarn.data.repo.ConversationRepository
+import app.yarn.data.repo.RecycleBin
 import app.yarn.data.repo.TelephonySync
 import app.yarn.messaging.IncomingProcessor
 import app.yarn.messaging.MessageSender
@@ -68,7 +69,8 @@ class AppContainer(val app: Application) {
 
     val engine by lazy { IntelligenceEngine(db, settings, contacts, scope) }
     val notifier by lazy { Notifier(app, db, contacts, settings, sims) }
-    val conversations by lazy { ConversationRepository(app, db, store, contacts, engine, notifier, providerLock, scope) }
+    val bin by lazy { RecycleBin(app, db, settings) }
+    val conversations by lazy { ConversationRepository(app, db, store, contacts, engine, notifier, providerLock, scope, bin) }
     val sender by lazy { MessageSender(app, db, store, sims, settings, engine, notifier, providerLock, scope) }
     val language by lazy { LanguageService() }
     val translation by lazy { TranslationService(app, language) }
@@ -119,6 +121,7 @@ class AppContainer(val app: Application) {
         }
         // Refresh cached names once per launch (contact edits, better sender-name mapping in updates).
         scope.launch { runCatching { conversations.refreshDisplayNames() } }
+        scope.launch { runCatching { bin.emptyExpired() } }
         scope.launch {
             // Rename conversations when the address book changes.
             contacts.version.drop(1).collect { conversations.refreshDisplayNames() }
@@ -188,6 +191,6 @@ class YarnApplication : Application() {
 
     companion object {
         /** Bump when categorisation changes enough that existing messages should be re-sorted. */
-        const val RULES_VERSION = 8
+        const val RULES_VERSION = 9
     }
 }

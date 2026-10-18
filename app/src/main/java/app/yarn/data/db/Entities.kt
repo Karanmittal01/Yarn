@@ -224,6 +224,37 @@ data class BlockRuleEntity(
     }
 }
 
+/** A file kept with a binned message, copied into app storage so it outlives the original. */
+@kotlinx.serialization.Serializable
+data class BinAttachment(val mimeType: String, val uri: String, val fileName: String? = null, val size: Long = 0)
+
+/**
+ * A deleted message, kept so it can be restored until the bin is emptied. The original is gone
+ * from the system message store, so this is the only copy.
+ */
+@Entity(tableName = "bin", indices = [Index("deletedAt")])
+data class BinEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** Thread the message was in; restoring puts it back in the same chat when it still exists. */
+    val conversationId: Long,
+    val addresses: List<String>,
+    /** The chat's name when it was deleted, for the bin list. */
+    val title: String,
+    val kind: Int,
+    val address: String,
+    val body: String,
+    val subject: String? = null,
+    val date: Long,
+    val dateSent: Long = 0,
+    val outgoing: Boolean,
+    val status: Int,
+    val subId: Int = -1,
+    val category: String,
+    val starred: Boolean = false,
+    val attachments: List<BinAttachment> = emptyList(),
+    val deletedAt: Long,
+)
+
 data class MessageWithAttachments(
     @Embedded val message: MessageEntity,
     @Relation(parentColumn = "id", entityColumn = "messageId") val attachments: List<AttachmentEntity>,

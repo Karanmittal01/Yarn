@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.GppGood
@@ -139,6 +140,7 @@ sealed interface InboxDestination {
     data object Blocked : InboxDestination
     data object Settings : InboxDestination
     data object Cleanup : InboxDestination
+    data object Bin : InboxDestination
 }
 
 @Composable
@@ -328,7 +330,7 @@ fun InboxScreen(
         ConfirmDialog(
             title = section?.let { pluralStringResource(R.plurals.delete_section_title, ids.size, ids.size, stringResource(it.label)) }
                 ?: pluralStringResource(R.plurals.delete_conversations_title, ids.size, ids.size),
-            text = if (section != null) stringResource(R.string.delete_section_text) else stringResource(R.string.delete_conversations_text),
+            text = (if (section != null) stringResource(R.string.section_delete_lead) + " " else "") + app.yarn.ui.bin.binNote(settings.binDays),
             confirm = stringResource(R.string.delete),
             destructive = true,
             onConfirm = { vm.delete(ids) },
@@ -378,6 +380,7 @@ internal fun InboxHeader(
                 YarnMenuItem(stringResource(R.string.archived), Icons.Outlined.Archive, { menu = false; onNavigate(InboxDestination.Archived) })
                 YarnMenuItem(if (spamUnread > 0) stringResource(R.string.spam_blocked_count, spamUnread) else stringResource(R.string.spam_blocked), Icons.Outlined.Report, { menu = false; onNavigate(InboxDestination.Spam) })
                 YarnMenuItem(stringResource(R.string.clean_up), Icons.Outlined.CleaningServices, { menu = false; onNavigate(InboxDestination.Cleanup) })
+                YarnMenuItem(stringResource(R.string.recycle_bin), Icons.Outlined.DeleteOutline, { menu = false; onNavigate(InboxDestination.Bin) })
                 YarnMenuDivider()
                 YarnMenuItem(stringResource(R.string.settings), Icons.Outlined.Settings, { menu = false; onNavigate(InboxDestination.Settings) })
             }

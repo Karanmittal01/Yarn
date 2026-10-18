@@ -178,6 +178,38 @@ class UiSnapshotTest {
     @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun notificationsHindi() = shot(false, "38_notifications_per_tab_hindi") {
         app.yarn.ui.settings.SettingsScaffold("सूचनाएं", {}) { notificationItems(myNotify, {}, {}) }
     }
+    private fun binned(id: Long, title: String, address: String, body: String, hoursAgo: Long, outgoing: Boolean = false, photo: Boolean = false) =
+        app.yarn.data.db.BinEntity(
+            id = id, conversationId = id, addresses = listOf(address), title = title, kind = if (photo) 1 else 0, address = address, body = body,
+            date = now - (hoursAgo + 2) * 3_600_000, outgoing = outgoing, status = if (outgoing) 3 else 0, category = "PERSONAL",
+            attachments = if (photo) listOf(app.yarn.data.db.BinAttachment("image/jpeg", "file:///x.jpg")) else emptyList(),
+            deletedAt = now - hoursAgo * 3_600_000,
+        )
+    private val binItems = listOf(
+        binned(1, "Karan Mittal", "+919812345678", "Reached home, call you in 10", 1),
+        binned(2, "Mom", "+919800000002", "Don't forget the medicines", 3, photo = true),
+        binned(3, "HDFC Bank", "VM-HDFCBK-S", "Rs.2,500.00 debited from A/c XX1234 to VPA swiggy@icici", 26),
+        binned(4, "Karan Mittal", "+919812345678", "Sure, 7 works", 50, outgoing = true),
+        binned(5, "DELTRF", "VM-DELTRF-G", "Your OTP for check Notice details is:769966 . Delhi Traffic Police", 120),
+    )
+    @Test fun binDark() = shot(true, "39_bin_dark") {
+        app.yarn.ui.bin.BinContent(binItems, 7, emptySet(), onToggle = {}, onRestore = {}, onDeleteForever = {}, onRestoreAll = {}, onEmpty = {}, onBack = {}, now = now)
+    }
+    @Test fun binSelected() = shot(false, "40_bin_selected_light") {
+        app.yarn.ui.bin.BinContent(binItems, 7, setOf(2L, 4L), onToggle = {}, onRestore = {}, onDeleteForever = {}, onRestoreAll = {}, onEmpty = {}, onBack = {}, now = now)
+    }
+    @Test fun binEmpty() = shot(false, "41_bin_empty") {
+        app.yarn.ui.bin.BinContent(emptyList(), 7, emptySet(), onToggle = {}, onRestore = {}, onDeleteForever = {}, onRestoreAll = {}, onEmpty = {}, onBack = {}, now = now)
+    }
+    @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun binHindi() = shot(true, "42_hi_bin_dark") {
+        app.yarn.ui.bin.BinContent(binItems, 7, emptySet(), onToggle = {}, onRestore = {}, onDeleteForever = {}, onRestoreAll = {}, onEmpty = {}, onBack = {}, now = now)
+    }
+    @Test @Config(qualifiers = "w411dp-h1500dp-xxhdpi") fun cleanerWithBin() = shot(true, "43_cleanup_with_bin_dark") {
+        app.yarn.ui.cleaner.CleanerContent(
+            app.yarn.ui.cleaner.CleanerState(scanning = false, found = found), app.yarn.ui.cleaner.AutoClean(240, 30, 7, 7), false, false, true,
+            {}, {}, {}, {}, {}, {}, binCount = 12,
+        )
+    }
     @Test fun selectionLight() = shot(false, "6_selected_row_light") {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 24.dp)) {
             inbox.take(4).forEachIndexed { i, it -> ConversationRow(it, i == 3, false, {}, {}) }

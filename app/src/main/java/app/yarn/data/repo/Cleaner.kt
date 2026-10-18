@@ -31,6 +31,7 @@ class Cleaner(
     private suspend fun ids(kind: JunkKind, before: Long): List<Long> =
         if (kind == JunkKind.SPAM) db.messages().spamOlderThan(before) else db.messages().junkIds(kind.categories, before)
 
+    /** Everything cleaned, by hand or automatically, goes to the bin first. */
     suspend fun clean(ids: Collection<Long>, onProgress: (Int) -> Unit = {}): Int {
         if (ids.isEmpty()) return 0
         conversations.deleteMessages(ids.distinct(), onProgress)

@@ -10,6 +10,7 @@ import app.yarn.data.db.ConversationEntity
 import app.yarn.data.db.MessageEntity
 import app.yarn.data.db.MessageKind
 import app.yarn.data.db.MessageSearchResult
+import app.yarn.data.db.MessageStatus
 import app.yarn.data.db.YarnDatabase
 import app.yarn.intelligence.Category
 import app.yarn.intelligence.group
@@ -69,6 +70,7 @@ class ConversationRepository(
     private val notifier: Notifier,
     private val providerLock: Mutex,
     scope: CoroutineScope,
+    private val bin: RecycleBin,
 ) : MessageSender.ConversationWriter {
 
     @Volatile private var blockRules: List<BlockRuleEntity> = emptyList()
@@ -235,13 +237,15 @@ class ConversationRepository(
         }
     }
 
-    /** Deletes one section of these chats; the rest of each chat stays where it belongs. Returns how many messages went. */
-    suspend fun deleteSection(conversationIds: Collection<Long>, categories: Set<Category>): Int {
+    /**
+     * Deletes one section of these chats; the rest of each chat stays where it belongs. Returns how
+     * many messages went, and their bin ids for undo.
+     */
+    suspend fun deleteSection(conversationIds: Collection<Long>, categories: Set<Category>): Pair<Int, List<Long>> {
         val (locked, open) = db.conversations().getAll(conversationIds).partition { it.categoryLocked }
-        if (locked.isNotEmpty()) delete(locked.map { it.id })
+        val kept = if (locked.isNotEmpty()) delete(locked.map { it.id }) else emptyList()
         val ids = if (open.isEmpty()) emptyList() else db.messages().idsIn(open.map { it.id }, categories.map { it.name })
-        deleteMessages(ids)
-        return ids.size + locked.sumOf { it.messageCount }
+        return (ids.size + locked.sumOf { it.messageCount }) to (kept + deleteMessages(ids))
     }
 
     suspend fun markRead(conversationIds: Collection<Long>) {
@@ -273,12 +277,15 @@ class ConversationRepository(
     }
     suspend fun setStarred(ids: Collection<Long>, starred: Boolean) = db.conversations().setStarred(ids, starred)
 
-    suspend fun delete(conversationIds: Collection<Long>) {
+    /** Deletes whole chats; their messages go to the bin first. Returns the bin ids, for undo. */
+    suspend fun delete(conversationIds: Collection<Long>): List<Long> {
         val messages = db.messages().inConversations(conversationIds)
+        val kept = bin.keep(messages)
         deleteLocalFiles(messages.map { it.id })
         providerLock.withLock { conversationIds.filter { it > 0 }.forEach { store.deleteThread(it) } }
         db.conversations().delete(conversationIds)
         conversationIds.forEach { notifier.cancel(it) }
+        return kept
     }
 
     /** Marks conversations as spam / not spam, teaches the model, and remembers the sender. */
@@ -323,12 +330,17 @@ class ConversationRepository(
 
     // ---- messages ---------------------------------------------------------------------------
 
-    /** Deletes messages here and in the system store, in batches so thousands go quickly. */
-    suspend fun deleteMessages(ids: Collection<Long>, onProgress: (Int) -> Unit = {}) {
+    /**
+     * Deletes messages here and in the system store, in batches so thousands go quickly. Every
+     * delete goes to the bin first (unless the user turned the bin off); returns the bin ids, for undo.
+     */
+    suspend fun deleteMessages(ids: Collection<Long>, onProgress: (Int) -> Unit = {}): List<Long> {
         val touched = HashSet<Long>()
+        val kept = ArrayList<Long>()
         var done = 0
         for (chunk in ids.chunked(DELETE_BATCH)) {
             val messages = db.messages().getAll(chunk)
+            kept += bin.keep(messages)
             deleteLocalFiles(chunk)
             providerLock.withLock {
                 val sms = ArrayList<Long>()
@@ -344,6 +356,50 @@ class ConversationRepository(
             onProgress(done)
         }
         touched.forEach { db.conversations().refresh(it) }
+        return kept
+    }
+
+    /**
+     * Puts binned messages back. Texts go back into the system message store too (when Yarn may
+     * write to it), so every SMS app sees them again; multimedia messages come back in Yarn only.
+     * Returns how many came back.
+     */
+    suspend fun restoreFromBin(binIds: Collection<Long>): Int {
+        val items = db.bin().getAll(binIds).sortedBy { it.date }
+        val touched = HashSet<Long>()
+        var restored = 0
+        for (b in items) {
+            val single = b.address.split(',').size == 1
+            val written = providerLock.withLock {
+                val row = when {
+                    b.kind != MessageKind.SMS || !single -> null
+                    b.outgoing -> store.insertSentSms(b.address, b.body, b.date, b.dateSent, b.subId)
+                    else -> store.insertIncomingSms(b.address, b.body, b.date, b.dateSent, b.subId, read = true)
+                }
+                val threadId = row?.second ?: runCatching { store.threadIdFor(b.addresses.toSet()) }.getOrNull() ?: b.conversationId
+                ensure(threadId, b.addresses)
+                val sent = b.status == MessageStatus.SENT || b.status == MessageStatus.DELIVERED
+                val id = db.messages().insert(
+                    MessageEntity(
+                        conversationId = threadId, kind = b.kind, providerId = row?.first, address = b.address, body = b.body, subject = b.subject,
+                        date = b.date, dateSent = b.dateSent, outgoing = b.outgoing,
+                        // Something that never went out comes back as failed, so it can be resent by hand.
+                        status = if (!b.outgoing) MessageStatus.RECEIVED else if (sent) b.status else MessageStatus.FAILED,
+                        subId = b.subId, read = true, seen = true, starred = b.starred,
+                        hasAttachments = b.attachments.isNotEmpty(), category = b.category,
+                    ),
+                )
+                if (id > 0 && b.attachments.isNotEmpty()) db.messages().insertAttachments(bin.attachmentsFor(b, id))
+                id.takeIf { it > 0 }?.let { it to threadId }
+            } ?: continue
+            engine.analyzeAndStore(written.first)
+            touched += written.second
+            restored++
+        }
+        // The files now belong to the restored messages, so only the bin rows go.
+        db.bin().delete(items.map { it.id })
+        touched.forEach { db.conversations().refresh(it) }
+        return restored
     }
 
     suspend fun setMessagesStarred(ids: Collection<Long>, starred: Boolean) = db.messages().setStarred(ids, starred)

@@ -175,6 +175,7 @@ class MaintenanceWorker(context: Context, params: WorkerParameters) : CoroutineW
         val now = System.currentTimeMillis()
         // Auto-clean needs the SMS role, or deleted messages would linger in the system store.
         if (s.initialImportDone && app.yarn.telephony.DefaultSmsApp.isDefault(applicationContext)) c.cleaner.autoClean(s, now)
+        c.bin.emptyExpired(now)
         c.sender.processQueue()
         c.sync.sync()
         c.sync.reconcileDeletions()

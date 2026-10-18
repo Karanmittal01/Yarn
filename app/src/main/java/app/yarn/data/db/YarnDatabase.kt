@@ -31,6 +31,12 @@ class Converters {
     fun stringToList(value: String): List<String> = if (value.isEmpty()) emptyList() else json.decodeFromString(value)
 
     @TypeConverter
+    fun binAttachmentsToString(list: List<BinAttachment>): String = json.encodeToString(list)
+
+    @TypeConverter
+    fun stringToBinAttachments(value: String): List<BinAttachment> = if (value.isEmpty()) emptyList() else json.decodeFromString(value)
+
+    @TypeConverter
     fun mapToString(map: Map<String, String>): String = json.encodeToString(map)
 
     @TypeConverter
@@ -41,8 +47,9 @@ class Converters {
     entities = [
         ConversationEntity::class, MessageEntity::class, MessageFts::class, AttachmentEntity::class,
         ExtractedEntity::class, CorrectionEntity::class, SenderRuleEntity::class, BlockRuleEntity::class,
+        BinEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -51,6 +58,7 @@ abstract class YarnDatabase : RoomDatabase() {
     abstract fun messages(): MessageDao
     abstract fun learning(): LearningDao
     abstract fun blocks(): BlockDao
+    abstract fun bin(): BinDao
 
     companion object {
         private const val NAME = "yarn.db"
@@ -63,6 +71,18 @@ abstract class YarnDatabase : RoomDatabase() {
                     "UPDATE conversations SET lastSubId = COALESCE((SELECT m.subId FROM messages m " +
                         "WHERE m.conversationId = conversations.id ORDER BY m.date DESC, m.id DESC LIMIT 1), -1)",
                 )
+            }
+        }
+        /** Adds the recycle bin. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `bin` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `conversationId` INTEGER NOT NULL, " +
+                        "`addresses` TEXT NOT NULL, `title` TEXT NOT NULL, `kind` INTEGER NOT NULL, `address` TEXT NOT NULL, `body` TEXT NOT NULL, " +
+                        "`subject` TEXT, `date` INTEGER NOT NULL, `dateSent` INTEGER NOT NULL, `outgoing` INTEGER NOT NULL, `status` INTEGER NOT NULL, " +
+                        "`subId` INTEGER NOT NULL, `category` TEXT NOT NULL, `starred` INTEGER NOT NULL, `attachments` TEXT NOT NULL, `deletedAt` INTEGER NOT NULL)",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_bin_deletedAt` ON `bin` (`deletedAt`)")
             }
         }
         private const val TAG = "YarnDatabase"
@@ -98,7 +118,7 @@ abstract class YarnDatabase : RoomDatabase() {
         private fun build(context: Context, key: ByteArray) =
             Room.databaseBuilder(context, YarnDatabase::class.java, NAME)
                 .openHelperFactory(SupportOpenHelperFactory(key))
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .fallbackToDestructiveMigrationOnDowngrade(true)
                 .build()
     }

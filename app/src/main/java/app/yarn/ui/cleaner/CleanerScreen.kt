@@ -30,7 +30,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.AutoDelete
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.LocalShipping
@@ -75,6 +77,8 @@ import app.yarn.AppContainer
 import app.yarn.data.prefs.AppSettings
 import app.yarn.data.repo.JunkKind
 import app.yarn.telephony.DefaultSmsApp
+import app.yarn.data.prefs.BIN_NEVER_EMPTY
+import app.yarn.data.prefs.BIN_OFF
 import app.yarn.ui.common.ConfirmDialog
 import app.yarn.ui.common.container
 import app.yarn.ui.settings.ChoiceRow
@@ -108,11 +112,11 @@ data class CleanerState(
 }
 
 /** The three auto-clean choices, edited as a draft and saved together with Apply. */
-data class AutoClean(val codesMinutes: Int, val offersDays: Int, val spamDays: Int) {
-    fun applyTo(s: AppSettings) = s.copy(otpAutoDeleteMinutes = codesMinutes, promoAutoDeleteDays = offersDays, spamAutoDeleteDays = spamDays)
+data class AutoClean(val codesMinutes: Int, val offersDays: Int, val spamDays: Int, val binDays: Int = 7) {
+    fun applyTo(s: AppSettings) = s.copy(otpAutoDeleteMinutes = codesMinutes, promoAutoDeleteDays = offersDays, spamAutoDeleteDays = spamDays, binDays = binDays)
 
     companion object {
-        fun of(s: AppSettings) = AutoClean(s.otpAutoDeleteMinutes, s.promoAutoDeleteDays, s.spamAutoDeleteDays)
+        fun of(s: AppSettings) = AutoClean(s.otpAutoDeleteMinutes, s.promoAutoDeleteDays, s.spamAutoDeleteDays, s.binDays)
     }
 }
 
@@ -121,6 +125,7 @@ class CleanerViewModel(private val c: AppContainer) : ViewModel() {
     val state: StateFlow<CleanerState> = _state
     val settings: StateFlow<AppSettings> = c.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
     val isDefault = c.isDefaultSmsApp
+    val binCount: StateFlow<Int> = c.bin.count.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
     private var ids: Map<JunkKind, List<Long>> = emptyMap()
 
     init { scan() }
@@ -139,7 +144,7 @@ class CleanerViewModel(private val c: AppContainer) : ViewModel() {
         // App scope: leaving the screen mustn't stop a clean half-way.
         c.scope.launch {
             _state.update { it.copy(cleaning = true, done = 0, total = chosen.size) }
-            val n = c.cleaner.clean(chosen) { done -> _state.update { it.copy(done = done) } }
+            val n = c.cleaner.clean(chosen, onProgress = { done -> _state.update { it.copy(done = done) } })
             ids = c.cleaner.scan()
             _state.update { it.copy(cleaning = false, cleaned = n, found = ids.mapValues { e -> e.value.size }) }
         }
@@ -149,8 +154,9 @@ class CleanerViewModel(private val c: AppContainer) : ViewModel() {
 }
 
 @Composable
-fun CleanerScreen(vm: CleanerViewModel, onBack: () -> Unit) {
+fun CleanerScreen(vm: CleanerViewModel, onBack: () -> Unit, onOpenBin: () -> Unit = {}) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val binCount by vm.binCount.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val isDefault by vm.isDefault.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -177,6 +183,8 @@ fun CleanerScreen(vm: CleanerViewModel, onBack: () -> Unit) {
             justSaved = true
         },
         onBack = { if (dirty) askDiscard = true else onBack() },
+        binCount = binCount,
+        onOpenBin = onOpenBin,
     )
     if (askDiscard) {
         androidx.compose.material3.AlertDialog(
@@ -199,7 +207,7 @@ fun CleanerScreen(vm: CleanerViewModel, onBack: () -> Unit) {
         val n = state.selectedCount
         ConfirmDialog(
             title = pluralStringResource(R.plurals.clean_delete_q, n, n),
-            text = stringResource(R.string.clean_delete_text),
+            text = stringResource(R.string.clean_delete_text) + " " + app.yarn.ui.bin.binNote(settings.binDays),
             confirm = stringResource(R.string.clean_up),
             destructive = true,
             onConfirm = { vm.clean() },
@@ -221,6 +229,8 @@ fun CleanerContent(
     onAuto: (AutoClean) -> Unit,
     onApply: () -> Unit,
     onBack: () -> Unit,
+    binCount: Int = 0,
+    onOpenBin: () -> Unit = {},
 ) {
     val page = settingsPageColor()
     Scaffold(
@@ -249,7 +259,7 @@ fun CleanerContent(
             item {
                 SettingsGroup {
                     ChoiceRow(
-                        stringResource(R.string.verification_codes), listOf(0 to stringResource(R.string.keep), 10 to pluralStringResource(R.plurals.delete_after_minutes, 10, 10), 60 to pluralStringResource(R.plurals.delete_after_hours, 1, 1), 1440 to pluralStringResource(R.plurals.delete_after_days, 1, 1), 10080 to pluralStringResource(R.plurals.delete_after_days, 7, 7)),
+                        stringResource(R.string.verification_codes), listOf(0 to stringResource(R.string.keep), 10 to pluralStringResource(R.plurals.delete_after_minutes, 10, 10), 60 to pluralStringResource(R.plurals.delete_after_hours, 1, 1), 240 to pluralStringResource(R.plurals.delete_after_hours, 4, 4), 1440 to pluralStringResource(R.plurals.delete_after_days, 1, 1), 10080 to pluralStringResource(R.plurals.delete_after_days, 7, 7)),
                         auto.codesMinutes, icon = Icons.Outlined.Password, tint = Color(0xFF7C5CFF),
                     ) { v -> onAuto(auto.copy(codesMinutes = v)) }
                     ChoiceRow(
@@ -260,6 +270,27 @@ fun CleanerContent(
                         stringResource(R.string.verdict_spam), listOf(0 to stringResource(R.string.keep), 7 to pluralStringResource(R.plurals.delete_after_days, 7, 7), 30 to pluralStringResource(R.plurals.delete_after_days, 30, 30), 90 to pluralStringResource(R.plurals.delete_after_days, 90, 90)),
                         auto.spamDays, icon = Icons.Outlined.Report, tint = Color(0xFFF2453D),
                     ) { v -> onAuto(auto.copy(spamDays = v)) }
+                }
+            }
+            item { SectionHeader(stringResource(R.string.recycle_bin)) }
+            item {
+                SettingsGroup {
+                    app.yarn.ui.settings.ClickRow(
+                        stringResource(R.string.recycle_bin),
+                        if (binCount > 0) pluralStringResource(R.plurals.bin_count, binCount, binCount) else stringResource(R.string.bin_open_sub_empty),
+                        icon = Icons.Outlined.DeleteOutline, tint = Color(0xFF8E8E93), onClick = onOpenBin,
+                    )
+                    ChoiceRow(
+                        stringResource(R.string.empty_bin_auto),
+                        listOf(
+                            1 to pluralStringResource(R.plurals.bin_after_days, 1, 1),
+                            7 to pluralStringResource(R.plurals.bin_after_days, 7, 7),
+                            30 to pluralStringResource(R.plurals.bin_after_days, 30, 30),
+                            BIN_NEVER_EMPTY to stringResource(R.string.bin_never),
+                            BIN_OFF to stringResource(R.string.bin_off),
+                        ),
+                        auto.binDays, icon = Icons.Outlined.AutoDelete, tint = Color(0xFF8E8E93),
+                    ) { v -> onAuto(auto.copy(binDays = v)) }
                 }
             }
             // Settings: saved only with Apply, and it says so.

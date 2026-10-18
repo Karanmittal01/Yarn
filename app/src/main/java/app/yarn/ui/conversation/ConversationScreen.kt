@@ -145,6 +145,14 @@ fun ConversationScreen(
         onDispose { lifecycle.removeObserver(observer); vm.onVisible(false) }
     }
     LaunchedEffect(Unit) { vm.events.collect { snackbar.showSnackbar(it) } }
+    val undoLabel = stringResource(R.string.undo)
+    LaunchedEffect(Unit) {
+        vm.undo.collect { (message, binIds) ->
+            if (snackbar.showSnackbar(message, actionLabel = undoLabel, duration = androidx.compose.material3.SnackbarDuration.Short) == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                vm.restoreFromBin(binIds)
+            }
+        }
+    }
     BackHandler(enabled = selecting) { vm.clearSelection() }
 
     // Jump to a search result: find its index among newer messages and scroll there.
@@ -347,13 +355,13 @@ fun ConversationScreen(
 
     if (confirmDelete) {
         ConfirmDialog(
-            stringResource(R.string.delete_conversation_q), stringResource(R.string.delete_conversation_text), stringResource(R.string.delete),
+            stringResource(R.string.delete_conversation_q), app.yarn.ui.bin.binNote(settings.binDays), stringResource(R.string.delete),
             onConfirm = { vm.delete(onClosed) }, onDismiss = { confirmDelete = false }, destructive = true,
         )
     }
     if (confirmDeleteMessages) {
         ConfirmDialog(
-            pluralStringResource(R.plurals.delete_messages_q, selection.size, selection.size), stringResource(R.string.delete_messages_text), stringResource(R.string.delete),
+            pluralStringResource(R.plurals.delete_messages_q, selection.size, selection.size), app.yarn.ui.bin.binNote(settings.binDays), stringResource(R.string.delete),
             onConfirm = { vm.deleteSelected() }, onDismiss = { confirmDeleteMessages = false }, destructive = true,
         )
     }

@@ -43,13 +43,28 @@ class MigrationTest {
     fun upgradesToVersion2AndKeepsData() = runTest {
         createVersion1("migrate.db")
         val db = Room.databaseBuilder(context, YarnDatabase::class.java, "migrate.db")
-            .addMigrations(YarnDatabase.MIGRATION_1_2)
+            .addMigrations(YarnDatabase.MIGRATION_1_2, YarnDatabase.MIGRATION_2_3)
             .allowMainThreadQueries()
             .build()
         val c = db.conversations().get(7)!!
         assertThat(c.displayName).isEqualTo("HDFC Bank")
         assertThat(c.lastSubId).isEqualTo(3) // SIM of the newest message
         assertThat(db.messages().recent(7, 10)).hasSize(2)
+        db.close()
+    }
+
+    @Test
+    fun upgradesToVersion3WithAnEmptyBin() = runTest {
+        createVersion1("migrate3.db")
+        val db = Room.databaseBuilder(context, YarnDatabase::class.java, "migrate3.db")
+            .addMigrations(YarnDatabase.MIGRATION_1_2, YarnDatabase.MIGRATION_2_3)
+            .allowMainThreadQueries()
+            .build()
+        // Room checks the upgraded tables against the version-3 schema when it opens.
+        assertThat(db.messages().recent(7, 10)).hasSize(2)
+        assertThat(db.bin().all()).isEmpty()
+        db.bin().insertAll(listOf(BinEntity(conversationId = 7, addresses = listOf("JD-HDFCBK"), title = "HDFC Bank", kind = 0, address = "JD-HDFCBK", body = "old", date = 1000, outgoing = false, status = 0, category = "BANKING", deletedAt = 5000)))
+        assertThat(db.bin().all().single().title).isEqualTo("HDFC Bank")
         db.close()
     }
 }

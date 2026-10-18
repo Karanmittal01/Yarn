@@ -192,12 +192,20 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     /** In a section, only that section's messages go; the rest of each chat stays in its own tab. */
     fun delete(ids: Set<Long> = selected()) = act(ids) {
         val section = section.value
+        // Deleted messages go to the bin, so the snackbar can bring them straight back.
+        val res = c.app.resources
         if (section == null) {
-            c.conversations.delete(it)
-            _events.tryEmit(UndoEvent(c.app.resources.getQuantityString(R.plurals.n_conversations_deleted, it.size, it.size), null))
+            val kept = c.conversations.delete(it)
+            _events.tryEmit(
+                if (kept.isEmpty()) UndoEvent(res.getQuantityString(R.plurals.n_conversations_deleted, it.size, it.size), null)
+                else UndoEvent(res.getQuantityString(R.plurals.chats_to_bin_n, it.size, it.size)) { c.conversations.restoreFromBin(kept) },
+            )
         } else {
-            val n = c.conversations.deleteSection(it, section.categories)
-            _events.tryEmit(UndoEvent(c.app.resources.getQuantityString(R.plurals.n_messages_deleted, n, n), null))
+            val (n, kept) = c.conversations.deleteSection(it, section.categories)
+            _events.tryEmit(
+                if (kept.isEmpty()) UndoEvent(res.getQuantityString(R.plurals.n_messages_deleted, n, n), null)
+                else UndoEvent(res.getQuantityString(R.plurals.moved_to_bin_n, n, n)) { c.conversations.restoreFromBin(kept) },
+            )
         }
     }
 

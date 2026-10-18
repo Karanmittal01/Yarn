@@ -761,4 +761,59 @@
     <string name="notify_mode_off">Off — no notification</string>
     <string name="notify_all_tabs">All tabs</string>
     <string name="notify_tabs_hint">Messages always arrive in Yarn. This only decides how each tab tells you.</string>
+    <string name="recycle_bin">Recycle bin</string>
+    <string name="bin_empty_state">Nothing in the bin</string>
+    <string name="bin_empty_state_sub">Messages you delete wait here, so you can bring them back.</string>
+    <plurals name="bin_keeps_days">
+        <item quantity="one">Messages are deleted for good %1$d day after you delete them.</item>
+        <item quantity="other">Messages are deleted for good %1$d days after you delete them.</item>
+    </plurals>
+    <string name="bin_keeps_forever">Messages stay here until you empty the bin.</string>
+    <string name="bin_off_note">The bin is turned off, so deleted messages are removed right away. Turn it on in Clean up.</string>
+    <string name="empty_bin">Empty bin</string>
+    <string name="empty_bin_q">Empty the bin?</string>
+    <plurals name="empty_bin_text">
+        <item quantity="one">%1$d message will be deleted for good. This can\'t be undone.</item>
+        <item quantity="other">%1$d messages will be deleted for good. This can\'t be undone.</item>
+    </plurals>
+    <string name="delete_forever">Delete forever</string>
+    <plurals name="delete_forever_q">
+        <item quantity="one">Delete %1$d message forever?</item>
+        <item quantity="other">Delete %1$d messages forever?</item>
+    </plurals>
+    <string name="delete_forever_text">This can\'t be undone.</string>
+    <string name="restore_all">Restore all</string>
+    <plurals name="bin_restored_n">
+        <item quantity="one">%1$d message restored</item>
+        <item quantity="other">%1$d messages restored</item>
+    </plurals>
+    <string name="deleted_when">Deleted %1$s</string>
+    <plurals name="moved_to_bin_n">
+        <item quantity="one">%1$d message moved to the bin</item>
+        <item quantity="other">%1$d messages moved to the bin</item>
+    </plurals>
+    <plurals name="chats_to_bin_n">
+        <item quantity="one">%1$d chat moved to the bin</item>
+        <item quantity="other">%1$d chats moved to the bin</item>
+    </plurals>
+    <plurals name="to_bin_note">
+        <item quantity="one">They go to the bin for %1$d day, so you can restore them.</item>
+        <item quantity="other">They go to the bin for %1$d days, so you can restore them.</item>
+    </plurals>
+    <string name="to_bin_forever">They go to the bin, so you can restore them until you empty it.</string>
+    <string name="section_delete_lead">Only these messages are deleted; the rest of each chat stays in its own tab.</string>
+    <string name="final_delete_note">They\'re removed from this phone for good.</string>
+    <plurals name="bin_count">
+        <item quantity="one">%1$d message</item>
+        <item quantity="other">%1$d messages</item>
+    </plurals>
+    <string name="bin_open_sub_empty">Empty. Deleted messages wait here.</string>
+    <string name="empty_bin_auto">Empty the bin</string>
+    <plurals name="bin_after_days">
+        <item quantity="one">After %1$d day</item>
+        <item quantity="other">After %1$d days</item>
+    </plurals>
+    <string name="bin_never">Never, I\'ll empty it</string>
+    <string name="bin_off">Don\'t use the bin</string>
+    <string name="bin_mms_note">Picture messages come back in Yarn only.</string>
 </resources>

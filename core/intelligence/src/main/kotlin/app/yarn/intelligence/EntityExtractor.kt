@@ -92,19 +92,26 @@ class EntityExtractor(
         if (candidates.isEmpty()) return emptyList()
 
         val strong = STRONG_OTP.find(text)
-        val best = if (strong != null) {
-            candidates.minByOrNull { (m, _) -> kotlin.math.abs(m.range.first - strong.range.first) }
-        } else {
-            candidates.minByOrNull { (m, _) ->
-                keywords.minOf { k ->
-                    val d = if (m.range.first >= k.range.last) m.range.first - k.range.last else (k.range.first - m.range.last) * 2
-                    kotlin.math.abs(d)
-                }
-            }
+        fun distance(m: MatchResult) = keywords.minOf { k ->
+            val d = if (m.range.first >= k.range.last) m.range.first - k.range.last else (k.range.first - m.range.last) * 2
+            kotlin.math.abs(d)
+        }
+        val nearestToKeyword = candidates.minByOrNull { (m, _) -> distance(m) }
+        // "Your OTP for <long purpose> is 448812" / "…details is:769966": the code is announced with
+        // "is" or a colon after the keyword, however long the sentence in between.
+        val announced = candidates.firstOrNull { (m, _) ->
+            ANNOUNCED_BEFORE.containsMatchIn(text.substring(maxOf(0, m.range.first - 8), m.range.first)) &&
+                keywords.any { k -> k.range.last < m.range.first && m.range.first - k.range.last <= 200 }
+        }
+        val best = when {
+            strong != null -> candidates.minByOrNull { (m, _) -> kotlin.math.abs(m.range.first - strong.range.first) }
+            nearestToKeyword != null && distance(nearestToKeyword.first) <= 30 -> nearestToKeyword
+            announced != null -> announced
+            else -> nearestToKeyword
         } ?: return emptyList()
         val (match, code) = best
         val nearest = keywords.minOf { kotlin.math.abs(it.range.first - match.range.first) }
-        if (strong == null && nearest > 80) return emptyList()
+        if (strong == null && best !== announced && nearest > 80) return emptyList()
         val attrs = HashMap<String, String>()
         OTP_VALIDITY.find(text)?.let { v ->
             val n = v.groupValues[1].toIntOrNull()
@@ -423,7 +430,10 @@ class EntityExtractor(
         )
         /** Reference numbers (application, booking, ARN…) that sit next to the word "verification". */
         private val REFERENCE_NUMBER_BEFORE = Regex("(?i)(?:\\barn|\\bref(?:erence)?|application|booking|pnr|ticket|\\bid|\\d-)\\s*(?:no\\.?|number)?\\s*[:#.]?\\s*$")
-        private val OTP_CANDIDATE = Regex("(?<![\\d.,/:])(?:[A-Z]-)?(\\d{4,8})(?![\\d.,/]\\d)|(?<![\\d.,])(\\d{3})[- ](\\d{3})(?![\\d])")
+        // A colon right before the code is fine ("is:769966", "OTP:1234"); after a digit it's a time.
+        private val OTP_CANDIDATE = Regex("(?<![\\d.,/])(?<!\\d:)(?:[A-Z]-)?(\\d{4,8})(?![\\d.,/]\\d)|(?<![\\d.,])(\\d{3})[- ](\\d{3})(?![\\d])")
+        /** "… is 448812", "… is:769966", "… is-7781". */
+        private val ANNOUNCED_BEFORE = Regex("(?i)\\b(?:is|are)\\s*[:\\-]?\\s*$")
         private val STRONG_OTP = Regex(
             "(?i)(?:\\d{4,8}\\s+is\\s+(?:your|the)|(?:otp|code|pin|passcode)\\s*(?:is|:|-)\\s*(?:[A-Z]-)?\\d)",
         )

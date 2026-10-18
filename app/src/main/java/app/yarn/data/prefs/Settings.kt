@@ -34,6 +34,11 @@ val DEFAULT_NOTIFY: Map<CategoryGroup, NotifyMode> = mapOf(
     CategoryGroup.OFFERS to NotifyMode.OFF,
 )
 
+/** [AppSettings.binDays]: never empty the bin automatically. */
+const val BIN_NEVER_EMPTY = -1
+/** [AppSettings.binDays]: don't use the bin; deleting is immediate and final. */
+const val BIN_OFF = 0
+
 /** How a message from tab [group] should notify. */
 fun AppSettings.notifyFor(group: CategoryGroup): NotifyMode = notifyTabs[group] ?: DEFAULT_NOTIFY.getValue(group)
 
@@ -67,6 +72,8 @@ data class AppSettings(
     val appLock: Boolean = false,
     val lockTimeoutSeconds: Int = 60,
     val secureScreen: Boolean = false,
+    /** Days deleted messages stay in the bin: [BIN_NEVER_EMPTY] keeps them, [BIN_OFF] deletes straight away. */
+    val binDays: Int = 7,
     /** Delete one-time codes older than this many minutes (0 = keep). */
     val otpAutoDeleteMinutes: Int = 0,
     val spamAutoDeleteDays: Int = 30,
@@ -127,6 +134,7 @@ class SettingsRepository(private val context: Context) {
         val secureScreen = booleanPreferencesKey("secure_screen")
         val otpAutoDelete = intPreferencesKey("otp_auto_delete_hours")
         val otpAutoDeleteMinutes = intPreferencesKey("otp_auto_delete_minutes")
+        val binDays = intPreferencesKey("bin_days")
         val spamAutoDelete = intPreferencesKey("spam_auto_delete_days")
         val promoAutoDelete = intPreferencesKey("promo_auto_delete_days")
         val autoCleanReport = intPreferencesKey("auto_clean_report")
@@ -180,6 +188,7 @@ class SettingsRepository(private val context: Context) {
             p[K.lockTimeout] = s.lockTimeoutSeconds
             p[K.secureScreen] = s.secureScreen
             p[K.otpAutoDeleteMinutes] = s.otpAutoDeleteMinutes
+            p[K.binDays] = s.binDays
             p.remove(K.otpAutoDelete)
             p[K.spamAutoDelete] = s.spamAutoDeleteDays
             p[K.promoAutoDelete] = s.promoAutoDeleteDays
@@ -238,6 +247,7 @@ class SettingsRepository(private val context: Context) {
         appLock = p[K.appLock] ?: d.appLock,
         lockTimeoutSeconds = p[K.lockTimeout] ?: d.lockTimeoutSeconds,
         secureScreen = p[K.secureScreen] ?: d.secureScreen,
+        binDays = p[K.binDays] ?: d.binDays,
         otpAutoDeleteMinutes = p[K.otpAutoDeleteMinutes] ?: p[K.otpAutoDelete]?.let { it * 60 } ?: d.otpAutoDeleteMinutes,
         spamAutoDeleteDays = p[K.spamAutoDelete] ?: d.spamAutoDeleteDays,
         promoAutoDeleteDays = p[K.promoAutoDelete] ?: d.promoAutoDeleteDays,
