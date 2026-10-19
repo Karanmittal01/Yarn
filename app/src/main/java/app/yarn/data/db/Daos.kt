@@ -141,6 +141,10 @@ abstract class ConversationDao {
     @Query("SELECT COALESCE(SUM(unreadCount), 0) FROM conversations WHERE spam = 1 AND blocked = 0")
     abstract fun unreadSpam(): Flow<Int>
 
+    /** Chats in the Spam tab. */
+    @Query("SELECT COUNT(*) FROM conversations WHERE spam = 1 AND blocked = 0 AND messageCount > 0")
+    abstract fun spamCount(): Flow<Int>
+
     @Query("SELECT * FROM conversations WHERE spam = 0 AND blocked = 0 AND archived = 0 ORDER BY lastMessageAt DESC LIMIT :limit")
     abstract suspend fun recent(limit: Int): List<ConversationEntity>
 

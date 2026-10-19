@@ -42,8 +42,6 @@
     <string name="mark_all_read">Mark all as read</string>
     <string name="starred">Starred</string>
     <string name="archived">Archived</string>
-    <string name="spam_blocked_count">Spam &amp; blocked · %1$d</string>
-    <string name="spam_blocked">Spam &amp; blocked</string>
     <string name="clean_up">Clean up</string>
     <string name="settings">Settings</string>
     <string name="state_selected">Selected</string>
@@ -439,16 +437,10 @@
     <string name="forget_q">Forget what Yarn learned?</string>
     <string name="forget_text">Your corrections and sender preferences will be cleared and messages re-sorted.</string>
     <string name="forget">Forget</string>
-    <string name="smart_features_sub">Sorting, spam protection and suggestions</string>
+    <string name="smart_features_sub">Sorting, replies and translation</string>
     <string name="organise">Organise</string>
     <string name="smart_sorting">Smart sorting</string>
-    <string name="smart_sorting_sub">Personal, Transactions, Updates and Offers</string>
-    <string name="spam_protection">Spam protection</string>
-    <string name="spam_protection_sub">Moves scams and spam to the Spam folder</string>
-    <string name="filter_strength">Filter strength</string>
-    <string name="strength_relaxed">Relaxed</string>
-    <string name="strength_balanced">Balanced</string>
-    <string name="strength_strict">Strict</string>
+    <string name="smart_sorting_sub">Files every message into its tab, spam included</string>
     <string name="assist">Assist</string>
     <string name="smart_replies">Smart replies</string>
     <string name="smart_replies_sub">Quick reply suggestions in chats</string>

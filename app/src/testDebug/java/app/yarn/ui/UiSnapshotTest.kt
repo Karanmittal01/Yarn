@@ -63,7 +63,8 @@ class UiSnapshotTest {
     )
     private val chips = listOf(app.yarn.ui.inbox.InboxChip(app.yarn.R.string.chip_all, app.yarn.data.repo.InboxFilter(), unread = 4)) +
         listOf(InboxGroup.PERSONAL to 2, InboxGroup.OTP to 1, InboxGroup.TRANSACTIONS to 1, InboxGroup.SHOPPING to 0, InboxGroup.TRAVEL to 1, InboxGroup.UPDATES to 0, InboxGroup.OFFERS to 0)
-            .map { (g, n) -> app.yarn.ui.inbox.InboxChip(g.label, g.filter, g, n) }
+            .map { (g, n) -> app.yarn.ui.inbox.InboxChip(g.label, g.filter, g, n) } +
+        app.yarn.ui.inbox.InboxChip(app.yarn.R.string.verdict_spam, app.yarn.data.repo.InboxFilter(app.yarn.data.repo.InboxView.SPAM), unread = 3)
 
     private fun shot(dark: Boolean, name: String, content: @androidx.compose.runtime.Composable () -> Unit) {
         compose.setContent { YarnTheme(mode = if (dark) ThemeMode.DARK else ThemeMode.LIGHT) { content() } }
@@ -155,6 +156,27 @@ class UiSnapshotTest {
             app.yarn.ui.conversation.SectionBar(InboxGroup.OTP) {}
             app.yarn.ui.conversation.MessageBubble(msg(1, "09 Oct 09:58 Login Check in successful. Please use OTP 1992 to check in to the cab.", false, 1, 700), null, false, false, null, false, noop)
             app.yarn.ui.conversation.MessageBubble(msg(2, "09 Oct 20:00 Logout Check in successful. Please use OTP 9896 to check out from the cab.", false, 1, 20), null, false, false, null, false, noop)
+        }
+    }
+
+    @Test fun spamTab() = shot(true, "44_spam_tab_dark") {
+        val header = app.yarn.ui.inbox.inboxHeaderColor()
+        val spamRows = listOf(
+            item(1, "AX-RMGAME", "Congratulations! You won Rs 25,000 cash prize. Claim now at bit.ly/claim-win before it expires", "SPAM", 1, "AX-RMGAME-P", true, InboxGroup.OFFERS),
+            item(3, "+91 70123 45678", "Your electricity will be disconnected tonight at 9:30 pm. Call officer 7012345678 immediately", "SPAM", 1, "+917012345678", false, InboxGroup.PERSONAL),
+            item(6, "VK-LOANPR", "Pre-approved loan of Rs 5 lakh in 5 minutes! No documents. Apply: loanfast.in", "SPAM", 1, "VK-LOANPR-P", true, InboxGroup.OFFERS),
+        )
+        Column(Modifier.fillMaxSize().background(header)) {
+            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.messages), {}, 0, true, {}, {})
+            androidx.compose.foundation.lazy.LazyRow(
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                state = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = chips.size - 3),
+            ) { items(chips.size) { i -> app.yarn.ui.inbox.GroupChip(chips[i], selected = i == chips.size - 1) {} } }
+            Column(
+                Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .background(MaterialTheme.colorScheme.surface).padding(top = 10.dp),
+            ) { spamRows.forEach { ConversationRow(it, false, false, {}, {}) } }
         }
     }
 

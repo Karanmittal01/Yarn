@@ -174,7 +174,6 @@ private fun HomePane(nav: NavHostController) {
         when (d) {
             InboxDestination.Starred -> nav.navigate(StarredRoute)
             InboxDestination.Archived -> nav.navigate(FolderRoute(InboxView.ARCHIVED.name))
-            InboxDestination.Spam -> nav.navigate(FolderRoute(InboxView.SPAM.name))
             InboxDestination.Blocked -> nav.navigate(FolderRoute(InboxView.BLOCKED.name))
             InboxDestination.Settings -> nav.navigate(SettingsRoute)
             InboxDestination.Cleanup -> nav.navigate(SettingsSubRoute(SettingsPage.CLEANUP.name))

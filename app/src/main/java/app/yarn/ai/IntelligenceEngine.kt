@@ -112,10 +112,6 @@ class IntelligenceEngine(
         if (!s.autoCategorize) {
             result = result.copy(classification = Classification(basicCategory(sender), 0f, emptyList(), Classification.Source.RULES))
         }
-        if (!s.spamFilter && result.spam.verdict.isFiltered) {
-            // Keep link warnings, but never hide messages when the user disabled filtering.
-            result = result.copy(spam = result.spam.copy(verdict = SpamVerdict.CLEAN))
-        }
         return result
     }
 

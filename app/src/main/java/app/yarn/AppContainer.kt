@@ -191,6 +191,6 @@ class YarnApplication : Application() {
 
     companion object {
         /** Bump when categorisation changes enough that existing messages should be re-sorted. */
-        const val RULES_VERSION = 9
+        const val RULES_VERSION = 10
     }
 }

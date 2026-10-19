@@ -89,17 +89,6 @@ internal fun LazyListScope.smartFeatureItems(
             SwitchRow(stringResource(R.string.smart_sorting), stringResource(R.string.smart_sorting_sub), s.autoCategorize, enabled = on, icon = Icons.Outlined.Category, tint = Color(0xFF7C5CFF)) { v ->
                 update { it.copy(autoCategorize = v) }
             }
-            SwitchRow(stringResource(R.string.spam_protection), stringResource(R.string.spam_protection_sub), s.spamFilter, enabled = on, icon = Icons.Outlined.GppGood, tint = Color(0xFF34C759)) { v ->
-                update { it.copy(spamFilter = v) }
-            }
-            if (on && s.spamFilter) {
-                ChoiceRow(
-                    stringResource(R.string.filter_strength),
-                    listOf(SpamSensitivity.LOW to stringResource(R.string.strength_relaxed), SpamSensitivity.MEDIUM to stringResource(R.string.strength_balanced), SpamSensitivity.HIGH to stringResource(R.string.strength_strict)),
-                    s.spamSensitivity,
-                    icon = Icons.Outlined.Tune, tint = Color(0xFF8E8E93),
-                ) { v -> update { it.copy(spamSensitivity = v) }; onRecheck() }
-            }
         }
     }
     item { SectionHeader(stringResource(R.string.assist)) }

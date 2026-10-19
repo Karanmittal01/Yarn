@@ -136,7 +136,6 @@ import app.yarn.R
 sealed interface InboxDestination {
     data object Starred : InboxDestination
     data object Archived : InboxDestination
-    data object Spam : InboxDestination
     data object Blocked : InboxDestination
     data object Settings : InboxDestination
     data object Cleanup : InboxDestination
@@ -378,7 +377,6 @@ internal fun InboxHeader(
                 YarnMenuDivider()
                 YarnMenuItem(stringResource(R.string.starred), Icons.Outlined.StarOutline, { menu = false; onNavigate(InboxDestination.Starred) })
                 YarnMenuItem(stringResource(R.string.archived), Icons.Outlined.Archive, { menu = false; onNavigate(InboxDestination.Archived) })
-                YarnMenuItem(if (spamUnread > 0) stringResource(R.string.spam_blocked_count, spamUnread) else stringResource(R.string.spam_blocked), Icons.Outlined.Report, { menu = false; onNavigate(InboxDestination.Spam) })
                 YarnMenuItem(stringResource(R.string.clean_up), Icons.Outlined.CleaningServices, { menu = false; onNavigate(InboxDestination.Cleanup) })
                 YarnMenuItem(stringResource(R.string.recycle_bin), Icons.Outlined.DeleteOutline, { menu = false; onNavigate(InboxDestination.Bin) })
                 YarnMenuDivider()

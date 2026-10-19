@@ -58,7 +58,6 @@ data class AppSettings(
     val otpCopyAction: Boolean = true,
     val aiEnabled: Boolean = true,
     val autoCategorize: Boolean = true,
-    val spamFilter: Boolean = true,
     val spamSensitivity: SpamSensitivity = SpamSensitivity.MEDIUM,
     val smartReplies: Boolean = true,
     val mlEntityExtraction: Boolean = true,
@@ -119,7 +118,6 @@ class SettingsRepository(private val context: Context) {
         val otpCopy = booleanPreferencesKey("otp_copy")
         val aiEnabled = booleanPreferencesKey("ai_enabled")
         val autoCategorize = booleanPreferencesKey("auto_categorize")
-        val spamFilter = booleanPreferencesKey("spam_filter")
         val spamSensitivity = stringPreferencesKey("spam_sensitivity")
         val smartReplies = booleanPreferencesKey("smart_replies")
         val mlEntities = booleanPreferencesKey("ml_entities")
@@ -174,7 +172,6 @@ class SettingsRepository(private val context: Context) {
             p[K.otpCopy] = s.otpCopyAction
             p[K.aiEnabled] = s.aiEnabled
             p[K.autoCategorize] = s.autoCategorize
-            p[K.spamFilter] = s.spamFilter
             p[K.spamSensitivity] = s.spamSensitivity.name
             p[K.smartReplies] = s.smartReplies
             p[K.mlEntities] = s.mlEntityExtraction
@@ -234,7 +231,6 @@ class SettingsRepository(private val context: Context) {
         otpCopyAction = p[K.otpCopy] ?: d.otpCopyAction,
         aiEnabled = p[K.aiEnabled] ?: d.aiEnabled,
         autoCategorize = p[K.autoCategorize] ?: d.autoCategorize,
-        spamFilter = p[K.spamFilter] ?: d.spamFilter,
         spamSensitivity = p[K.spamSensitivity]?.let { runCatching { SpamSensitivity.valueOf(it) }.getOrNull() } ?: d.spamSensitivity,
         smartReplies = p[K.smartReplies] ?: d.smartReplies,
         mlEntityExtraction = p[K.mlEntities] ?: d.mlEntityExtraction,

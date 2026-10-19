@@ -116,7 +116,9 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     }
 
     /** Only groups that actually contain messages are offered as filters. */
-    val chips: StateFlow<List<InboxChip>> = combine(c.db.conversations().totalsByCategory(), c.db.conversations().sectionCategories(), _filter) { totals, sections, current ->
+    private val spamTab = combine(c.db.conversations().spamCount(), c.db.conversations().unreadSpam()) { total, unread -> total to unread }
+
+    val chips: StateFlow<List<InboxChip>> = combine(c.db.conversations().totalsByCategory(), c.db.conversations().sectionCategories(), spamTab, _filter) { totals, sections, spam, current ->
         val unreadAll = totals.sumOf { it.unread }
         // A chat counts once per section it has messages in, and as unread there only if that part is unread.
         val bySection = sections.groupBy { Category.fromName(it.category)?.let(InboxGroup::of) }
@@ -128,6 +130,9 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
                 val unread = rows.filter { it.unread > 0 }.map { it.conversationId }.toSet().size
                 if (rows.isNotEmpty() || current == g.filter) add(InboxChip(g.label, g.filter, g, unread))
             }
+            // Spam is a tab like the others, last in the row.
+            val spamFilter = InboxFilter(InboxView.SPAM)
+            if (spam.first > 0 || current == spamFilter) add(InboxChip(R.string.verdict_spam, spamFilter, unread = spam.second))
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), listOf(InboxChip(R.string.chip_all, InboxFilter())))
 
