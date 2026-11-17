@@ -384,7 +384,11 @@ fun InboxScreen(
     }
 }
 
-/** Title, search and your profile picture. The title shrinks once the list is scrolled. */
+/**
+ * The inbox's top bar is a search bar: Yarn's logo, "Search messages" and your picture, like Gmail
+ * and Google's newer apps. No heading text; the app's name stays on the home screen and in Settings.
+ * The bar tucks up a little once the list is scrolled.
+ */
 @Composable
 internal fun InboxHeader(
     title: String,
@@ -393,38 +397,34 @@ internal fun InboxHeader(
     collapsed: Boolean = false,
     onProfile: () -> Unit,
 ) {
-    val top by androidx.compose.animation.core.animateDpAsState(if (collapsed) 6.dp else 22.dp, app.yarn.ui.theme.Motion.dp, label = "headerTop")
-    val titleSize by androidx.compose.animation.core.animateFloatAsState(if (collapsed) 22f else 27f, app.yarn.ui.theme.Motion.float, label = "titleSize")
-    val logo by androidx.compose.animation.core.animateDpAsState(if (collapsed) 26.dp else 32.dp, app.yarn.ui.theme.Motion.dp, label = "logo")
+    val top by androidx.compose.animation.core.animateDpAsState(if (collapsed) 4.dp else 14.dp, app.yarn.ui.theme.Motion.dp, label = "headerTop")
+    val dark = app.yarn.ui.theme.LocalDarkTheme.current
+    val pill = if (dark) MaterialTheme.colorScheme.surfaceContainerHighest else Color.White
+    val searchLabel = stringResource(R.string.search_messages)
     Row(
-        Modifier.fillMaxWidth().statusBarsPadding().padding(top = top, bottom = 6.dp).height(56.dp).padding(start = 20.dp, end = 8.dp),
+        Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(start = 16.dp, end = 16.dp, top = top, bottom = 10.dp)
+            .height(56.dp)
+            .clip(RoundedCornerShape(28.dp))
+            .background(pill)
+            .then(if (onSearch != null) Modifier.clickable(onClickLabel = searchLabel, onClick = onSearch) else Modifier)
+            .semantics { heading(); contentDescription = title }
+            .padding(start = 16.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        YarnLogo(size = logo)
+        YarnLogo(size = 24.dp)
         Spacer(Modifier.width(14.dp))
-        // "Yarn - AI Messaging": the name large, the tagline quieter beside it.
-        val name = title.substringBefore(" - ")
-        val tagline = title.substringAfter(" - ", "")
-        val quiet = MaterialTheme.colorScheme.onSurfaceVariant
         Text(
-            androidx.compose.ui.text.buildAnnotatedString {
-                append(name)
-                if (tagline.isNotEmpty()) {
-                    pushStyle(androidx.compose.ui.text.SpanStyle(fontSize = (titleSize * 0.6f).sp, color = quiet, letterSpacing = 0.2.sp))
-                    append("  $tagline")
-                    pop()
-                }
-            },
-            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Normal, fontSize = titleSize.sp),
-            color = MaterialTheme.colorScheme.onSurface,
+            searchLabel,
+            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f).semantics { heading() },
+            modifier = Modifier.weight(1f),
         )
-        if (onSearch != null) {
-            IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, stringResource(R.string.search_messages), Modifier.size(24.dp)) }
-        }
-        ProfileButton(me, onProfile)
+        ProfileButton(me, onProfile, size = 32.dp)
     }
 }
 
