@@ -236,6 +236,8 @@ fun CleanerContent(
     val page = settingsPageColor()
     Scaffold(
         containerColor = page,
+        // The page colour isn't a theme colour, so say which text colour goes on it.
+        contentColor = MaterialTheme.colorScheme.onSurface,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.clean_up)) },

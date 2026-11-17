@@ -210,8 +210,12 @@ fun InboxScreen(
         containerColor = header,
         topBar = {
             Column(Modifier.background(header)) {
+                // Entering and leaving selection cross-fades the bar instead of swapping it.
+                androidx.compose.animation.AnimatedContent(
+                    targetState = selecting, transitionSpec = app.yarn.ui.theme.Motion.crossfade(), label = "inboxTopBar",
+                ) { selectingBar ->
                 when {
-                    selecting -> SelectionTopBar(
+                    selectingBar -> SelectionTopBar(
                         count = selection.size,
                         items = items.orEmpty().filter { it.conversation.id in selection },
                         view = filter.view,
@@ -233,6 +237,7 @@ fun InboxScreen(
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     )
                     else -> InboxHeader(title = title, onSearch = onSearch, me = me, collapsed = scrolled, onProfile = { account = true })
+                }
                 }
                 if (showChips && chips.size > 1) {
                     // A new tab starts at the top of its list.
@@ -299,7 +304,7 @@ fun InboxScreen(
                     list.isEmpty() -> item(key = "empty") { EmptyInbox(filter.view, status.sync.running) }
                     else -> items(list, key = { it.conversation.id }, contentType = { "row" }) { item ->
                         val id = item.conversation.id
-                        Box(Modifier.animateItem()) {
+                        Box(Modifier.animateItem(fadeInSpec = app.yarn.ui.theme.Motion.fade(220), placementSpec = app.yarn.ui.theme.Motion.offset, fadeOutSpec = app.yarn.ui.theme.Motion.fade(160))) {
                         SwipeableRow(
                             enabled = !selecting && filter.view != InboxView.BLOCKED,
                             start = settings.swipeStart,
@@ -388,9 +393,9 @@ internal fun InboxHeader(
     collapsed: Boolean = false,
     onProfile: () -> Unit,
 ) {
-    val top by androidx.compose.animation.core.animateDpAsState(if (collapsed) 6.dp else 22.dp, label = "headerTop")
-    val titleSize by androidx.compose.animation.core.animateFloatAsState(if (collapsed) 22f else 27f, label = "titleSize")
-    val logo by androidx.compose.animation.core.animateDpAsState(if (collapsed) 26.dp else 32.dp, label = "logo")
+    val top by androidx.compose.animation.core.animateDpAsState(if (collapsed) 6.dp else 22.dp, app.yarn.ui.theme.Motion.dp, label = "headerTop")
+    val titleSize by androidx.compose.animation.core.animateFloatAsState(if (collapsed) 22f else 27f, app.yarn.ui.theme.Motion.float, label = "titleSize")
+    val logo by androidx.compose.animation.core.animateDpAsState(if (collapsed) 26.dp else 32.dp, app.yarn.ui.theme.Motion.dp, label = "logo")
     Row(
         Modifier.fillMaxWidth().statusBarsPadding().padding(top = top, bottom = 6.dp).height(56.dp).padding(start = 20.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -459,8 +464,8 @@ internal fun GroupChip(chip: InboxChip, selected: Boolean, onClick: () -> Unit) 
     val selectedDesc = stringResource(R.string.state_selected)
     val notSelectedDesc = stringResource(R.string.state_not_selected)
     val unreadDesc = stringResource(R.string.chip_unread, label, chip.unread)
-    val bg by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else idle, label = "chipBg")
-    val fg by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, label = "chipFg")
+    val bg by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else idle, app.yarn.ui.theme.Motion.fade(240), label = "chipBg")
+    val fg by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, app.yarn.ui.theme.Motion.fade(240), label = "chipFg")
     Row(
         Modifier
             .height(36.dp)
@@ -752,14 +757,14 @@ private fun SelectionTopBar(
 
 @Composable
 private fun StatusBanners(status: InboxStatus, onSetDefault: () -> Unit) {
-    AnimatedVisibility(!status.isDefault) {
+    AnimatedVisibility(!status.isDefault, enter = androidx.compose.animation.fadeIn(app.yarn.ui.theme.Motion.fade(240)) + androidx.compose.animation.expandVertically(app.yarn.ui.theme.Motion.size), exit = androidx.compose.animation.fadeOut(app.yarn.ui.theme.Motion.fade(180)) + androidx.compose.animation.shrinkVertically(app.yarn.ui.theme.Motion.size)) {
         Banner(
             icon = Icons.Outlined.ErrorOutline,
             text = stringResource(R.string.banner_not_default),
             action = stringResource(R.string.set_default), onAction = onSetDefault, emphasis = true,
         )
     }
-    AnimatedVisibility(status.waiting > 0 || (status.airplaneMode && status.isDefault)) {
+    AnimatedVisibility(status.waiting > 0 || (status.airplaneMode && status.isDefault), enter = androidx.compose.animation.fadeIn(app.yarn.ui.theme.Motion.fade(240)) + androidx.compose.animation.expandVertically(app.yarn.ui.theme.Motion.size), exit = androidx.compose.animation.fadeOut(app.yarn.ui.theme.Motion.fade(180)) + androidx.compose.animation.shrinkVertically(app.yarn.ui.theme.Motion.size)) {
         Banner(
             icon = Icons.Outlined.SignalCellularConnectedNoInternet0Bar,
             text = when {
@@ -769,7 +774,7 @@ private fun StatusBanners(status: InboxStatus, onSetDefault: () -> Unit) {
             },
         )
     }
-    AnimatedVisibility(status.sync.running) {
+    AnimatedVisibility(status.sync.running, enter = androidx.compose.animation.fadeIn(app.yarn.ui.theme.Motion.fade(240)) + androidx.compose.animation.expandVertically(app.yarn.ui.theme.Motion.size), exit = androidx.compose.animation.fadeOut(app.yarn.ui.theme.Motion.fade(180)) + androidx.compose.animation.shrinkVertically(app.yarn.ui.theme.Motion.size)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)) {
             Text(stringResource(R.string.organising, status.sync.imported), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).clip(CircleShape))
@@ -780,10 +785,10 @@ private fun StatusBanners(status: InboxStatus, onSetDefault: () -> Unit) {
 /** Live bars for sorting, re-sorting and Drive backup / restore, so long jobs are never a mystery. */
 @Composable
 internal fun WorkBanners(job: app.yarn.work.JobProgress?, backup: app.yarn.backup.BackupState, importing: Boolean) {
-    AnimatedVisibility(job != null && !importing) {
+    AnimatedVisibility(job != null && !importing, enter = androidx.compose.animation.fadeIn(app.yarn.ui.theme.Motion.fade(240)) + androidx.compose.animation.expandVertically(app.yarn.ui.theme.Motion.size), exit = androidx.compose.animation.fadeOut(app.yarn.ui.theme.Motion.fade(180)) + androidx.compose.animation.shrinkVertically(app.yarn.ui.theme.Motion.size)) {
         job?.let { app.yarn.ui.common.JobProgressBar(it, Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
     }
-    AnimatedVisibility(backup is app.yarn.backup.BackupState.Running) {
+    AnimatedVisibility(backup is app.yarn.backup.BackupState.Running, enter = androidx.compose.animation.fadeIn(app.yarn.ui.theme.Motion.fade(240)) + androidx.compose.animation.expandVertically(app.yarn.ui.theme.Motion.size), exit = androidx.compose.animation.fadeOut(app.yarn.ui.theme.Motion.fade(180)) + androidx.compose.animation.shrinkVertically(app.yarn.ui.theme.Motion.size)) {
         val b = backup as? app.yarn.backup.BackupState.Running ?: return@AnimatedVisibility
         val fmt = java.text.NumberFormat.getIntegerInstance()
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
@@ -804,14 +809,14 @@ internal fun WorkBanners(job: app.yarn.work.JobProgress?, backup: app.yarn.backu
 @Composable
 internal fun CleanBanners(report: Int, junk: Int, onClean: () -> Unit, onDismissHint: () -> Unit, onDismissReport: () -> Unit) {
     val fmt = java.text.NumberFormat.getIntegerInstance()
-    AnimatedVisibility(report > 0) {
+    AnimatedVisibility(report > 0, enter = androidx.compose.animation.fadeIn(app.yarn.ui.theme.Motion.fade(240)) + androidx.compose.animation.expandVertically(app.yarn.ui.theme.Motion.size), exit = androidx.compose.animation.fadeOut(app.yarn.ui.theme.Motion.fade(180)) + androidx.compose.animation.shrinkVertically(app.yarn.ui.theme.Motion.size)) {
         Banner(
             icon = Icons.Outlined.CleaningServices,
             text = stringResource(R.string.auto_clean_report, fmt.format(report)),
             action = stringResource(R.string.ok), onAction = onDismissReport,
         )
     }
-    AnimatedVisibility(report <= 0 && junk >= CLEAN_HINT_MIN) {
+    AnimatedVisibility(report <= 0 && junk >= CLEAN_HINT_MIN, enter = androidx.compose.animation.fadeIn(app.yarn.ui.theme.Motion.fade(240)) + androidx.compose.animation.expandVertically(app.yarn.ui.theme.Motion.size), exit = androidx.compose.animation.fadeOut(app.yarn.ui.theme.Motion.fade(180)) + androidx.compose.animation.shrinkVertically(app.yarn.ui.theme.Motion.size)) {
         Banner(
             icon = Icons.Outlined.CleaningServices,
             text = stringResource(R.string.clean_hint, fmt.format(junk)),

@@ -44,6 +44,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.yarn.AppContainer
@@ -67,15 +68,18 @@ fun SectionHeader(text: String) = Text(
     modifier = Modifier.padding(start = 32.dp, top = 18.dp, bottom = 6.dp).semantics { heading() },
 )
 
-/** Background of a grouped-settings card: white on the light grey page, raised in dark mode. */
+/**
+ * Card colour for grouped rows, shared by Settings and the profile page: white on a soft grey page,
+ * and in dark mode a deep card on a lighter page, as in Google Messages.
+ */
 @Composable
 fun settingsCardColor(): Color =
-    if (app.yarn.ui.theme.LocalDarkTheme.current) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainerLowest
+    if (app.yarn.ui.theme.LocalDarkTheme.current) Color(0xFF1B1C1F) else Color.White
 
 /** Page colour behind the grouped cards. */
 @Composable
 fun settingsPageColor(): Color =
-    if (app.yarn.ui.theme.LocalDarkTheme.current) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceContainer
+    if (app.yarn.ui.theme.LocalDarkTheme.current) Color(0xFF26272B) else Color(0xFFEFF1F7)
 
 /** A rounded card grouping related rows; rows are separated by hairline dividers. */
 @Composable
@@ -83,19 +87,22 @@ fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(28.dp))
             .background(settingsCardColor())
-            .padding(vertical = 2.dp),
+            .padding(vertical = 6.dp),
         content = content,
     )
 }
 
-/** Small rounded-square icon tile in a solid colour, as on premium settings screens. */
+/**
+ * A row's icon: a plain outline glyph in the text colour, matching the profile page and Google
+ * Messages. ([tint] is kept for callers but no longer paints a coloured tile.)
+ */
 @Composable
-fun IconTile(icon: ImageVector, tint: Color) {
-    Box(Modifier.size(30.dp).clip(RoundedCornerShape(9.dp)).background(tint), contentAlignment = Alignment.Center) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
+fun IconTile(icon: ImageVector, @Suppress("UNUSED_PARAMETER") tint: Color) {
+    Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f), modifier = Modifier.size(24.dp))
     }
 }
 
@@ -116,19 +123,19 @@ fun SettingsRow(
     Row(
         modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .padding(start = 16.dp, end = 14.dp, top = 8.dp, bottom = 8.dp),
+            .heightIn(min = 58.dp)
+            .padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
             IconTile(icon, tint)
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(18.dp))
         } else if (leading != null) {
-            Box(Modifier.size(30.dp), contentAlignment = Alignment.Center) { leading() }
-            Spacer(Modifier.width(14.dp))
+            Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) { leading() }
+            Spacer(Modifier.width(18.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = titleColor.copy(alpha = alpha))
+            Text(title, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp), color = titleColor.copy(alpha = alpha))
             if (summary != null) {
                 Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha), modifier = Modifier.padding(top = 1.dp))
             }

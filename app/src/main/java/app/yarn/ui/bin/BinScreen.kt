@@ -154,6 +154,8 @@ fun BinContent(
     val list = items.orEmpty()
     Scaffold(
         containerColor = page,
+        // The page colour isn't a theme colour, so say which text colour goes on it.
+        contentColor = MaterialTheme.colorScheme.onSurface,
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
@@ -174,7 +176,11 @@ fun BinContent(
             )
         },
         bottomBar = {
-            if (selection.isNotEmpty()) {
+            androidx.compose.animation.AnimatedVisibility(
+                selection.isNotEmpty(),
+                enter = androidx.compose.animation.slideInVertically(app.yarn.ui.theme.Motion.offset) { it } + androidx.compose.animation.fadeIn(app.yarn.ui.theme.Motion.fade(200)),
+                exit = androidx.compose.animation.slideOutVertically(app.yarn.ui.theme.Motion.offset) { it } + androidx.compose.animation.fadeOut(app.yarn.ui.theme.Motion.fade(160)),
+            ) {
                 Surface(color = page) {
                     Row(
                         Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -211,7 +217,9 @@ fun BinContent(
                 item { EmptyBin() }
             }
             items(list, key = { it.id }) { b ->
-                BinRow(b, selected = b.id in selection, now = now) { onToggle(b.id) }
+                Box(Modifier.animateItem(fadeInSpec = app.yarn.ui.theme.Motion.fade(220), placementSpec = app.yarn.ui.theme.Motion.offset, fadeOutSpec = app.yarn.ui.theme.Motion.fade(160))) {
+                    BinRow(b, selected = b.id in selection, now = now) { onToggle(b.id) }
+                }
             }
         }
     }

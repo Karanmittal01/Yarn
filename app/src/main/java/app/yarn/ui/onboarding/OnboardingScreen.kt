@@ -157,8 +157,8 @@ fun OnboardingContent(
                 step,
                 transitionSpec = {
                     val dir = if (targetState > initialState) 1 else -1
-                    (slideInHorizontally(tween(320)) { it / 4 * dir } + fadeIn(tween(320))) togetherWith
-                        (slideOutHorizontally(tween(240)) { -it / 4 * dir } + fadeOut(tween(200)))
+                    (slideInHorizontally(app.yarn.ui.theme.Motion.offset) { it / 4 * dir } + fadeIn(app.yarn.ui.theme.Motion.fade(300))) togetherWith
+                        (slideOutHorizontally(app.yarn.ui.theme.Motion.offset) { -it / 4 * dir } + fadeOut(app.yarn.ui.theme.Motion.fade(200)))
                 },
                 modifier = Modifier.weight(1f),
                 label = "onboarding",
@@ -270,7 +270,7 @@ private fun Page(
 private fun StepDots(step: Int, total: Int, modifier: Modifier = Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         repeat(total) { i ->
-            val w by animateDpAsState(if (i == step) 22.dp else 7.dp, label = "dot")
+            val w by animateDpAsState(if (i == step) 22.dp else 7.dp, app.yarn.ui.theme.Motion.dp, label = "dot")
             Box(
                 Modifier.height(7.dp).width(w).clip(CircleShape)
                     .background(if (i <= step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),

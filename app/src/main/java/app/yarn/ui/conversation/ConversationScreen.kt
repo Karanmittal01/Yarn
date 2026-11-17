@@ -8,6 +8,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -63,6 +64,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -178,9 +180,12 @@ fun ConversationScreen(
     val canReply = conv.addresses.isNotEmpty() && conv.addresses.all { PhoneNumbers.isDialable(it) || PhoneNumbers.isEmail(it) }
     val photo = if (!conv.isGroup) participants[conv.addresses.firstOrNull()]?.photoUri else null
 
+    Box(Modifier.fillMaxSize().background(app.yarn.ui.theme.chatBackdrop())) {
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
-            if (selecting) {
+            androidx.compose.animation.AnimatedContent(targetState = selecting, transitionSpec = app.yarn.ui.theme.Motion.crossfade(), label = "chatTopBar") { selectingBar ->
+            if (selectingBar) {
                 TopAppBar(
                     title = { Text("${selection.size}", style = MaterialTheme.typography.titleLarge, maxLines = 1) },
                     navigationIcon = { IconButton(onClick = vm::clearSelection) { Icon(Icons.Filled.Close, stringResource(R.string.clear_selection)) } },
@@ -240,6 +245,7 @@ fun ConversationScreen(
                 )
             } else {
                 TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
                     navigationIcon = { if (onBack != null) IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                     title = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -280,6 +286,7 @@ fun ConversationScreen(
                     },
                 )
             }
+            }
         },
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
@@ -317,7 +324,7 @@ fun ConversationScreen(
                     val older = if (index + 1 < items.itemCount) items.peek(index + 1) else null
                     val newer = if (index > 0) items.peek(index - 1) else null
                     val position = runPosition(older?.message, item.message, newer?.message)
-                    Column(Modifier.animateItem()) {
+                    Column(Modifier.animateItem(fadeInSpec = app.yarn.ui.theme.Motion.fade(220), placementSpec = app.yarn.ui.theme.Motion.offset, fadeOutSpec = app.yarn.ui.theme.Motion.fade(160))) {
                         if (older == null || !Format.sameDay(older.message.date, item.message.date)) {
                             Text(
                                 Format.dayHeader(context, item.message.date),
@@ -357,6 +364,7 @@ fun ConversationScreen(
                 }
             }
         }
+    }
     }
 
     SummarySheet(summary, vm::dismissSummary)

@@ -91,6 +91,8 @@ fun SettingsScaffold(title: String, onBack: () -> Unit, content: androidx.compos
     Scaffold(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         containerColor = settingsPageColor(),
+        // The page colour isn't a theme colour, so say which text colour goes on it.
+        contentColor = MaterialTheme.colorScheme.onSurface,
         topBar = {
             LargeTopAppBar(
                 title = { Text(title) },
@@ -128,13 +130,13 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.settingsHubItems(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 6.dp)
-                .clip(RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(32.dp))
                 .background(settingsCardColor())
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 18.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            YarnLogo(size = 44.dp)
-            Spacer(Modifier.width(14.dp))
+            YarnLogo(size = 52.dp)
+            Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
                 Text(

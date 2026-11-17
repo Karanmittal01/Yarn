@@ -345,7 +345,7 @@ class UiSnapshotTest {
             msg(7, "Perfect, see you at 7", true, 1, 12, D),
             msg(8, "I'll book the tickets 🎬", true, 1, 11, D),
         ).map { it.message }
-        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 28.dp)) {
+        Column(Modifier.fillMaxSize().background(app.yarn.ui.theme.chatBackdrop()).padding(top = 28.dp)) {
             thread.forEachIndexed { i, m ->
                 val position = app.yarn.ui.conversation.runPosition(thread.getOrNull(i - 1), m, thread.getOrNull(i + 1))
                 app.yarn.ui.conversation.MessageBubble(

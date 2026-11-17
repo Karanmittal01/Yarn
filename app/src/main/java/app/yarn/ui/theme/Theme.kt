@@ -145,3 +145,15 @@ fun YarnTheme(mode: ThemeMode = ThemeMode.SYSTEM, dynamicColor: Boolean = false,
         MaterialTheme(colorScheme = colors, shapes = YarnShapes, typography = YarnTypography, content = content)
     }
 }
+
+/**
+ * The wash behind a conversation: a barely-there gradient instead of flat white or black,
+ * cool blue at the top easing into a faint violet at the bottom.
+ */
+@Composable
+fun chatBackdrop(): Brush =
+    if (LocalDarkTheme.current) {
+        Brush.verticalGradient(listOf(Color(0xFF161A23), Color(0xFF101217), Color(0xFF0D0C12)))
+    } else {
+        Brush.verticalGradient(listOf(Color(0xFFEFF4FE), Color(0xFFF7F8FD), Color(0xFFFBF8FE)))
+    }

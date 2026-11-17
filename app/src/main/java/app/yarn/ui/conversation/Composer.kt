@@ -106,7 +106,8 @@ fun Composer(
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { if (it.isNotEmpty()) onAddAttachments(it) }
     val canSend = text.isNotBlank() || attachments.isNotEmpty()
 
-    Surface(color = MaterialTheme.colorScheme.surface) {
+    // No flat strip of its own: the composer sits on the chat's gradient.
+    Surface(color = Color.Transparent) {
         Column(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
             if (smartReplies.isNotEmpty() && text.isEmpty()) {
                 LazyRow(contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -179,7 +180,9 @@ fun Composer(
                 val multiSim = sims.size > 1 && sim != null
                 val sendDesc = if (multiSim) stringResource(R.string.send_desc_sim, app.yarn.ui.common.simLabel(sim!!)) else stringResource(R.string.send_desc)
                 val longLabel = if (multiSim) stringResource(R.string.change_sim_or_schedule) else scheduleLabel
-                val sendColor = if (canSend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest
+                val sendColor by androidx.compose.animation.animateColorAsState(
+                    if (canSend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest, app.yarn.ui.theme.Motion.fade(220), label = "send",
+                )
                 // Long press: pick the SIM (dual SIM) or schedule the message.
                 Box {
                 Surface(

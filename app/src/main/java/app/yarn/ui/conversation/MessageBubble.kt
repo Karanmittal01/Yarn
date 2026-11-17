@@ -3,6 +3,7 @@ package app.yarn.ui.conversation
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -216,7 +217,8 @@ fun MessageBubble(
                 .combinedClickable(onClick = { callbacks.onClick(item) }, onLongClick = { callbacks.onLongClick(item) }, onLongClickLabel = selectMessageLabel)
                 .semantics(mergeDescendants = false) { contentDescription = a11y },
         ) {
-            Column(Modifier.padding(horizontal = 15.dp, vertical = 9.dp)) {
+            // Switching to the translation (and back) resizes the bubble smoothly.
+            Column(Modifier.animateContentSize(app.yarn.ui.theme.Motion.size).padding(horizontal = 15.dp, vertical = 9.dp)) {
                 m.subject?.takeIf { it.isNotBlank() }?.let { Text(it, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp)) }
                 if (item.attachments.isNotEmpty()) {
                     item.attachments.forEach { AttachmentView(it) }

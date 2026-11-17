@@ -89,7 +89,14 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
         consume()
     }
 
-    NavHost(nav, startDestination = HomeRoute) {
+    // Every screen moves the same way: an iOS-style push and pop (see Motion).
+    NavHost(
+        nav, startDestination = HomeRoute,
+        enterTransition = { app.yarn.ui.theme.Motion.pushEnter },
+        exitTransition = { app.yarn.ui.theme.Motion.pushExit },
+        popEnterTransition = { app.yarn.ui.theme.Motion.popEnter },
+        popExitTransition = { app.yarn.ui.theme.Motion.popExit },
+    ) {
         composable<HomeRoute> { HomePane(nav) }
         composable<ChatRoute> { entry ->
             val r = entry.toRoute<ChatRoute>()
@@ -200,8 +207,12 @@ private fun HomePane(nav: NavHostController) {
                     )
                 }
                 VerticalDivider()
-                Box(Modifier.weight(1f).fillMaxHeight()) {
-                    val id = selected
+                androidx.compose.animation.AnimatedContent(
+                    targetState = selected to selectedSection,
+                    transitionSpec = app.yarn.ui.theme.Motion.crossfade(),
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    label = "detailPane",
+                ) { (id, openedSection) ->
                     if (id == null) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -210,8 +221,8 @@ private fun HomePane(nav: NavHostController) {
                             }
                         }
                     } else {
-                        val section = app.yarn.data.repo.InboxGroup.entries.firstOrNull { it.name == selectedSection }
-                        val vm = yarnViewModel(key = "chat-$id-$selectedSection") { ConversationViewModel(it, id, section) }
+                        val section = app.yarn.data.repo.InboxGroup.entries.firstOrNull { it.name == openedSection }
+                        val vm = yarnViewModel(key = "chat-$id-$openedSection") { ConversationViewModel(it, id, section) }
                         ConversationScreen(
                             vm = vm, highlightMessageId = null, onBack = null,
                             onForward = { nav.navigate(NewChatRoute()) }, onClosed = { selected = null },

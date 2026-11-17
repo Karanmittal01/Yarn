@@ -106,7 +106,7 @@ fun AccountSheet(
     LaunchedEffect(Unit) { shown.targetState = true }
     fun close(then: () -> Unit = {}) { onDismiss(); then() }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        AnimatedVisibility(shown, enter = fadeIn() + slideInVertically { -it / 12 }, exit = fadeOut() + slideOutVertically()) {
+        AnimatedVisibility(shown, enter = app.yarn.ui.theme.Motion.rise, exit = app.yarn.ui.theme.Motion.sink) {
             AccountSheetContent(
                 me, sims, hasUnread,
                 onMarkAllRead = { close(onMarkAllRead) },
@@ -129,8 +129,9 @@ fun AccountSheetContent(
     onDismiss: () -> Unit,
 ) {
     val dark = LocalDarkTheme.current
-    val page = if (dark) Color(0xFF26272B) else Color(0xFFEFF1F7)
-    val card = if (dark) Color(0xFF1B1C1F) else Color.White
+    // The same page and cards as Settings, so the two screens read as one design.
+    val page = app.yarn.ui.settings.settingsPageColor()
+    val card = app.yarn.ui.settings.settingsCardColor()
     // A Surface gives the page the theme's text colour; a bare dialog would fall back to black.
     androidx.compose.material3.Surface(color = page, contentColor = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxSize()) {
     Column(
@@ -201,7 +202,7 @@ fun AccountSheetContent(
 
 @Composable
 private fun SheetGroup(color: Color, content: @Composable () -> Unit) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(color)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(color).padding(vertical = 6.dp)) {
         content()
     }
 }
@@ -211,13 +212,13 @@ private fun SheetItem(icon: ImageVector, title: String, enabled: Boolean = true,
     val ink = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.38f)
     Column {
         Row(
-            Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick).padding(horizontal = 22.dp, vertical = 18.dp),
+            Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick).padding(horizontal = 22.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(icon, null, Modifier.size(24.dp), tint = ink)
             Spacer(Modifier.width(20.dp))
             Text(title, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp), color = ink)
         }
-        if (!last) HorizontalDivider(Modifier.padding(start = 66.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+        // No dividers: like the Settings cards, rows sit on one clean card.
     }
 }
