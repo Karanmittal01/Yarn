@@ -226,3 +226,7 @@ TUNE["subway"] = {"ops": [("brighten", 2.0)]}
 # Smytten (SMYTTN): navy disc with transparent corners, so fill them navy and let it fill the circle.
 pick(P, "smytten")
 TUNE["smytten"] = {"ops": [("outside", 0.5, 0.5, 0.49, (15, 22, 40))]}
+
+# Shipfast (SHPFAS), Velocity's shipping service: its site icon matches the logo the user sent; keep the blue square.
+pick(W, "shipfast")
+TUNE["shipfast"] = {"ops": [("crop", 0.12, 0.12, 0.88, 0.88)]}

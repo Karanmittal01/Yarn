@@ -250,8 +250,11 @@ class UiSnapshotTest {
         binned(18, "HSQUAR", "AD-HSQUAR-S", "<#> Hudle up! Your one-time password is 44444 to login to The Hudle App", 30),
         binned(19, "PLAYO", "JD-PLAYO-S", "OTP - 55555. Please enter this in your Playo app.", 30),
         binned(20, "57575711", "57575711", "Your Apple Account Code is: 666666. Don't share it with anyone.", 50),
+        binned(21, "BIGBKT", "VM-BIGBKT-S", "Bigbasket login code: 777777. Valid for 3 mins.", 60),
+        binned(22, "MYSBIC", "AD-MYSBIC-S", "E-statement of SBI Credit Card ending XX12 dated 01/11/2026 has been mailed.", 60),
+        binned(23, "SHPFAS", "JD-SHPFAS-S", "Your order #CR100000_10000000000001 from Mecraaz is out for delivery! Track here", 60),
     )
-    @Test @Config(qualifiers = "w411dp-h1560dp-xxhdpi") fun binRealSenders() = shot(true, "57_bin_named_senders_dark") {
+    @Test @Config(qualifiers = "w411dp-h1420dp-xxhdpi") fun binRealSenders() = shot(true, "57_bin_named_senders_dark") {
         app.yarn.ui.bin.BinContent(realBin, 30, emptySet(), onToggle = {}, onRestore = {}, onDeleteForever = {}, onRestoreAll = {}, onEmpty = {}, onBack = {}, now = now)
     }
     @Test fun binEmpty() = shot(false, "41_bin_empty") {

@@ -959,5 +959,10 @@ ALIASES += [
 # From the user's inbox (Nov 2026).
 NEW += [
     ("Smytten", "smytten.com", ["SMYTTN", "SMYTEN"]),
+    ("Shipfast", "shipfast.in", ["SHPFAS", "SHPFST"]),
+]
+ALIASES += [
+    ("bigbasket", ["BIGBKT"]),
+    ("SBI Card", ["MYSBIC"]),
 ]
 
