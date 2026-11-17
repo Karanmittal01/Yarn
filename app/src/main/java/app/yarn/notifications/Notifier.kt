@@ -102,8 +102,8 @@ class Notifier(
     }
 
     private fun avatar(photoUri: String?, name: String): IconCompat {
-        // A bundled business logo is already framed for a circle, so it's used as is.
-        app.yarn.ui.common.BrandLogos.bitmap(context, photoUri ?: "")?.let { return IconCompat.createWithBitmap(it) }
+        // A bundled business logo is framed for a circle; cut it round so it doesn't show as a square tile.
+        app.yarn.ui.common.BrandLogos.bitmap(context, photoUri ?: "")?.let { return IconCompat.createWithBitmap(Avatars.round(it)) }
         val bitmap: Bitmap? = photoUri?.let { uri ->
             runCatching { context.contentResolver.openInputStream(Uri.parse(uri))?.use { BitmapFactory.decodeStream(it) } }.getOrNull()
         }

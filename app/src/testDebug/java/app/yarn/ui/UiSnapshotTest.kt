@@ -13,6 +13,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.foundation.layout.size
@@ -469,6 +470,32 @@ class UiSnapshotTest {
         item(6, "MobiKwik", "Your KYC is due for update by January 17, 2027", "UPDATES", 0, "AD-MOBIKW-S", true, InboxGroup.UPDATES),
     )
     @Test fun inboxTop() = shot(true, "60_inbox_smytten_jio_dark") { InboxMock(topOfInbox) }
+
+    // Notification icons: before (square tile) and after (cut round), with the phone's app badge in the corner.
+    @Test fun notificationIcons() {
+        val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        val logos = listOf("woohoo", "hdfcbank", "swiggy", "jio").map { app.yarn.ui.common.BrandLogos.bitmap(ctx, "logo:$it")!! }
+        // Corners of the round icon are clear; its middle is the logo.
+        val round = app.yarn.notifications.Avatars.round(logos[0])
+        org.junit.Assert.assertEquals(0, android.graphics.Color.alpha(round.getPixel(1, 1)))
+        org.junit.Assert.assertEquals(255, android.graphics.Color.alpha(round.getPixel(round.width / 2, round.height / 2)))
+        shot(true, "61_notification_icons_dark") {
+            Column(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF2B2F38)).padding(24.dp)) {
+                for ((label, cut) in listOf("Before" to false, "Now" to true)) {
+                    androidx.compose.material3.Text(label, color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(vertical = 12.dp))
+                    androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(20.dp)) {
+                        for (bmp in logos) {
+                            androidx.compose.foundation.layout.Box(Modifier.size(72.dp)) {
+                                val img = if (cut) app.yarn.notifications.Avatars.round(bmp) else bmp
+                                androidx.compose.foundation.Image(img.asImageBitmap(), null, Modifier.size(64.dp))
+                                app.yarn.ui.common.YarnLogo(30.dp, Modifier.align(androidx.compose.ui.Alignment.BottomEnd))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     @Test fun inboxLogosDark() = shot(true, "52_inbox_brand_logos_dark") { InboxMock(logoInbox) }
     @Test fun inboxLogosLight() = shot(false, "53_inbox_brand_logos_light") { InboxMock(logoInbox) }
 
