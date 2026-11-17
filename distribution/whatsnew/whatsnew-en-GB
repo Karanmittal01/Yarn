@@ -1,2 +1,3 @@
-Business logos in notifications are now round, like contact photos.
-More senders get their names and logos: Smytten, Jio (620021), bigbasket, SBI Card statements and Shipfast deliveries.
+Fixed a crash that could happen while typing a reply.
+The chat no longer jumps while you type.
+If Yarn ever closes unexpectedly, it now shows what happened next time you open it, so you can send us the report.
