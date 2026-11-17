@@ -1,6 +1,7 @@
 package app.yarn.ui.search
 
 import androidx.compose.foundation.clickable
+import app.yarn.safeScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -66,7 +67,7 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
 
     val results: StateFlow<ConversationRepository.SearchResults?> = combine(query.debounce(200), category, starredOnly) { q, cat, starred -> Triple(q, cat, starred) }
         .mapLatest { (q, cat, starred) -> if (q.isBlank()) null else c.conversations.search(q, setOfNotNull(cat), starred) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        .stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), null)
 }
 
 @Composable

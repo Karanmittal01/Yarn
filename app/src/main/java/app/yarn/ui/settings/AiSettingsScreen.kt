@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.GppGood
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Quickreply
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Tune
@@ -103,6 +104,9 @@ internal fun LazyListScope.smartFeatureItems(
                 listOf("" to sameAsApp) + TranslateLanguage.getAllLanguages().map { it to Locale.forLanguageTag(it).getDisplayLanguage(uiLocale) }.sortedBy { it.second }
             }
             ChoiceRow(stringResource(R.string.translate_into), langs, s.translateTarget, icon = Icons.Outlined.Translate, tint = Color(0xFFFF9500)) { v -> update { it.copy(translateTarget = v) } }
+            SwitchRow(stringResource(R.string.online_translation), stringResource(R.string.online_translation_sub), s.onlineTranslation, enabled = on, icon = Icons.Outlined.Language, tint = Color(0xFF4285F4)) { v ->
+                update { it.copy(onlineTranslation = v) }
+            }
         }
     }
     item { Spacer(Modifier.height(20.dp)) }

@@ -45,13 +45,18 @@ class LanguageService {
  * ML Kit on-device translation. Language packs (~30 MB each) download once and translation then
  * works fully offline. On mobile data we ask before downloading ([Result.NeedsDownload]).
  */
-class TranslationService(private val context: android.content.Context, private val language: LanguageService) {
+class TranslationService(
+    private val context: android.content.Context,
+    private val language: LanguageService,
+    private val online: OnlineTranslator = OnlineTranslator(),
+) {
     private val translators = LruCache<String, Translator>(3)
     private val lock = Mutex()
     private val models by lazy { RemoteModelManager.getInstance() }
 
     sealed interface Result {
-        data class Success(val text: String, val sourceLanguage: String) : Result
+        /** [online]: Google Translate did it, because the phone couldn't. */
+        data class Success(val text: String, val sourceLanguage: String, val online: Boolean = false) : Result
         data object SameLanguage : Result
         data object UnknownLanguage : Result
         data class Unsupported(val language: String) : Result
@@ -62,20 +67,38 @@ class TranslationService(private val context: android.content.Context, private v
     }
 
     /**
-     * The language of [text] as an ML Kit translation code ("hi", "en", "ta"…), or null when it
-     * can't be translated offline. Romanised text (e.g. Hinglish, "hi-Latn") is left alone.
+     * The language of [text] ("hi", "ta", "hi-Latn" for Hinglish…) when Yarn can translate it:
+     * on the phone, or online when [allowOnline] (romanised text and languages without an
+     * offline pack). Null when unknown.
      */
-    suspend fun translatableLanguage(text: String): String? {
+    suspend fun translatableLanguage(text: String, allowOnline: Boolean = false): String? {
         val tag = language.identify(text) ?: return null
-        if ('-' in tag) return null
-        return TranslateLanguage.fromLanguageTag(tag)
+        if ('-' !in tag) TranslateLanguage.fromLanguageTag(tag)?.let { return it }
+        return tag.takeIf { allowOnline }
     }
 
-    suspend fun translate(text: String, targetTag: String, allowMobileData: Boolean, sourceHint: String? = null): Result {
-        val sourceTag = sourceHint ?: language.identify(text) ?: return Result.UnknownLanguage
-        val source = TranslateLanguage.fromLanguageTag(sourceTag) ?: return Result.Unsupported(sourceTag)
-        val target = TranslateLanguage.fromLanguageTag(targetTag) ?: return Result.Unsupported(targetTag)
+    suspend fun translate(text: String, targetTag: String, allowMobileData: Boolean, sourceHint: String? = null, allowOnline: Boolean = false): Result {
+        val sourceTag = sourceHint ?: language.identify(text)
+        val source = sourceTag?.takeIf { '-' !in it }?.let { TranslateLanguage.fromLanguageTag(it) }
+        val target = TranslateLanguage.fromLanguageTag(targetTag)
+        if (source == null || target == null) {
+            // Romanised text, an unknown language, or one with no offline pack: Google can still do it.
+            if (allowOnline) return translateOnline(text, targetTag)
+            return if (sourceTag == null) Result.UnknownLanguage else Result.Unsupported(sourceTag)
+        }
         if (source == target) return Result.SameLanguage
+        val offline = translateOffline(text, source, target, allowMobileData)
+        return if (offline is Result.Failed && allowOnline) translateOnline(text, targetTag) else offline
+    }
+
+    private suspend fun translateOnline(text: String, targetTag: String): Result {
+        if (network() == Network.NONE) return Result.Offline
+        val r = online.translate(text, targetTag.substringBefore('-')) ?: return Result.Failed("Online translation failed")
+        if (r.source.substringBefore('-') == targetTag.substringBefore('-') && r.text.trim().equals(text.trim(), ignoreCase = true)) return Result.SameLanguage
+        return Result.Success(r.text, r.source, online = true)
+    }
+
+    private suspend fun translateOffline(text: String, source: String, target: String, allowMobileData: Boolean): Result {
         return try {
             if (!isDownloaded(source) || !isDownloaded(target)) {
                 when (network()) {
@@ -112,6 +135,49 @@ class TranslationService(private val context: android.content.Context, private v
 
     companion object {
         private const val TAG = "TranslationService"
+    }
+}
+
+/**
+ * Google Translate over the internet, for what the phone can't translate itself: romanised text
+ * such as Hinglish, and languages with no offline pack (Punjabi, Malayalam, Odia…). Used only when
+ * the user taps Translate and allows online translation; only that one message is sent.
+ */
+class OnlineTranslator {
+    data class Result(val text: String, val source: String)
+
+    suspend fun translate(text: String, target: String): Result? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        runCatching {
+            val url = java.net.URL(
+                "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&dt=t&tl=" +
+                    java.net.URLEncoder.encode(target, "UTF-8") + "&q=" + java.net.URLEncoder.encode(text.take(4_000), "UTF-8"),
+            )
+            val conn = (url.openConnection() as java.net.HttpURLConnection).apply {
+                connectTimeout = 8_000
+                readTimeout = 10_000
+                setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) Yarn")
+            }
+            try {
+                if (conn.responseCode != 200) return@runCatching null
+                parse(conn.inputStream.bufferedReader().use { it.readText() })
+            } finally {
+                conn.disconnect()
+            }
+        }.onFailure { Log.w("OnlineTranslator", "Online translation failed", it) }.getOrNull()
+    }
+
+    companion object {
+        /** Reads `[[["Hello","Namaste",…],…],null,"hi",…]`: the sentences, then the detected language. */
+        fun parse(body: String): Result? = runCatching {
+            val root = kotlinx.serialization.json.Json.parseToJsonElement(body) as kotlinx.serialization.json.JsonArray
+            val sentences = root[0] as kotlinx.serialization.json.JsonArray
+            val text = sentences.joinToString("") { s ->
+                ((s as? kotlinx.serialization.json.JsonArray)?.getOrNull(0) as? kotlinx.serialization.json.JsonPrimitive)
+                    ?.takeIf { it.isString }?.content.orEmpty()
+            }
+            val source = (root.getOrNull(2) as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { it.isString }?.content ?: "und"
+            text.takeIf { it.isNotBlank() }?.let { Result(it, source) }
+        }.getOrNull()
     }
 }
 

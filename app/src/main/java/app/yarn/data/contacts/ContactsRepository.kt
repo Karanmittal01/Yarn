@@ -75,13 +75,17 @@ class ContactsRepository(private val context: Context) {
         val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number))
         context.contentResolver.query(
             uri,
-            arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME, ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI, ContactsContract.PhoneLookup.LOOKUP_KEY, ContactsContract.PhoneLookup._ID, ContactsContract.PhoneLookup.STARRED),
+            arrayOf(
+                ContactsContract.PhoneLookup.DISPLAY_NAME, ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI, ContactsContract.PhoneLookup.LOOKUP_KEY,
+                ContactsContract.PhoneLookup._ID, ContactsContract.PhoneLookup.STARRED, ContactsContract.PhoneLookup.PHOTO_URI,
+            ),
             null, null, null,
         )?.use { c ->
             if (!c.moveToFirst()) return@use null
             ContactInfo(
                 name = c.getString(0).orEmpty(),
-                photoUri = c.getString(1),
+                // Some accounts sync only the full-size picture, without a thumbnail.
+                photoUri = c.getString(1) ?: c.getString(5),
                 lookupUri = ContactsContract.Contacts.getLookupUri(c.getLong(3), c.getString(2)),
                 starred = c.getInt(4) != 0,
             )
@@ -92,10 +96,22 @@ class ContactsRepository(private val context: Context) {
         val uri = Uri.withAppendedPath(ContactsContract.CommonDataKinds.Email.CONTENT_LOOKUP_URI, Uri.encode(email))
         context.contentResolver.query(
             uri,
-            arrayOf(ContactsContract.Contacts.DISPLAY_NAME, ContactsContract.Contacts.PHOTO_THUMBNAIL_URI, ContactsContract.Contacts.STARRED),
+            arrayOf(ContactsContract.Contacts.DISPLAY_NAME, ContactsContract.Contacts.PHOTO_THUMBNAIL_URI, ContactsContract.Contacts.STARRED, ContactsContract.Contacts.PHOTO_URI),
             null, null, null,
-        )?.use { c -> if (c.moveToFirst()) ContactInfo(c.getString(0).orEmpty(), c.getString(1), null, c.getInt(2) != 0) else null }
+        )?.use { c -> if (c.moveToFirst()) ContactInfo(c.getString(0).orEmpty(), c.getString(1) ?: c.getString(3), null, c.getInt(2) != 0) else null }
     }.getOrNull()
+
+    /** The phone owner's own card ("Me" in Contacts), for the profile button. */
+    fun me(): ContactInfo? {
+        if (!hasPermission()) return null
+        return runCatching {
+            context.contentResolver.query(
+                ContactsContract.Profile.CONTENT_URI,
+                arrayOf(ContactsContract.Profile.DISPLAY_NAME, ContactsContract.Profile.PHOTO_THUMBNAIL_URI, ContactsContract.Profile.PHOTO_URI),
+                null, null, null,
+            )?.use { c -> if (c.moveToFirst()) ContactInfo(c.getString(0).orEmpty(), c.getString(1) ?: c.getString(2), null, false) else null }
+        }.getOrNull()
+    }
 
     fun displayName(addresses: List<String>, iso: String): String =
         addresses.joinToString(", ") { a ->

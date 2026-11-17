@@ -86,6 +86,35 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.res.stringResource
 import app.yarn.R
 
+/**
+ * Where a bubble sits in a run of messages from the same person sent close together. Runs are
+ * drawn as one block, like Google Messages: tight gaps, softer corners where bubbles touch, and
+ * the time shown once under the last bubble.
+ */
+enum class RunPosition { SINGLE, FIRST, MIDDLE, LAST;
+    val startsRun get() = this == SINGLE || this == FIRST
+    val endsRun get() = this == SINGLE || this == LAST
+}
+
+/** Messages from the same person within this long of each other read as one run. */
+private const val RUN_GAP_MS = 3 * 60_000L
+
+private fun sameRun(a: app.yarn.data.db.MessageEntity, b: app.yarn.data.db.MessageEntity) =
+    a.outgoing == b.outgoing && (a.outgoing || a.address == b.address) &&
+        kotlin.math.abs(a.date - b.date) <= RUN_GAP_MS && Format.sameDay(a.date, b.date)
+
+/** [older] and [newer] are the neighbouring messages in the chat, if any. */
+fun runPosition(older: app.yarn.data.db.MessageEntity?, item: app.yarn.data.db.MessageEntity, newer: app.yarn.data.db.MessageEntity?): RunPosition {
+    val starts = older == null || !sameRun(older, item)
+    val ends = newer == null || !sameRun(item, newer)
+    return when {
+        starts && ends -> RunPosition.SINGLE
+        starts -> RunPosition.FIRST
+        ends -> RunPosition.LAST
+        else -> RunPosition.MIDDLE
+    }
+}
+
 data class BubbleCallbacks(
     val onClick: (MessageWithAttachments) -> Unit,
     val onLongClick: (MessageWithAttachments) -> Unit,
@@ -110,6 +139,11 @@ fun MessageBubble(
     translateTo: String? = null,
     /** SIM the message used, shown on dual-SIM phones. */
     sim: SimInfo? = null,
+    position: RunPosition = RunPosition.SINGLE,
+    /** The newest message you sent: it spells out "Sent" or "Delivered". */
+    latestSent: Boolean = false,
+    /** Group chats: room for the sender's picture beside incoming bubbles, drawn on a run's last bubble. */
+    senderAvatar: (@Composable () -> Unit)? = null,
 ) {
     val m = item.message
     val context = LocalContext.current
@@ -130,7 +164,14 @@ fun MessageBubble(
     }
     val risky = remember(m.riskyUrls) { m.riskyUrls.lines().filter { it.isNotBlank() }.toSet() }
     var pendingRiskyUrl by remember { mutableStateOf<String?>(null) }
-    val shape = RoundedCornerShape(22.dp, 22.dp, if (outgoing) 6.dp else 22.dp, if (outgoing) 22.dp else 6.dp)
+    val big = 20.dp
+    val small = 5.dp
+    // Corners facing the sender's side tighten where the bubble touches its neighbours in a run.
+    val shape = if (outgoing) {
+        RoundedCornerShape(big, if (position.startsRun) big else small, if (position.endsRun) big else small, big)
+    } else {
+        RoundedCornerShape(if (position.startsRun) big else small, big, big, if (position.endsRun) big else small)
+    }
     val statusText = statusLabel(context, m.status, m.errorCode)
     val a11y = buildString {
         append(if (outgoing) context.getString(R.string.you) else senderLabel ?: context.getString(R.string.message))
@@ -142,28 +183,37 @@ fun MessageBubble(
     }
     val selectMessageLabel = stringResource(R.string.select_message)
 
-    Column(
+    val notable = m.status != MessageStatus.SENT && m.status != MessageStatus.DELIVERED && m.status != MessageStatus.RECEIVED
+    // Time and status once per run; anything that needs attention (failed, scheduled, sending) always shows.
+    val showMeta = position.endsRun || notable || m.starred
+    Row(
         Modifier
             .fillMaxWidth()
             .background(if (highlighted) colors.secondaryContainer.copy(alpha = 0.5f) else androidx.compose.ui.graphics.Color.Transparent)
-            .padding(horizontal = 12.dp, vertical = 2.dp),
-        horizontalAlignment = if (outgoing) Alignment.End else Alignment.Start,
+            .padding(start = if (senderAvatar != null) 8.dp else 14.dp, end = 14.dp, top = if (position.startsRun) 8.dp else 1.5.dp, bottom = 1.5.dp),
+        horizontalArrangement = if (outgoing) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom,
     ) {
+    if (senderAvatar != null && !outgoing) {
+        // Keeps the bubbles of a run aligned; the picture sits beside the run's last bubble.
+        Box(Modifier.padding(end = 8.dp, bottom = if (showMeta) 22.dp else 0.dp).size(28.dp)) { if (position.endsRun) senderAvatar() }
+    }
+    Column(horizontalAlignment = if (outgoing) Alignment.End else Alignment.Start) {
         if (senderLabel != null && !outgoing) {
-            Text(senderLabel, style = MaterialTheme.typography.labelMedium, color = colors.primary, modifier = Modifier.padding(start = 12.dp, top = 6.dp, bottom = 2.dp))
+            Text(senderLabel, style = MaterialTheme.typography.labelMedium, color = colors.primary, modifier = Modifier.padding(start = 12.dp, bottom = 3.dp))
         }
         Surface(
             color = container,
             contentColor = content,
             shape = shape,
             modifier = Modifier
-                .widthIn(max = 320.dp)
+                .widthIn(max = 300.dp)
                 .clip(shape)
                 .then(if (gradient) Modifier.background(app.yarn.ui.theme.Brand.bubble, shape) else Modifier)
                 .combinedClickable(onClick = { callbacks.onClick(item) }, onLongClick = { callbacks.onLongClick(item) }, onLongClickLabel = selectMessageLabel)
                 .semantics(mergeDescendants = false) { contentDescription = a11y },
         ) {
-            Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Column(Modifier.padding(horizontal = 15.dp, vertical = 9.dp)) {
                 m.subject?.takeIf { it.isNotBlank() }?.let { Text(it, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp)) }
                 if (item.attachments.isNotEmpty()) {
                     item.attachments.forEach { AttachmentView(it) }
@@ -175,7 +225,7 @@ fun MessageBubble(
                 if (translated != null) {
                     Text(translated.text, style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        stringResource(R.string.translated_from, languageName(translated.from)),
+                        stringResource(R.string.translated_from, languageName(translated.from)) + if (translated.online) " · Google Translate" else "",
                         style = MaterialTheme.typography.labelSmall,
                         color = LocalContentColor.current.copy(alpha = 0.72f),
                         modifier = Modifier.padding(top = 4.dp),
@@ -183,7 +233,7 @@ fun MessageBubble(
                 } else if (m.body.isNotBlank()) {
                     Text(
                         linkify(m.body, item.entities, risky, if (gradient) androidx.compose.ui.graphics.Color.White else colors.primary) { url -> if (url in risky) pendingRiskyUrl = url else Actions.openUrl(context, url) },
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp, lineHeight = 22.sp),
                     )
                 }
                 // Dual SIM: a tiny, quiet SIM number in the bubble's bottom-right corner.
@@ -196,11 +246,14 @@ fun MessageBubble(
                 }
             }
         }
-        Row(Modifier.padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (m.starred) Icon(Icons.Outlined.Star, null, Modifier.size(12.dp), tint = colors.tertiary)
-            Text(Format.time(context, if (m.status == MessageStatus.SCHEDULED) m.scheduledAt else m.date), style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
+        if (showMeta) Row(Modifier.padding(start = 6.dp, end = 6.dp, top = 3.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (m.starred) Icon(Icons.Outlined.Star, null, Modifier.padding(end = 3.dp).size(12.dp), tint = colors.tertiary)
+            val meta = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp, letterSpacing = 0.1.sp)
+            Text(Format.time(context, if (m.status == MessageStatus.SCHEDULED) m.scheduledAt else m.date), style = meta, color = colors.onSurfaceVariant)
             if (outgoing) StatusIcon(m.status)
-            statusText?.let { Text("  $it", style = MaterialTheme.typography.labelSmall, color = if (m.status == MessageStatus.FAILED) colors.error else colors.onSurfaceVariant) }
+            // The newest sent message says how far it got, in words, like Google Messages.
+            val word = statusText?.takeIf { m.status != MessageStatus.DELIVERED } ?: if (outgoing && latestSent) context.getString(if (m.status == MessageStatus.DELIVERED) R.string.status_delivered else R.string.status_sent) else null
+            word?.let { Text(" · $it", style = meta, color = if (m.status == MessageStatus.FAILED) colors.error else colors.onSurfaceVariant) }
             when (m.status) {
                 MessageStatus.FAILED -> TextButton(onClick = { callbacks.onRetry(m.id) }) { Text(stringResource(R.string.retry)) }
                 MessageStatus.DELAYED -> UndoCountdown(m.nextAttemptAt) { callbacks.onUndo(m.id) }
@@ -208,9 +261,13 @@ fun MessageBubble(
             }
         }
         if (!outgoing && (translateTo != null || translation != null)) {
-            TranslateAction(translation, translateTo, onTranslate = { mobile -> callbacks.onTranslate(item, mobile) })
+            TranslateAction(
+                translation, translateTo, onTranslate = { mobile -> callbacks.onTranslate(item, mobile) },
+                onOpenGoogle = { Actions.openUrl(context, googleTranslateUrl(m.body, translateTo)) },
+            )
         }
         if (showInsights && !outgoing) InsightChips(item, risky, onRisky = { pendingRiskyUrl = it })
+    }
     }
 
     pendingRiskyUrl?.let { url ->
@@ -235,7 +292,7 @@ fun MessageBubble(
 
 /** One-tap translation under an incoming bubble: Translate → Show original, with pack download on mobile data. */
 @Composable
-private fun TranslateAction(state: TranslationUi?, target: String?, onTranslate: (allowMobileData: Boolean) -> Unit) {
+private fun TranslateAction(state: TranslationUi?, target: String?, onTranslate: (allowMobileData: Boolean) -> Unit, onOpenGoogle: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     @Composable fun link(text: String, mobile: Boolean = false, icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.Translate) {
         Row(
@@ -276,9 +333,20 @@ private fun TranslateAction(state: TranslationUi?, target: String?, onTranslate:
                 modifier = Modifier.weight(1f, fill = false),
             )
             if (state.reason == TranslationError.OFFLINE || state.reason == TranslationError.FAILED) link(stringResource(R.string.try_again), icon = Icons.Outlined.Refresh)
+            // Whatever the phone couldn't do, the Google Translate app or website can.
+            if (state.reason != TranslationError.SAME_LANGUAGE && state.reason != TranslationError.OFFLINE) {
+                Row(
+                    Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpenGoogle).padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) { Text(stringResource(R.string.open_google_translate), style = MaterialTheme.typography.labelLarge, color = colors.primary, fontWeight = FontWeight.Medium) }
+            }
         }
     }
 }
+
+/** Opens the message in Google Translate (the app if installed, else the website). */
+internal fun googleTranslateUrl(text: String, target: String?): String =
+    "https://translate.google.com/?sl=auto&tl=" + Uri.encode(target ?: "en") + "&op=translate&text=" + Uri.encode(text.take(2_000))
 
 /** "Hindi" / "हिन्दी" — a language's name in the language Yarn is shown in. */
 @Composable
@@ -317,7 +385,13 @@ private fun StatusIcon(status: Int) {
         MessageStatus.QUEUED, MessageStatus.SENDING, MessageStatus.SCHEDULED, MessageStatus.WAITING_FOR_SERVICE, MessageStatus.DELAYED -> Icons.Outlined.Schedule
         else -> null
     } ?: return
-    Icon(icon, null, Modifier.padding(start = 4.dp).size(14.dp), tint = if (status == MessageStatus.FAILED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+    val tint = when (status) {
+        MessageStatus.FAILED -> MaterialTheme.colorScheme.error
+        // Delivered stands out, so it's easy to tell from Sent at a glance.
+        MessageStatus.DELIVERED -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Icon(icon, null, Modifier.padding(start = 4.dp).size(15.dp), tint = tint)
 }
 
 @Composable

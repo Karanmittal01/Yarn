@@ -46,7 +46,8 @@ data class AppSettings(
     val onboardingDone: Boolean = false,
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = false,
-    val deliveryReports: Boolean = false,
+    /** Ask the network to confirm delivery, so sent messages can show "Delivered". */
+    val deliveryReports: Boolean = true,
     val groupMms: Boolean = true,
     val autoDownloadMms: Boolean = true,
     val autoDownloadMmsRoaming: Boolean = false,
@@ -64,6 +65,8 @@ data class AppSettings(
     val learningEnabled: Boolean = true,
     /** Language to translate messages into; "" follows Yarn's own language. */
     val translateTarget: String = "",
+    /** Hinglish and languages the phone can't translate go to Google Translate, one message at a time, when tapped. */
+    val onlineTranslation: Boolean = true,
     val localLlmPath: String? = null,
     val selfHostedAiEnabled: Boolean = false,
     val selfHostedAiUrl: String = "",
@@ -105,7 +108,8 @@ class SettingsRepository(private val context: Context) {
         val onboardingDone = booleanPreferencesKey("onboarding_done")
         val theme = stringPreferencesKey("theme")
         val dynamicColor = booleanPreferencesKey("dynamic_color")
-        val deliveryReports = booleanPreferencesKey("delivery_reports")
+        // A new key: delivery reports used to default to off, and everyone should now get them.
+        val deliveryReports = booleanPreferencesKey("delivery_reports_on")
         val groupMms = booleanPreferencesKey("group_mms")
         val autoDownloadMms = booleanPreferencesKey("auto_download_mms")
         val autoDownloadMmsRoaming = booleanPreferencesKey("auto_download_mms_roaming")
@@ -123,6 +127,7 @@ class SettingsRepository(private val context: Context) {
         val mlEntities = booleanPreferencesKey("ml_entities")
         val learning = booleanPreferencesKey("learning")
         val translateTarget = stringPreferencesKey("translate_into")
+        val onlineTranslation = booleanPreferencesKey("online_translation")
         val localLlmPath = stringPreferencesKey("local_llm_path")
         val selfHostedEnabled = booleanPreferencesKey("self_hosted_ai")
         val selfHostedUrl = stringPreferencesKey("self_hosted_ai_url")
@@ -177,6 +182,7 @@ class SettingsRepository(private val context: Context) {
             p[K.mlEntities] = s.mlEntityExtraction
             p[K.learning] = s.learningEnabled
             p[K.translateTarget] = s.translateTarget
+            p[K.onlineTranslation] = s.onlineTranslation
             if (s.localLlmPath != null) p[K.localLlmPath] = s.localLlmPath else p.remove(K.localLlmPath)
             p[K.selfHostedEnabled] = s.selfHostedAiEnabled
             p[K.selfHostedUrl] = s.selfHostedAiUrl
@@ -236,6 +242,7 @@ class SettingsRepository(private val context: Context) {
         mlEntityExtraction = p[K.mlEntities] ?: d.mlEntityExtraction,
         learningEnabled = p[K.learning] ?: d.learningEnabled,
         translateTarget = p[K.translateTarget] ?: d.translateTarget,
+        onlineTranslation = p[K.onlineTranslation] ?: d.onlineTranslation,
         localLlmPath = p[K.localLlmPath],
         selfHostedAiEnabled = p[K.selfHostedEnabled] ?: d.selfHostedAiEnabled,
         selfHostedAiUrl = p[K.selfHostedUrl] ?: d.selfHostedAiUrl,

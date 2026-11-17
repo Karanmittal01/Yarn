@@ -1,6 +1,7 @@
 package app.yarn.ui.bin
 
 import android.text.format.DateUtils
+import app.yarn.safeScope
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -82,8 +83,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class BinViewModel(private val c: AppContainer) : ViewModel() {
-    val items: StateFlow<List<BinEntity>?> = c.bin.items.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-    val settings: StateFlow<AppSettings> = c.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
+    val items: StateFlow<List<BinEntity>?> = c.bin.items.stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), null)
+    val settings: StateFlow<AppSettings> = c.settings.settings.stateIn(safeScope, SharingStarted.Eagerly, AppSettings())
 
     private val _selection = MutableStateFlow<Set<Long>>(emptySet())
     val selection: StateFlow<Set<Long>> = _selection

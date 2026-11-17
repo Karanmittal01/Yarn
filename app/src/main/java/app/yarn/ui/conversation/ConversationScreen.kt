@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
@@ -190,14 +191,14 @@ fun ConversationScreen(
                             vm.selectAll(ids)
                         }) { Icon(Icons.Outlined.SelectAll, stringResource(R.string.select_all)) }
                         IconButton(onClick = {
-                            scope.launch {
+                            scope.launch(app.yarn.CrashLog.handler) {
                                 val msgs = vm.selectedMessages()
                                 val cm = context.getSystemService(ClipboardManager::class.java)
                                 cm.setPrimaryClip(ClipData.newPlainText("messages", msgs.joinToString("\n") { it.message.body }))
                                 vm.clearSelection()
                             }
                         }) { Icon(Icons.Outlined.ContentCopy, stringResource(R.string.copy_text)) }
-                        IconButton(onClick = { scope.launch { vm.forward(vm.selectedMessages()); onForward() } }) { Icon(Icons.AutoMirrored.Outlined.Forward, stringResource(R.string.forward)) }
+                        IconButton(onClick = { scope.launch(app.yarn.CrashLog.handler) { vm.forward(vm.selectedMessages()); onForward() } }) { Icon(Icons.AutoMirrored.Outlined.Forward, stringResource(R.string.forward)) }
                         IconButton(onClick = { confirmDeleteMessages = true }) { Icon(Icons.Outlined.Delete, stringResource(R.string.delete)) }
                         var more by remember { mutableStateOf(false) }
                         Box {
@@ -207,7 +208,7 @@ fun ConversationScreen(
                                 DropdownMenuItem(text = { Text(stringResource(R.string.unstar)) }, onClick = { more = false; vm.starSelected(false) })
                                 DropdownMenuItem(text = { Text(stringResource(R.string.share)) }, leadingIcon = { Icon(Icons.Outlined.Share, null) }, onClick = {
                                     more = false
-                                    scope.launch {
+                                    scope.launch(app.yarn.CrashLog.handler) {
                                         val msgs = vm.selectedMessages()
                                         Actions.share(context, msgs.joinToString("\n") { it.message.body }, msgs.flatMap { m -> m.attachments.map { Uri.parse(it.uri) to it.mimeType } })
                                         vm.clearSelection()
@@ -217,15 +218,15 @@ fun ConversationScreen(
                                 if (selection.size == 1) {
                                     DropdownMenuItem(text = { Text(stringResource(R.string.details)) }, onClick = {
                                         more = false
-                                        scope.launch { details = vm.selectedMessages().firstOrNull(); vm.clearSelection() }
+                                        scope.launch(app.yarn.CrashLog.handler) { details = vm.selectedMessages().firstOrNull(); vm.clearSelection() }
                                     })
                                     DropdownMenuItem(text = { Text(stringResource(R.string.translate)) }, onClick = {
                                         more = false
-                                        scope.launch { vm.selectedMessages().firstOrNull()?.let { vm.translate(it.message, translateInto, allowMobileData = false) }; vm.clearSelection() }
+                                        scope.launch(app.yarn.CrashLog.handler) { vm.selectedMessages().firstOrNull()?.let { vm.translate(it.message, translateInto, allowMobileData = false) }; vm.clearSelection() }
                                     })
                                     DropdownMenuItem(text = { Text(stringResource(R.string.save_attachments)) }, onClick = {
                                         more = false
-                                        scope.launch {
+                                        scope.launch(app.yarn.CrashLog.handler) {
                                             val atts = vm.selectedMessages().flatMap { it.attachments }
                                             val ok = atts.count { Actions.saveToDownloads(context, Uri.parse(it.uri), it.mimeType, it.fileName) }
                                             Toast.makeText(context, if (atts.isEmpty()) context.getString(R.string.no_attachments) else context.getString(R.string.saved_to_downloads, ok), Toast.LENGTH_SHORT).show()
@@ -304,7 +305,9 @@ fun ConversationScreen(
         Column(Modifier.padding(padding).fillMaxSize()) {
             scam?.let { warning -> ScamBanner(warning, onNotSpam = { vm.markSpam(false) }, onBlock = { vm.block() }) }
             section?.let { SectionBar(it, onShowAll = vm::showWholeChat) }
-            LazyColumn(state = listState, reverseLayout = true, modifier = Modifier.weight(1f).fillMaxWidth()) {
+            // The newest message you sent spells out its status ("Sent", "Delivered").
+            val latestSentId = (0 until minOf(items.itemCount, 40)).firstNotNullOfOrNull { i -> items.peek(i)?.message?.takeIf { it.outgoing }?.id }
+            LazyColumn(state = listState, reverseLayout = true, modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = 8.dp)) {
                 items(count = items.itemCount, key = { index -> items.peek(index)?.message?.id ?: -index.toLong() - 1 }) { index ->
                     val item = items[index]
                     if (item == null) {
@@ -312,18 +315,19 @@ fun ConversationScreen(
                         return@items
                     }
                     val older = if (index + 1 < items.itemCount) items.peek(index + 1) else null
-                    Column {
+                    val newer = if (index > 0) items.peek(index - 1) else null
+                    val position = runPosition(older?.message, item.message, newer?.message)
+                    Column(Modifier.animateItem()) {
                         if (older == null || !Format.sameDay(older.message.date, item.message.date)) {
                             Text(
                                 Format.dayHeader(context, item.message.date),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 6.dp),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             )
                         }
-                        val showSender = conv.isGroup && !item.message.outgoing &&
-                            (older == null || older.message.outgoing || older.message.address != item.message.address)
+                        val showSender = conv.isGroup && !item.message.outgoing && position.startsRun
                         if (settings.aiEnabled && !item.message.outgoing) LaunchedEffect(item.message.id) { vm.detectLanguage(item.message) }
                         val lang = languages[item.message.id]
                         MessageBubble(
@@ -341,8 +345,13 @@ fun ConversationScreen(
                                 onDownload = { vm.download(it) },
                                 onTranslate = { it, mobile -> vm.translate(it.message, translateInto, mobile) },
                             ),
-                            translateTo = translateInto.takeIf { settings.aiEnabled && !lang.isNullOrEmpty() && lang != it },
+                            translateTo = translateInto.takeIf { settings.aiEnabled && !lang.isNullOrEmpty() && lang.substringBefore('-') != it.substringBefore('-') },
                             sim = if (multiSim) sims.firstOrNull { it.subId == item.message.subId } else null,
+                            position = position,
+                            latestSent = item.message.id == latestSentId,
+                            senderAvatar = if (conv.isGroup && !item.message.outgoing) {
+                                { Avatar(vm.senderName(item.message.address), participants[item.message.address]?.photoUri, size = 28.dp) }
+                            } else null,
                         )
                     }
                 }

@@ -808,4 +808,17 @@
     <string name="bin_never">Never, I\'ll empty it</string>
     <string name="bin_off">Don\'t use the bin</string>
     <string name="bin_mms_note">Picture messages come back in Yarn only.</string>
+    <string name="status_sent">Sent</string>
+    <string name="account_and_more">Your profile and more</string>
+    <string name="help_feedback">Help and feedback</string>
+    <string name="private_on_phone">Your messages stay private on this phone</string>
+    <string name="feedback_subject">Yarn feedback</string>
+    <string name="feedback_body">What happened, or what would you like to see?</string>
+    <string name="crash_banner">Yarn closed unexpectedly last time</string>
+    <string name="crash_banner_sub">Sharing the report helps fix it. It has no messages in it.</string>
+    <string name="send_report">Send report</string>
+    <string name="scroll_to_top">Scroll to top</string>
+    <string name="online_translation">Translate online when needed</string>
+    <string name="online_translation_sub">Hinglish and languages your phone can\'t translate go to Google Translate. Only the message you translate is sent.</string>
+    <string name="open_google_translate">Open in Google Translate</string>
 </resources>

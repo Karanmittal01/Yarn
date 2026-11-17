@@ -22,6 +22,10 @@ object Actions {
             context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (e: ActivityNotFoundException) {
             Toast.makeText(context, context.getString(failure), Toast.LENGTH_SHORT).show()
+        } catch (e: RuntimeException) {
+            // Some phones refuse an intent outright (a missing permission, a file that can't be shared).
+            app.yarn.CrashLog.record(e, fatal = false)
+            Toast.makeText(context, context.getString(failure), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -52,12 +56,18 @@ object Actions {
         if (uri.scheme == "file") FileProvider.getUriForFile(context, "${context.packageName}.files", File(uri.path!!)) else uri
 
     fun openAttachment(context: Context, uri: Uri, mime: String) {
-        val intent = Intent(Intent.ACTION_VIEW).setDataAndType(shareableUri(context, uri), mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        val shared = runCatching { shareableUri(context, uri) }.getOrElse { Toast.makeText(context, context.getString(R.string.no_file_app), Toast.LENGTH_SHORT).show(); return }
+        val intent = Intent(Intent.ACTION_VIEW).setDataAndType(shared, mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         start(context, intent, R.string.no_file_app)
     }
 
     fun share(context: Context, text: String, uris: List<Pair<Uri, String>>) {
-        val intent = when {
+        val intent = runCatching { shareIntent(context, text, uris) }.getOrElse { Toast.makeText(context, context.getString(R.string.no_app), Toast.LENGTH_SHORT).show(); return }
+        start(context, Intent.createChooser(intent, context.getString(R.string.share)))
+    }
+
+    private fun shareIntent(context: Context, text: String, uris: List<Pair<Uri, String>>): Intent =
+        when {
             uris.isEmpty() -> Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
             uris.size == 1 -> Intent(Intent.ACTION_SEND).setType(uris[0].second).putExtra(Intent.EXTRA_STREAM, shareableUri(context, uris[0].first))
                 .apply { if (text.isNotBlank()) putExtra(Intent.EXTRA_TEXT, text) }
@@ -65,8 +75,6 @@ object Actions {
                 .putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris.map { shareableUri(context, it.first) }))
                 .apply { if (text.isNotBlank()) putExtra(Intent.EXTRA_TEXT, text) }
         }.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        start(context, Intent.createChooser(intent, context.getString(R.string.share)))
-    }
 
     /** Saves an attachment to the public Downloads collection (no storage permission needed). */
     fun saveToDownloads(context: Context, uri: Uri, mime: String, name: String?): Boolean = runCatching {

@@ -103,8 +103,8 @@ fun Avatar(
 ) {
     val accent = Color(Avatars.colorFor(name))
     val dark = app.yarn.ui.theme.LocalDarkTheme.current
+    // The initial is always drawn, so a photo that's slow or fails to load never leaves a blank circle.
     val fill = when {
-        photoUri != null -> Color.Transparent
         neutral -> if (dark) Color(0xFF3A3B3F) else Color(0xFFE4E7EE)
         dark -> accent.mix(Color.White, 0.45f)
         else -> accent.mix(Color.White, 0.78f)
@@ -124,11 +124,11 @@ fun Avatar(
             else -> accent.mix(Color.Black, 0.35f)
         }
         when {
-            photoUri != null -> AsyncImage(model = photoUri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size))
             isGroup -> androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Groups, null, tint = tint, modifier = Modifier.size(size * 0.5f))
             icon != null -> androidx.compose.material3.Icon(icon, null, tint = tint, modifier = Modifier.size(size * 0.46f))
             else -> Text(Avatars.initial(name), color = tint, fontWeight = FontWeight.SemiBold, fontSize = (size.value * 0.4f).sp)
         }
+        if (photoUri != null) AsyncImage(model = photoUri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size))
     }
 }
 

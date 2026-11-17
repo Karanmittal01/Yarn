@@ -1,6 +1,7 @@
 package app.yarn.ui.cleaner
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import app.yarn.safeScope
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -123,14 +124,14 @@ data class AutoClean(val codesMinutes: Int, val offersDays: Int, val spamDays: I
 class CleanerViewModel(private val c: AppContainer) : ViewModel() {
     private val _state = MutableStateFlow(CleanerState())
     val state: StateFlow<CleanerState> = _state
-    val settings: StateFlow<AppSettings> = c.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
+    val settings: StateFlow<AppSettings> = c.settings.settings.stateIn(safeScope, SharingStarted.Eagerly, AppSettings())
     val isDefault = c.isDefaultSmsApp
-    val binCount: StateFlow<Int> = c.bin.count.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    val binCount: StateFlow<Int> = c.bin.count.stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), 0)
     private var ids: Map<JunkKind, List<Long>> = emptyMap()
 
     init { scan() }
 
-    fun scan() = viewModelScope.launch {
+    fun scan() = viewModelScope.launch(app.yarn.CrashLog.handler) {
         _state.update { it.copy(scanning = true) }
         ids = c.cleaner.scan()
         _state.update { it.copy(scanning = false, found = ids.mapValues { e -> e.value.size }) }
@@ -150,7 +151,7 @@ class CleanerViewModel(private val c: AppContainer) : ViewModel() {
         }
     }
 
-    fun update(transform: (AppSettings) -> AppSettings) = viewModelScope.launch { c.settings.update(transform) }
+    fun update(transform: (AppSettings) -> AppSettings) = viewModelScope.launch(app.yarn.CrashLog.handler) { c.settings.update(transform) }
 }
 
 @Composable

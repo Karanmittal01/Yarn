@@ -1,6 +1,7 @@
 package app.yarn.ui.conversation
 
 import android.net.Uri
+import app.yarn.safeScope
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -60,7 +61,7 @@ class ShareHolder {
 sealed interface TranslationUi {
     data object Loading : TranslationUi
     /** [from] is the source language code ("en", "hi"…). */
-    data class Done(val text: String, val from: String) : TranslationUi
+    data class Done(val text: String, val from: String, val online: Boolean = false) : TranslationUi
     /** The language pack isn't downloaded and the phone is on mobile data. */
     data class NeedsDownload(val from: String) : TranslationUi
     data class Error(val reason: TranslationError) : TranslationUi
@@ -90,13 +91,13 @@ data class ScamWarning(val verdict: SpamVerdict, val reasons: List<String>)
 @OptIn(FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ConversationViewModel(private val c: AppContainer, val conversationId: Long, openedFrom: InboxGroup? = null) : ViewModel() {
     val conversation: StateFlow<ConversationEntity?> = c.db.conversations().observe(conversationId)
-        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+        .stateIn(safeScope, SharingStarted.Eagerly, null)
 
     private val _section = MutableStateFlow(openedFrom)
 
     /** The section being shown, or null for the whole chat. A chat the user moved to a category is always whole. */
     val section: StateFlow<InboxGroup?> = combine(_section, conversation) { s, conv -> s?.takeUnless { conv?.categoryLocked == true } }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, openedFrom)
+        .stateIn(safeScope, SharingStarted.Eagerly, openedFrom)
 
     fun showWholeChat() {
         _section.value = null
@@ -149,7 +150,7 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
 
     fun restoreFromBin(binIds: List<Long>) { c.scope.launch { c.conversations.restoreFromBin(binIds) } }
 
-    val settings = c.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, app.yarn.data.prefs.AppSettings())
+    val settings = c.settings.settings.stateIn(safeScope, SharingStarted.Eagerly, app.yarn.data.prefs.AppSettings())
 
     @Volatile private var visible = false
     private var smartJob: Job? = null
@@ -157,7 +158,7 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     init {
         // Mark read as soon as the chat opens, before any transition animation finishes.
         markReadNow()
-        viewModelScope.launch {
+        viewModelScope.launch(app.yarn.CrashLog.handler) {
             val conv = conversation.filterNotNull().first()
             _subId.value = c.sims.resolveSubId(conv.preferredSubId)
             val shared = c.shareHolder.take()
@@ -168,11 +169,11 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
             }
         }
         // Persist drafts as the user types, so nothing is lost if the app is killed.
-        viewModelScope.launch {
+        viewModelScope.launch(app.yarn.CrashLog.handler) {
             text.drop(1).debounce(600).distinctUntilChanged().collect { c.conversations.saveDraft(conversationId, it) }
         }
         // Refresh smart replies, scam warnings and read state whenever the thread changes.
-        viewModelScope.launch {
+        viewModelScope.launch(app.yarn.CrashLog.handler) {
             conversation.filterNotNull().map { it.lastMessageAt to it.unreadCount }.distinctUntilChanged().collect { (_, unread) ->
                 if (visible && unread > 0) c.conversations.markRead(listOf(conversationId), section.value?.categories.orEmpty())
                 refreshInsights()
@@ -202,7 +203,7 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
 
     private fun refreshInsights() {
         smartJob?.cancel()
-        smartJob = viewModelScope.launch(Dispatchers.Default) {
+        smartJob = viewModelScope.launch(Dispatchers.Default + app.yarn.CrashLog.handler) {
             val recent = c.db.messages().recent(conversationId, 12)
             val conv = conversation.value ?: return@launch
             val lastIncoming = recent.firstOrNull { !it.outgoing }
@@ -221,11 +222,11 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
 
     fun setSim(subId: Int) {
         _subId.value = subId
-        viewModelScope.launch { c.conversations.setPreferredSim(conversationId, subId) }
+        viewModelScope.launch(app.yarn.CrashLog.handler) { c.conversations.setPreferredSim(conversationId, subId) }
     }
 
     fun addAttachments(uris: List<Uri>) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.IO + app.yarn.CrashLog.handler) {
             val drafts = uris.mapNotNull { MediaTools.importAttachment(c.app, it) }
             if (drafts.size < uris.size) _events.tryEmit(c.app.getString(R.string.attachments_failed))
             _attachments.value = _attachments.value + drafts
@@ -244,7 +245,7 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
         text.value = ""
         _attachments.value = emptyList()
         _smartReplies.value = emptyList<String>() to Engine.RULES
-        viewModelScope.launch {
+        viewModelScope.launch(app.yarn.CrashLog.handler) {
             try {
                 c.sender.queue(conversationId, body, files, _subId.value, scheduledAt)
                 if (scheduledAt != null) _events.tryEmit(c.app.getString(R.string.message_scheduled))
@@ -262,13 +263,13 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     }
 
     /** Cancels a delayed/scheduled/failed message and puts its text back in the composer. */
-    fun undoSend(messageId: Long) = viewModelScope.launch {
+    fun undoSend(messageId: Long) = viewModelScope.launch(app.yarn.CrashLog.handler) {
         val m = c.sender.cancel(messageId) ?: return@launch
         text.value = listOf(m.body, text.value).filter { it.isNotBlank() }.joinToString(" ")
     }
 
-    fun retry(messageId: Long) = viewModelScope.launch { c.sender.retry(messageId) }
-    fun download(messageId: Long) = viewModelScope.launch { c.incoming.download(messageId) }
+    fun retry(messageId: Long) = viewModelScope.launch(app.yarn.CrashLog.handler) { c.sender.retry(messageId) }
+    fun download(messageId: Long) = viewModelScope.launch(app.yarn.CrashLog.handler) { c.incoming.download(messageId) }
 
     // ---- selection & message actions ----------------------------------------------------------
 
@@ -279,7 +280,7 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     fun deleteSelected() {
         val ids = _selection.value
         clearSelection()
-        viewModelScope.launch {
+        viewModelScope.launch(app.yarn.CrashLog.handler) {
             val kept = c.conversations.deleteMessages(ids)
             val res = c.app.resources
             if (kept.isEmpty()) _events.tryEmit(res.getQuantityString(R.plurals.n_messages_deleted, ids.size, ids.size))
@@ -290,14 +291,14 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     fun starSelected(starred: Boolean) {
         val ids = _selection.value
         clearSelection()
-        viewModelScope.launch { c.conversations.setMessagesStarred(ids, starred) }
+        viewModelScope.launch(app.yarn.CrashLog.handler) { c.conversations.setMessagesStarred(ids, starred) }
     }
 
     suspend fun selectedMessages(): List<MessageWithAttachments> = c.db.messages().getFull(_selection.value)
 
     /** Prepares a forward: content goes to the new-conversation screen via the share holder. */
     fun forward(messages: List<MessageWithAttachments>) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.IO + app.yarn.CrashLog.handler) {
             val text = messages.joinToString("\n") { it.message.body }.trim()
             val files = messages.flatMap { it.attachments }.mapNotNull { a -> MediaTools.importAttachment(c.app, Uri.parse(a.uri)) }
             c.shareHolder.pending = SharePayload(text, files)
@@ -305,26 +306,26 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
         }
     }
 
-    fun recategorize(messageIds: Collection<Long>, category: Category, always: Boolean) = viewModelScope.launch {
+    fun recategorize(messageIds: Collection<Long>, category: Category, always: Boolean) = viewModelScope.launch(app.yarn.CrashLog.handler) {
         c.conversations.recategorizeMessages(messageIds, category, always)
         clearSelection()
         _events.tryEmit(c.app.getString(R.string.will_learn))
     }
 
-    fun markSpam(spam: Boolean) = viewModelScope.launch {
+    fun markSpam(spam: Boolean) = viewModelScope.launch(app.yarn.CrashLog.handler) {
         c.conversations.setSpam(listOf(conversationId), spam)
         _scam.value = null
         _events.tryEmit(c.app.getString(if (spam) R.string.reported_spam else R.string.marked_not_spam))
     }
 
-    fun block() = viewModelScope.launch { c.conversations.block(listOf(conversationId)) }
-    fun unblock() = viewModelScope.launch { c.conversations.unblock(listOf(conversationId)) }
-    fun archive() = viewModelScope.launch { c.conversations.setArchived(listOf(conversationId), true) }
-    fun delete(onDone: () -> Unit) = viewModelScope.launch { c.conversations.delete(listOf(conversationId)); onDone() }
-    fun mute(muted: Boolean) = viewModelScope.launch { c.conversations.setMuted(listOf(conversationId), muted) }
-    fun pin(pinned: Boolean) = viewModelScope.launch { c.conversations.setPinned(listOf(conversationId), pinned) }
-    fun rename(title: String) = viewModelScope.launch { c.conversations.rename(conversationId, title) }
-    fun setCategory(category: Category, always: Boolean) = viewModelScope.launch { c.conversations.setCategory(listOf(conversationId), category, always) }
+    fun block() = viewModelScope.launch(app.yarn.CrashLog.handler) { c.conversations.block(listOf(conversationId)) }
+    fun unblock() = viewModelScope.launch(app.yarn.CrashLog.handler) { c.conversations.unblock(listOf(conversationId)) }
+    fun archive() = viewModelScope.launch(app.yarn.CrashLog.handler) { c.conversations.setArchived(listOf(conversationId), true) }
+    fun delete(onDone: () -> Unit) = viewModelScope.launch(app.yarn.CrashLog.handler) { c.conversations.delete(listOf(conversationId)); onDone() }
+    fun mute(muted: Boolean) = viewModelScope.launch(app.yarn.CrashLog.handler) { c.conversations.setMuted(listOf(conversationId), muted) }
+    fun pin(pinned: Boolean) = viewModelScope.launch(app.yarn.CrashLog.handler) { c.conversations.setPinned(listOf(conversationId), pinned) }
+    fun rename(title: String) = viewModelScope.launch(app.yarn.CrashLog.handler) { c.conversations.rename(conversationId, title) }
+    fun setCategory(category: Category, always: Boolean) = viewModelScope.launch(app.yarn.CrashLog.handler) { c.conversations.setCategory(listOf(conversationId), category, always) }
 
     // ---- AI ---------------------------------------------------------------------------------
 
@@ -336,8 +337,8 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     /** Identifies a message's language once, so the chat can offer a one-tap translation. */
     fun detectLanguage(m: MessageEntity) {
         if (m.outgoing || !detecting.add(m.id)) return
-        viewModelScope.launch(Dispatchers.Default) {
-            val lang = if (worthTranslating(m.body)) c.translation.translatableLanguage(m.body) else null
+        viewModelScope.launch(Dispatchers.Default + app.yarn.CrashLog.handler) {
+            val lang = if (worthTranslating(m.body)) c.translation.translatableLanguage(m.body, allowOnline = settings.value.onlineTranslation) else null
             _languages.update { it + (m.id to lang.orEmpty()) }
         }
     }
@@ -349,10 +350,10 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
             return
         }
         _translations.update { it + (m.id to TranslationUi.Loading) }
-        viewModelScope.launch {
+        viewModelScope.launch(app.yarn.CrashLog.handler) {
             val hint = _languages.value[m.id]?.takeIf { it.isNotEmpty() }
-            val ui = when (val r = c.translation.translate(m.body, target, allowMobileData, hint)) {
-                is TranslationService.Result.Success -> TranslationUi.Done(r.text, r.sourceLanguage)
+            val ui = when (val r = c.translation.translate(m.body, target, allowMobileData, hint, allowOnline = settings.value.onlineTranslation)) {
+                is TranslationService.Result.Success -> TranslationUi.Done(r.text, r.sourceLanguage, r.online)
                 is TranslationService.Result.NeedsDownload -> TranslationUi.NeedsDownload(r.sourceLanguage)
                 TranslationService.Result.SameLanguage -> TranslationUi.Error(TranslationError.SAME_LANGUAGE)
                 TranslationService.Result.UnknownLanguage -> TranslationUi.Error(TranslationError.UNKNOWN_LANGUAGE)
@@ -368,7 +369,7 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
 
     fun summarize() {
         _summary.value = SummaryUi.Loading
-        viewModelScope.launch {
+        viewModelScope.launch(app.yarn.CrashLog.handler) {
             val conv = conversation.value
             val unread = c.db.messages().unread(conversationId)
             val source = if (unread.size >= 5) unread else c.db.messages().recent(conversationId, 60).reversed()
@@ -385,7 +386,7 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
         val original = text.value.trim()
         if (original.isEmpty()) return
         _rewrite.value = RewriteUi.Loading
-        viewModelScope.launch {
+        viewModelScope.launch(app.yarn.CrashLog.handler) {
             _rewrite.value = when (val r = c.assistant.rewrite(original, style)) {
                 is RewriteResult.Success -> RewriteUi.Ready(original, r.options, r.engine)
                 is RewriteResult.Unavailable -> RewriteUi.Error(r.reason)

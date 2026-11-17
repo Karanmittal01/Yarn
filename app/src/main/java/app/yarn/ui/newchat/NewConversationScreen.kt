@@ -1,6 +1,7 @@
 package app.yarn.ui.newchat
 
 import androidx.compose.material.icons.outlined.PersonSearch
+import app.yarn.safeScope
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.size
@@ -90,7 +91,7 @@ class NewConversationViewModel(private val c: AppContainer, initialRecipients: L
     val results: StateFlow<List<ContactPhone>> = combine(query.debounce(150), permissionTick) { q, _ -> q }
         .map { q -> if (q.isBlank()) emptyList() else c.contacts.search(q) }
         .flowOn(Dispatchers.IO)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        .stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun hasContacts() = c.contacts.hasPermission()
     fun onPermission() { c.contacts.start(); permissionTick.value++ }
@@ -115,7 +116,7 @@ class NewConversationViewModel(private val c: AppContainer, initialRecipients: L
         val typed = typedAddress()
         val all = _recipients.value.map { it.address } + listOfNotNull(typed)
         if (all.isEmpty()) return
-        viewModelScope.launch {
+        viewModelScope.launch(app.yarn.CrashLog.handler) {
             val id = c.sender.conversationFor(all, c.conversations)
             onReady(id)
         }

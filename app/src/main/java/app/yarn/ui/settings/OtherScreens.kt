@@ -179,7 +179,7 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
         pending = null
         if (p == null) { checking = false; return@rememberLauncherForActivityResult }
         if (result.resultCode != android.app.Activity.RESULT_OK) { checking = false; error = context.getString(R.string.access_not_allowed); return@rememberLauncherForActivityResult }
-        scope.launch {
+        scope.launch(app.yarn.CrashLog.handler) {
             runCatching { p.second(c.drive.token(p.first)) }.onFailure { error = it.message ?: context.getString(R.string.google_signin_failed) }
             checking = false
         }
@@ -188,7 +188,7 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     fun runWithGoogle(email: String, action: suspend (String) -> Unit) {
         error = null
         checking = true
-        scope.launch {
+        scope.launch(app.yarn.CrashLog.handler) {
             try {
                 val token = c.drive.token(email)
                 try {

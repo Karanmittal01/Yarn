@@ -807,4 +807,17 @@
     <string name="bin_never">कभी नहीं, मैं खुद खाली करूँगा</string>
     <string name="bin_off">बिन इस्तेमाल न करें</string>
     <string name="bin_mms_note">फ़ोटो वाले मैसेज सिर्फ़ Yarn में वापस आते हैं।</string>
+    <string name="status_sent">भेजा गया</string>
+    <string name="account_and_more">आपकी प्रोफ़ाइल और बाकी</string>
+    <string name="help_feedback">मदद और सुझाव</string>
+    <string name="private_on_phone">आपके मैसेज इसी फ़ोन पर निजी रहते हैं</string>
+    <string name="feedback_subject">Yarn सुझाव</string>
+    <string name="feedback_body">क्या हुआ, या आप क्या देखना चाहेंगे?</string>
+    <string name="crash_banner">पिछली बार Yarn अचानक बंद हो गया था</string>
+    <string name="crash_banner_sub">रिपोर्ट भेजने से इसे ठीक करने में मदद मिलती है। इसमें कोई मैसेज नहीं है।</string>
+    <string name="send_report">रिपोर्ट भेजें</string>
+    <string name="scroll_to_top">ऊपर जाएँ</string>
+    <string name="online_translation">ज़रूरत पर ऑनलाइन अनुवाद</string>
+    <string name="online_translation_sub">Hinglish और जिन भाषाओं का फ़ोन अनुवाद नहीं कर सकता, वे Google Translate पर जाती हैं। सिर्फ़ वही मैसेज भेजा जाता है जिसका आप अनुवाद करते हैं।</string>
+    <string name="open_google_translate">Google Translate में खोलें</string>
 </resources>

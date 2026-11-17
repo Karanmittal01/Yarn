@@ -57,7 +57,8 @@ import kotlinx.coroutines.sync.Mutex
 
 /** Hand-rolled dependency graph: explicit, fast to start, no reflection or codegen. */
 class AppContainer(val app: Application) {
-    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    /** App-wide background work; a failing job is recorded instead of closing the app. */
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + CrashLog.handler)
     /** Serialises every write to the system SMS/MMS provider against imports. */
     private val providerLock = Mutex()
 
@@ -178,6 +179,7 @@ class YarnApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashLog.install(this)
         app.yarn.i18n.AppLanguage.applyTo(this)
         container = AppContainer(this)
         container.start()

@@ -1,6 +1,7 @@
 package app.yarn.ui.settings
 
 import androidx.compose.foundation.background
+import app.yarn.safeScope
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -55,9 +56,9 @@ import androidx.compose.ui.res.stringResource
 import app.yarn.R
 
 class SettingsViewModel(val c: AppContainer) : ViewModel() {
-    val settings: StateFlow<AppSettings> = c.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
-    fun update(transform: (AppSettings) -> AppSettings) = viewModelScope.launch { c.settings.update(transform) }
-    fun launch(block: suspend AppContainer.() -> Unit) = viewModelScope.launch { c.block() }
+    val settings: StateFlow<AppSettings> = c.settings.settings.stateIn(safeScope, SharingStarted.Eagerly, AppSettings())
+    fun update(transform: (AppSettings) -> AppSettings) = viewModelScope.launch(app.yarn.CrashLog.handler) { c.settings.update(transform) }
+    fun launch(block: suspend AppContainer.() -> Unit) = viewModelScope.launch(app.yarn.CrashLog.handler) { c.block() }
 }
 
 @Composable

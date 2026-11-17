@@ -1,6 +1,7 @@
 package app.yarn.ui.inbox
 
 import androidx.lifecycle.ViewModel
+import app.yarn.safeScope
 import androidx.lifecycle.viewModelScope
 import app.yarn.AppContainer
 import app.yarn.data.db.ConversationEntity
@@ -73,7 +74,7 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
 
     /** The section (tab) being shown, if it lists only part of each chat. Personal shows chats whole. */
     val section: StateFlow<InboxGroup?> = _filter.map { sectionOf(it) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, sectionOf(initial))
+        .stateIn(safeScope, SharingStarted.Eagerly, sectionOf(initial))
 
     val items: StateFlow<List<InboxItem>?> = _filter
         .flatMapLatest { f -> c.conversations.observe(f).map { sectionOf(f) to it } }
@@ -84,7 +85,7 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
             list.map { toItem(it, sims, section, codes[it.id]) }
         }
         .flowOn(Dispatchers.IO)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        .stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private fun codeIn(body: String, date: Long): String? =
         c.engine.extract(body, date).firstOrNull { it.type == EntityType.OTP }?.value
@@ -134,20 +135,33 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
             val spamFilter = InboxFilter(InboxView.SPAM)
             if (spam.first > 0 || current == spamFilter) add(InboxChip(R.string.verdict_spam, spamFilter, unread = spam.second))
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), listOf(InboxChip(R.string.chip_all, InboxFilter())))
+    }.stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), listOf(InboxChip(R.string.chip_all, InboxFilter())))
+
+    /** Your own card from Contacts, for the profile button. */
+    val me: StateFlow<app.yarn.data.contacts.ContactInfo?> = c.contacts.version
+        .map { c.contacts.me() }
+        .flowOn(Dispatchers.IO)
+        .stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val sims: StateFlow<List<SimInfo>> = c.sims.sims
+
+    /** The crash report from last time, until it's shared or dismissed. */
+    private val _crash = MutableStateFlow(if (initial.view == InboxView.ALL) app.yarn.CrashLog.pending() else null)
+    val crash: StateFlow<String?> = _crash
+    fun dismissCrash() { app.yarn.CrashLog.dismiss(); _crash.value = null }
 
     /** Sorting / re-sorting progress, and any backup or restore under way. */
     val job = c.progress.job
     val backup = c.backup.state
 
-    val spamUnread = c.db.conversations().unreadSpam().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    val spamUnread = c.db.conversations().unreadSpam().stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     val status: StateFlow<InboxStatus> = combine(
         c.isDefaultSmsApp, c.airplaneMode, c.db.messages().waitingForService(), c.db.messages().failedCount(), c.sync.progress,
     ) { def, air, waiting, failed, sync -> InboxStatus(def, air, waiting, failed, sync) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxStatus())
+        .stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), InboxStatus())
 
-    val settings: StateFlow<AppSettings> = c.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
+    val settings: StateFlow<AppSettings> = c.settings.settings.stateIn(safeScope, SharingStarted.Eagerly, AppSettings())
 
     /** Old codes and offers that could be cleared; only counted while the inbox would suggest a clean-up. */
     @OptIn(kotlinx.coroutines.FlowPreview::class)
@@ -162,10 +176,10 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
             }
         }
         .flowOn(Dispatchers.IO)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+        .stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    fun dismissCleanHint() = viewModelScope.launch { c.settings.update { it.copy(cleanHintDismissedAt = System.currentTimeMillis()) } }
-    fun dismissCleanReport() = viewModelScope.launch { c.settings.update { it.copy(autoCleanReport = -1) } }
+    fun dismissCleanHint() = viewModelScope.launch(app.yarn.CrashLog.handler) { c.settings.update { it.copy(cleanHintDismissedAt = System.currentTimeMillis()) } }
+    fun dismissCleanReport() = viewModelScope.launch(app.yarn.CrashLog.handler) { c.settings.update { it.copy(autoCleanReport = -1) } }
 
     private val _selection = MutableStateFlow<Set<Long>>(emptySet())
     val selection: StateFlow<Set<Long>> = _selection
@@ -186,7 +200,7 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
 
     private fun act(ids: Set<Long>, block: suspend (Set<Long>) -> Unit) {
         if (ids.isEmpty()) return
-        viewModelScope.launch { block(ids) }
+        viewModelScope.launch(app.yarn.CrashLog.handler) { block(ids) }
     }
 
     fun archive(ids: Set<Long> = selected(), archived: Boolean = true) = act(ids) {
@@ -218,7 +232,7 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     fun markUnread(ids: Set<Long> = selected()) = act(ids) { c.conversations.markUnread(it, section.value?.categories.orEmpty()) }
 
     fun markAllRead() {
-        viewModelScope.launch {
+        viewModelScope.launch(app.yarn.CrashLog.handler) {
             val ids = c.db.messages().unreadConversationIds()
             if (ids.isEmpty()) {
                 _events.tryEmit(UndoEvent(c.app.getString(R.string.all_caught_up_msg), null))
@@ -272,7 +286,7 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
 
     fun refreshPlatformState() = c.refreshPlatformState()
 
-    fun runUndo(e: UndoEvent) { e.undo?.let { u -> viewModelScope.launch { u() } } }
+    fun runUndo(e: UndoEvent) { e.undo?.let { u -> viewModelScope.launch(app.yarn.CrashLog.handler) { u() } } }
 
     companion object {
         fun sectionOf(f: InboxFilter): InboxGroup? =

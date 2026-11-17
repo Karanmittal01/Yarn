@@ -229,7 +229,7 @@ fun NotificationsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     SettingsScaffold(stringResource(R.string.notifications), onBack) {
         notificationItems(s, { vm.update(it) }) {
-            context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+            runCatching { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }
         }
     }
 }
@@ -295,7 +295,7 @@ fun MessagingScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                 SwitchRow(stringResource(R.string.group_messaging), stringResource(R.string.group_messaging_sub), s.groupMms) { v -> vm.update { it.copy(groupMms = v) } }
                 ClickRow(stringResource(R.string.exact_alarms), stringResource(R.string.exact_alarms_sub)) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))
+                        runCatching { context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}"))) }
                     }
                 }
             }

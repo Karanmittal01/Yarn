@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PushPin
@@ -140,6 +141,7 @@ sealed interface InboxDestination {
     data object Settings : InboxDestination
     data object Cleanup : InboxDestination
     data object Bin : InboxDestination
+    data object Spam : InboxDestination
 }
 
 @Composable
@@ -166,6 +168,10 @@ fun InboxScreen(
     val junk by vm.junk.collectAsStateWithLifecycle()
     val job by vm.job.collectAsStateWithLifecycle()
     val backupState by vm.backup.collectAsStateWithLifecycle()
+    val me by vm.me.collectAsStateWithLifecycle()
+    val sims by vm.sims.collectAsStateWithLifecycle()
+    val crash by vm.crash.collectAsStateWithLifecycle()
+    var account by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -215,9 +221,9 @@ fun InboxScreen(
                         onShare = {
                             val ids = selection
                             vm.clearSelection()
-                            scope.launch {
+                            scope.launch(app.yarn.CrashLog.handler) {
                                 val text = vm.transcript(ids)
-                                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), shareTitle))
+                                runCatching { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), shareTitle)) }
                             }
                         },
                     )
@@ -226,16 +232,11 @@ fun InboxScreen(
                         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     )
-                    else -> InboxHeader(
-                        title = title,
-                        onSearch = onSearch,
-                        spamUnread = spamUnread,
-                        hasUnread = items.orEmpty().any { it.conversation.unreadCount > 0 },
-                        onMarkAllRead = vm::markAllRead,
-                        onNavigate = onNavigate,
-                    )
+                    else -> InboxHeader(title = title, onSearch = onSearch, me = me, collapsed = scrolled, onProfile = { account = true })
                 }
                 if (showChips && chips.size > 1) {
+                    // A new tab starts at the top of its list.
+                    LaunchedEffect(filter) { listState.scrollToItem(0) }
                     LazyRow(
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -279,6 +280,12 @@ fun InboxScreen(
                 contentPadding = PaddingValues(top = 10.dp, bottom = padding.calculateBottomPadding() + 110.dp),
             ) {
                 item(key = "banners", contentType = "banners") {
+                    crash?.let { report ->
+                        CrashBanner(
+                            onSend = { shareFeedback(context, report); vm.dismissCrash() },
+                            onDismiss = vm::dismissCrash,
+                        )
+                    }
                     StatusBanners(status, onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } })
                     WorkBanners(job, backupState, importing = status.sync.running)
                     CleanBanners(
@@ -292,6 +299,7 @@ fun InboxScreen(
                     list.isEmpty() -> item(key = "empty") { EmptyInbox(filter.view, status.sync.running) }
                     else -> items(list, key = { it.conversation.id }, contentType = { "row" }) { item ->
                         val id = item.conversation.id
+                        Box(Modifier.animateItem()) {
                         SwipeableRow(
                             enabled = !selecting && filter.view != InboxView.BLOCKED,
                             start = settings.swipeStart,
@@ -316,13 +324,39 @@ fun InboxScreen(
                                 onCopyCode = vm::copyCode,
                             )
                         }
+                        }
                     }
                 }
                 if (!list.isNullOrEmpty()) {
                     item(key = "count", contentType = "count") { InboxCount(list) }
                 }
             }
+            // Far down a long list: one tap back to the newest, like Google Messages.
+            val far by remember { derivedStateOf { listState.firstVisibleItemIndex > 8 } }
+            androidx.compose.animation.AnimatedVisibility(
+                visible = far && !selecting,
+                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(initialScale = 0.7f),
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut(targetScale = 0.7f),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = padding.calculateBottomPadding() + 22.dp),
+            ) {
+                androidx.compose.material3.FilledTonalIconButton(
+                    onClick = { scope.launch(app.yarn.CrashLog.handler) { listState.animateScrollToItem(0) } },
+                    modifier = Modifier.size(52.dp),
+                    colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+                ) { Icon(Icons.Filled.ArrowUpward, stringResource(R.string.scroll_to_top)) }
+            }
         }
+    }
+
+    if (account) {
+        AccountSheet(
+            me = me, sims = sims,
+            hasUnread = items.orEmpty().any { it.conversation.unreadCount > 0 },
+            onMarkAllRead = vm::markAllRead,
+            onNavigate = onNavigate,
+            onFeedback = { shareFeedback(context, app.yarn.CrashLog.all()) },
+            onDismiss = { account = false },
+        )
     }
 
     confirmDelete?.let { ids ->
@@ -345,45 +379,65 @@ fun InboxScreen(
     }
 }
 
+/** Title, search and your profile picture. The title shrinks once the list is scrolled. */
 @Composable
 internal fun InboxHeader(
     title: String,
     onSearch: (() -> Unit)?,
-    spamUnread: Int,
-    hasUnread: Boolean,
-    onMarkAllRead: () -> Unit,
-    onNavigate: (InboxDestination) -> Unit,
+    me: app.yarn.data.contacts.ContactInfo?,
+    collapsed: Boolean = false,
+    onProfile: () -> Unit,
 ) {
-    var menu by remember { mutableStateOf(false) }
+    val top by androidx.compose.animation.core.animateDpAsState(if (collapsed) 6.dp else 22.dp, label = "headerTop")
+    val titleSize by androidx.compose.animation.core.animateFloatAsState(if (collapsed) 22f else 27f, label = "titleSize")
+    val logo by androidx.compose.animation.core.animateDpAsState(if (collapsed) 26.dp else 32.dp, label = "logo")
     Row(
-        Modifier.fillMaxWidth().statusBarsPadding().padding(top = 20.dp, bottom = 8.dp).height(56.dp).padding(start = 20.dp, end = 6.dp),
+        Modifier.fillMaxWidth().statusBarsPadding().padding(top = top, bottom = 6.dp).height(56.dp).padding(start = 20.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        YarnLogo(size = 30.dp)
+        YarnLogo(size = logo)
         Spacer(Modifier.width(14.dp))
         Text(
             title,
-            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Normal, fontSize = 25.sp),
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Normal, fontSize = titleSize.sp),
             color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
             modifier = Modifier.weight(1f).semantics { heading() },
         )
         if (onSearch != null) {
-            IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, stringResource(R.string.search_messages), Modifier.size(22.dp)) }
+            IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, stringResource(R.string.search_messages), Modifier.size(24.dp)) }
         }
-        Box {
-            IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.more_options), Modifier.size(22.dp)) }
-            YarnMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                YarnMenuItem(stringResource(R.string.mark_all_read), Icons.Outlined.DoneAll, { menu = false; onMarkAllRead() }, enabled = hasUnread)
-                YarnMenuDivider()
-                YarnMenuItem(stringResource(R.string.starred), Icons.Outlined.StarOutline, { menu = false; onNavigate(InboxDestination.Starred) })
-                YarnMenuItem(stringResource(R.string.archived), Icons.Outlined.Archive, { menu = false; onNavigate(InboxDestination.Archived) })
-                YarnMenuItem(stringResource(R.string.clean_up), Icons.Outlined.CleaningServices, { menu = false; onNavigate(InboxDestination.Cleanup) })
-                YarnMenuItem(stringResource(R.string.recycle_bin), Icons.Outlined.DeleteOutline, { menu = false; onNavigate(InboxDestination.Bin) })
-                YarnMenuDivider()
-                YarnMenuItem(stringResource(R.string.settings), Icons.Outlined.Settings, { menu = false; onNavigate(InboxDestination.Settings) })
+        ProfileButton(me, onProfile)
+    }
+}
+
+/** Shown once after Yarn closed unexpectedly, so the report can be shared and the bug fixed. */
+@Composable
+private fun CrashBanner(onSend: () -> Unit, onDismiss: () -> Unit) {
+    androidx.compose.material3.Card(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(22.dp),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        Column(Modifier.padding(start = 18.dp, end = 8.dp, top = 14.dp, bottom = 4.dp)) {
+            Text(stringResource(R.string.crash_banner), style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.crash_banner_sub), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp, end = 10.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(R.string.dismiss)) }
+                androidx.compose.material3.TextButton(onClick = onSend) { Text(stringResource(R.string.send_report)) }
             }
         }
     }
+}
+
+/** Opens the share sheet with a feedback note and Yarn's error log (no message content). */
+internal fun shareFeedback(context: android.content.Context, log: String) {
+    val body = context.getString(R.string.feedback_body) + "\n\n\n---\n" +
+        "Yarn ${app.yarn.BuildConfig.VERSION_NAME} (${app.yarn.BuildConfig.VERSION_CODE}) · Android ${android.os.Build.VERSION.RELEASE} · ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n\n" + log
+    val send = Intent(Intent.ACTION_SEND).setType("text/plain")
+        .putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.feedback_subject))
+        .putExtra(Intent.EXTRA_TEXT, body.take(60_000))
+    runCatching { context.startActivity(Intent.createChooser(send, context.getString(R.string.help_feedback))) }
 }
 
 @Composable

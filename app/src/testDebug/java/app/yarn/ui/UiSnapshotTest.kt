@@ -83,7 +83,7 @@ class UiSnapshotTest {
             containerColor = header,
             topBar = {
                 Column(Modifier.background(header)) {
-                    app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.messages), {}, 0, true, {}, {})
+                    app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.messages), {}, me = karan, onProfile = {})
                     androidx.compose.foundation.lazy.LazyRow(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
@@ -134,7 +134,7 @@ class UiSnapshotTest {
     private fun TabMock(rows: List<InboxItem>, selected: InboxGroup) {
         val header = app.yarn.ui.inbox.inboxHeaderColor()
         Column(Modifier.fillMaxSize().background(header)) {
-            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.messages), {}, 0, true, {}, {})
+            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.messages), {}, me = karan, onProfile = {})
             androidx.compose.foundation.lazy.LazyRow(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
@@ -167,7 +167,7 @@ class UiSnapshotTest {
             item(6, "VK-LOANPR", "Pre-approved loan of Rs 5 lakh in 5 minutes! No documents. Apply: loanfast.in", "SPAM", 1, "VK-LOANPR-P", true, InboxGroup.OFFERS),
         )
         Column(Modifier.fillMaxSize().background(header)) {
-            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.messages), {}, 0, true, {}, {})
+            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.messages), {}, me = karan, onProfile = {})
             androidx.compose.foundation.lazy.LazyRow(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
@@ -325,6 +325,44 @@ class UiSnapshotTest {
                 onSend = {}, onSchedule = {}, onRewrite = {}, isGroupMms = false,
             )
         }
+    }
+
+    private val karan = app.yarn.data.contacts.ContactInfo("Karan Mittal", null, null, false)
+
+    /** A real-looking thread: runs of messages, a day break, an online translation and "Delivered". */
+    @androidx.compose.runtime.Composable
+    private fun RunsMock() {
+        val noop = app.yarn.ui.conversation.BubbleCallbacks({}, {}, {}, {}, {}, { _, _ -> })
+        val D = app.yarn.data.db.MessageStatus.DELIVERED
+        val S = app.yarn.data.db.MessageStatus.SENT
+        val thread = listOf(
+            msg(1, "Hey! Are you coming to Diwali dinner on Saturday?", false, 1, 300),
+            msg(2, "Mom is making chole bhature", false, 1, 299),
+            msg(3, "Yes! Wouldn't miss it", true, 1, 290, S),
+            msg(4, "What time should I come?", true, 1, 289, S),
+            msg(5, "Kal shaam ko milte hain? Movie dekhne chalenge", false, 1, 62),
+            msg(6, "7 baje theek rahega", false, 1, 61),
+            msg(7, "Perfect, see you at 7", true, 1, 12, D),
+            msg(8, "I'll book the tickets 🎬", true, 1, 11, D),
+        ).map { it.message }
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 28.dp)) {
+            thread.forEachIndexed { i, m ->
+                val position = app.yarn.ui.conversation.runPosition(thread.getOrNull(i - 1), m, thread.getOrNull(i + 1))
+                app.yarn.ui.conversation.MessageBubble(
+                    app.yarn.data.db.MessageWithAttachments(m, emptyList(), emptyList()), null, false, false,
+                    if (m.id == 5L) app.yarn.ui.conversation.TranslationUi.Done("Shall we meet tomorrow evening? Let's go to a movie", "hi-Latn", online = true) else null,
+                    false, noop, translateTo = if (m.id == 6L) "en" else null, position = position, latestSent = m.id == 8L,
+                )
+            }
+        }
+    }
+    @Test fun chatRunsDark() = shot(true, "45_chat_runs_delivered_dark") { RunsMock() }
+    @Test fun chatRunsLight() = shot(false, "46_chat_runs_delivered_light") { RunsMock() }
+    @Test fun accountSheetDark() = shot(true, "47_account_sheet_dark") {
+        app.yarn.ui.inbox.AccountSheetContent(karan, listOf(jio, airtel), true, {}, {}, {}, {})
+    }
+    @Test fun accountSheetLight() = shot(false, "48_account_sheet_light") {
+        app.yarn.ui.inbox.AccountSheetContent(karan, listOf(jio), true, {}, {}, {}, {})
     }
 
     @Test fun chatDualSimLight() = shot(false, "15_chat_dual_sim_translate_light") { ChatMock(translated = false) }
