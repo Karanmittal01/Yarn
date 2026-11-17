@@ -104,6 +104,7 @@ object CrashLog {
         _pending.value = pending()
     }
 
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.R)
     private fun describe(e: ApplicationExitInfo): String {
         val reason = when (e.reason) {
             ApplicationExitInfo.REASON_CRASH -> "Crash"
@@ -126,6 +127,7 @@ object CrashLog {
      * What Android kept of the moment it stopped: the thread dump for a hang, or the native backtrace (a binary
      * record on Android 12+, from which the readable library and function names are kept).
      */
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.R)
     private fun trace(e: ApplicationExitInfo): String {
         val bytes = runCatching { e.traceInputStream?.use { it.readNBytesCompat(256 * 1024) } }.getOrNull() ?: return ""
         val text = if (e.reason == ApplicationExitInfo.REASON_CRASH_NATIVE) {
