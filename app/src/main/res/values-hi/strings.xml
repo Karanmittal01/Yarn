@@ -828,4 +828,10 @@
     <string name="use_photo">यह फ़ोटो लगाएँ</string>
     <string name="crop_hint">ज़ूम के लिए पिंच करें, खिसकाने के लिए खींचें</string>
     <string name="profile_private_note">सिर्फ़ इसी फ़ोन पर Yarn में दिखता है। किसी को भेजा नहीं जाता।</string>
+    <string name="search_bin">रीसायकल बिन में खोजें</string>
+    <string name="bin_search_tip">कोई नाम, नंबर या मैसेज का कोई शब्द खोजकर देखें।</string>
+    <plurals name="bin_found_n">
+        <item quantity="one">बिन के %2$d मैसेज में से %1$d मिला</item>
+        <item quantity="other">बिन के %2$d मैसेज में से %1$d मिले</item>
+    </plurals>
 </resources>

@@ -220,6 +220,24 @@ class UiSnapshotTest {
     @Test fun binSelected() = shot(false, "40_bin_selected_light") {
         app.yarn.ui.bin.BinContent(binItems, 7, setOf(2L, 4L), onToggle = {}, onRestore = {}, onDeleteForever = {}, onRestoreAll = {}, onEmpty = {}, onBack = {}, now = now)
     }
+    // A long message in the bin: the search shows the part that matches.
+    private val binSearchItems = binItems + binned(6, "Amazon", "AX-AMAZON-S",
+        "Hello from Amazon! We have refunded Rs 1,299 for your return of boAt Airdopes to your original payment method.", 300)
+    @Test fun binSearch() = shot(true, "54_bin_search_dark") {
+        val q = "refund"
+        app.yarn.ui.bin.BinContent(app.yarn.ui.bin.BinSearch.filter(binSearchItems, q), 7, emptySet(), onToggle = {}, onRestore = {}, onDeleteForever = {},
+            onRestoreAll = {}, onEmpty = {}, onBack = {}, now = now, query = q, total = binSearchItems.size, onSelectAll = {})
+    }
+    @Test fun binSearchNumber() = shot(false, "55_bin_search_number_light") {
+        val q = "98123"
+        app.yarn.ui.bin.BinContent(app.yarn.ui.bin.BinSearch.filter(binSearchItems, q), 7, emptySet(), onToggle = {}, onRestore = {}, onDeleteForever = {},
+            onRestoreAll = {}, onEmpty = {}, onBack = {}, now = now, query = q, total = binSearchItems.size, onSelectAll = {})
+    }
+    @Test fun binSearchNothing() = shot(true, "56_bin_search_nothing_dark") {
+        val q = "passport"
+        app.yarn.ui.bin.BinContent(app.yarn.ui.bin.BinSearch.filter(binSearchItems, q), 7, emptySet(), onToggle = {}, onRestore = {}, onDeleteForever = {},
+            onRestoreAll = {}, onEmpty = {}, onBack = {}, now = now, query = q, total = binSearchItems.size, onSelectAll = {})
+    }
     @Test fun binEmpty() = shot(false, "41_bin_empty") {
         app.yarn.ui.bin.BinContent(emptyList(), 7, emptySet(), onToggle = {}, onRestore = {}, onDeleteForever = {}, onRestoreAll = {}, onEmpty = {}, onBack = {}, now = now)
     }

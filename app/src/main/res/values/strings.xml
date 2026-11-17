@@ -830,4 +830,10 @@
     <string name="use_photo">Use photo</string>
     <string name="crop_hint">Pinch to zoom, drag to move</string>
     <string name="profile_private_note">Shown only in Yarn on this phone. It isn\'t sent to anyone.</string>
+    <string name="search_bin">Search recycle bin</string>
+    <string name="bin_search_tip">Try a name, a number or a word from the message.</string>
+    <plurals name="bin_found_n">
+        <item quantity="one">Found %1$d of %2$d messages</item>
+        <item quantity="other">Found %1$d of %2$d messages</item>
+    </plurals>
 </resources>

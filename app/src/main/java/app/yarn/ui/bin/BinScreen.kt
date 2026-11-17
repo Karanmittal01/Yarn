@@ -30,6 +30,10 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.RestoreFromTrash
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -55,6 +59,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -80,11 +86,22 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class BinViewModel(private val c: AppContainer) : ViewModel() {
     val items: StateFlow<List<BinEntity>?> = c.bin.items.stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), null)
     val settings: StateFlow<AppSettings> = c.settings.settings.stateIn(safeScope, SharingStarted.Eagerly, AppSettings())
+
+    private val _query = MutableStateFlow("")
+    val query: StateFlow<String> = _query
+
+    /** What the list shows: everything, or just the messages matching the search. */
+    val shown: StateFlow<List<BinEntity>?> = combine(items, _query) { all, q -> all?.let { BinSearch.filter(it, q) } }
+        .flowOn(Dispatchers.Default)
+        .stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _selection = MutableStateFlow<Set<Long>>(emptySet())
     val selection: StateFlow<Set<Long>> = _selection
@@ -94,6 +111,15 @@ class BinViewModel(private val c: AppContainer) : ViewModel() {
 
     fun toggle(id: Long) { _selection.value = _selection.value.let { if (id in it) it - id else it + id } }
     fun clearSelection() { _selection.value = emptySet() }
+
+    /** A new search drops picks that it hides, so Restore never touches messages you can't see. */
+    fun setQuery(q: String) {
+        _query.value = q
+        val visible = BinSearch.filter(items.value.orEmpty(), q).mapTo(HashSet()) { it.id }
+        _selection.value = _selection.value.filterTo(HashSet()) { it in visible }
+    }
+
+    fun selectAll(ids: Collection<Long>) { _selection.value = ids.toSet() }
 
     /** App scope, so leaving the screen can't stop a restore half-way. */
     fun restore(ids: Collection<Long>) {
@@ -119,16 +145,22 @@ class BinViewModel(private val c: AppContainer) : ViewModel() {
 
 @Composable
 fun BinScreen(vm: BinViewModel, onBack: () -> Unit) {
-    val items by vm.items.collectAsStateWithLifecycle()
+    val all by vm.items.collectAsStateWithLifecycle()
+    val shown by vm.shown.collectAsStateWithLifecycle()
+    val query by vm.query.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val selection by vm.selection.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { vm.events.collect { snackbar.showSnackbar(it) } }
-    BackHandler(enabled = selection.isNotEmpty()) { vm.clearSelection() }
+    // Back first drops the picks, then the search, then leaves.
+    BackHandler(enabled = selection.isNotEmpty() || query.isNotEmpty()) {
+        if (selection.isNotEmpty()) vm.clearSelection() else vm.setQuery("")
+    }
     BinContent(
-        items = items, binDays = settings.binDays, selection = selection, snackbar = snackbar,
+        items = if (query.isEmpty()) all else shown, binDays = settings.binDays, selection = selection, snackbar = snackbar,
         onToggle = vm::toggle, onRestore = vm::restore, onDeleteForever = vm::deleteForever,
         onRestoreAll = vm::restoreAll, onEmpty = vm::empty, onBack = onBack,
+        query = query, onQuery = vm::setQuery, total = all?.size ?: 0, onSelectAll = vm::selectAll,
     )
 }
 
@@ -146,34 +178,50 @@ fun BinContent(
     onEmpty: () -> Unit,
     onBack: () -> Unit,
     now: Long = System.currentTimeMillis(),
+    /** What's typed in the search bar; [items] are then only the matches. */
+    query: String = "",
+    onQuery: (String) -> Unit = {},
+    /** Everything in the bin, searched or not. */
+    total: Int = items?.size ?: 0,
+    onSelectAll: ((Collection<Long>) -> Unit)? = null,
 ) {
     val page = settingsPageColor()
     var menu by remember { mutableStateOf(false) }
     var confirmEmpty by remember { mutableStateOf(false) }
     var confirmForever by remember { mutableStateOf<Set<Long>?>(null) }
     val list = items.orEmpty()
+    val searching = query.isNotBlank()
     Scaffold(
         containerColor = page,
         // The page colour isn't a theme colour, so say which text colour goes on it.
         contentColor = MaterialTheme.colorScheme.onSurface,
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            TopAppBar(
-                title = { Text(if (selection.isEmpty()) stringResource(R.string.recycle_bin) else "${selection.size}") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = page),
-                actions = {
-                    if (list.isNotEmpty() && selection.isEmpty()) {
-                        Box {
-                            IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.more_options)) }
-                            YarnMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                                YarnMenuItem(stringResource(R.string.restore_all), Icons.Outlined.RestoreFromTrash, { menu = false; onRestoreAll() })
-                                YarnMenuItem(stringResource(R.string.empty_bin), Icons.Outlined.DeleteForever, { menu = false; confirmEmpty = true })
+            Column(Modifier.background(page)) {
+                TopAppBar(
+                    title = { Text(if (selection.isEmpty()) stringResource(R.string.recycle_bin) else "${selection.size}") },
+                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = page),
+                    actions = {
+                        if (list.isNotEmpty() && selection.isEmpty()) {
+                            Box {
+                                IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.more_options)) }
+                                YarnMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                                    // While searching, act on what's found by picking it; Restore all and Empty stay whole-bin.
+                                    if (onSelectAll != null) {
+                                        YarnMenuItem(stringResource(R.string.select_all), Icons.Outlined.SelectAll, { menu = false; onSelectAll(list.map { it.id }) })
+                                    }
+                                    if (!searching) {
+                                        YarnMenuItem(stringResource(R.string.restore_all), Icons.Outlined.RestoreFromTrash, { menu = false; onRestoreAll() })
+                                        YarnMenuItem(stringResource(R.string.empty_bin), Icons.Outlined.DeleteForever, { menu = false; confirmEmpty = true })
+                                    }
+                                }
                             }
                         }
-                    }
-                },
-            )
+                    },
+                )
+                if (total > 0) BinSearchBar(query, onQuery)
+            }
         },
         bottomBar = {
             androidx.compose.animation.AnimatedVisibility(
@@ -202,23 +250,27 @@ fun BinContent(
         },
     ) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
-            item {
+            if (!searching || list.isNotEmpty()) item(key = "note") {
                 Text(
-                    when {
-                        binDays == BIN_OFF -> stringResource(R.string.bin_off_note)
-                        binDays == BIN_NEVER_EMPTY -> stringResource(R.string.bin_keeps_forever)
-                        else -> pluralStringResource(R.plurals.bin_keeps_days, binDays, binDays)
-                    } + " " + stringResource(R.string.bin_mms_note),
+                    if (searching) {
+                        pluralStringResource(R.plurals.bin_found_n, list.size, list.size, total)
+                    } else {
+                        when {
+                            binDays == BIN_OFF -> stringResource(R.string.bin_off_note)
+                            binDays == BIN_NEVER_EMPTY -> stringResource(R.string.bin_keeps_forever)
+                            else -> pluralStringResource(R.plurals.bin_keeps_days, binDays, binDays)
+                        } + " " + stringResource(R.string.bin_mms_note)
+                    },
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                 )
             }
             if (items != null && list.isEmpty()) {
-                item { EmptyBin() }
+                item(key = "empty") { if (searching) NothingFound(query) else EmptyBin() }
             }
             items(list, key = { it.id }) { b ->
                 Box(Modifier.animateItem(fadeInSpec = app.yarn.ui.theme.Motion.fade(220), placementSpec = app.yarn.ui.theme.Motion.offset, fadeOutSpec = app.yarn.ui.theme.Motion.fade(160))) {
-                    BinRow(b, selected = b.id in selection, now = now) { onToggle(b.id) }
+                    BinRow(b, selected = b.id in selection, now = now, query = query) { onToggle(b.id) }
                 }
             }
         }
@@ -252,15 +304,76 @@ private fun EmptyBin() {
     }
 }
 
+/** The search bar under the title, in the same rounded style as the inbox's. */
+@Composable
+private fun BinSearchBar(query: String, onQuery: (String) -> Unit) {
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    val hint = stringResource(R.string.search_bin)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 10.dp)
+            .height(50.dp)
+            .clip(RoundedCornerShape(25.dp))
+            .background(app.yarn.ui.settings.settingsCardColor())
+            .padding(start = 16.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.Search, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(12.dp))
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            if (query.isEmpty()) {
+                Text(hint, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
+            androidx.compose.foundation.text.BasicTextField(
+                value = query,
+                onValueChange = onQuery,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { focus.clearFocus() }),
+                modifier = Modifier.fillMaxWidth().semantics { contentDescription = hint },
+            )
+        }
+        androidx.compose.animation.AnimatedVisibility(
+            query.isNotEmpty(),
+            enter = androidx.compose.animation.fadeIn(app.yarn.ui.theme.Motion.fade(160)),
+            exit = androidx.compose.animation.fadeOut(app.yarn.ui.theme.Motion.fade(120)),
+        ) {
+            IconButton(onClick = { onQuery("") }) { Icon(Icons.Filled.Close, stringResource(R.string.clear), Modifier.size(20.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun NothingFound(query: String) {
+    Column(Modifier.fillMaxWidth().padding(top = 72.dp, start = 32.dp, end = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(80.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh), contentAlignment = Alignment.Center) {
+            Icon(Icons.Outlined.SearchOff, null, Modifier.size(36.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(
+            stringResource(R.string.no_results, query.trim()), style = MaterialTheme.typography.titleMedium,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        Text(
+            stringResource(R.string.bin_search_tip), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+    }
+}
+
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun BinRow(b: BinEntity, selected: Boolean, now: Long, onToggle: () -> Unit) {
+private fun BinRow(b: BinEntity, selected: Boolean, now: Long, query: String = "", onToggle: () -> Unit) {
     val context = LocalContext.current
     val preview = when {
-        b.body.isNotBlank() -> b.body
+        b.body.isNotBlank() -> BinSearch.snippet(b.body, query)
         b.attachments.isNotEmpty() || b.kind == MessageKind.MMS -> stringResource(R.string.attachment)
         else -> ""
     }
+    val mark = MaterialTheme.colorScheme.primary
     val deleted = DateUtils.getRelativeTimeSpanString(b.deletedAt, now, DateUtils.MINUTE_IN_MILLIS).toString()
     Row(
         Modifier
@@ -284,14 +397,14 @@ private fun BinRow(b: BinEntity, selected: Boolean, now: Long, onToggle: () -> U
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(b.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(BinSearch.highlight(b.title, query, mark), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
                 Text(Format.listTime(context, b.date), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (b.attachments.isNotEmpty()) Icon(Icons.Outlined.Image, null, Modifier.padding(end = 4.dp).size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
-                    if (b.outgoing) stringResource(R.string.you_prefix, preview) else preview,
+                    BinSearch.highlight(if (b.outgoing) stringResource(R.string.you_prefix, preview) else preview, query, mark),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
