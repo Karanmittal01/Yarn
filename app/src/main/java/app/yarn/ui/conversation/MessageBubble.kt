@@ -202,12 +202,15 @@ fun MessageBubble(
         if (senderLabel != null && !outgoing) {
             Text(senderLabel, style = MaterialTheme.typography.labelMedium, color = colors.primary, modifier = Modifier.padding(start = 12.dp, bottom = 3.dp))
         }
+        // A small translate symbol sits beside an incoming bubble, so it adds no height to the chat.
+        val showTranslate = !outgoing && (translateTo != null || translation != null)
+        Row(verticalAlignment = Alignment.Bottom) {
         Surface(
             color = container,
             contentColor = content,
             shape = shape,
             modifier = Modifier
-                .widthIn(max = 300.dp)
+                .widthIn(max = if (showTranslate) 276.dp else 300.dp)
                 .clip(shape)
                 .then(if (gradient) Modifier.background(app.yarn.ui.theme.Brand.bubble, shape) else Modifier)
                 .combinedClickable(onClick = { callbacks.onClick(item) }, onLongClick = { callbacks.onLongClick(item) }, onLongClickLabel = selectMessageLabel)
@@ -246,6 +249,13 @@ fun MessageBubble(
                 }
             }
         }
+        if (showTranslate) {
+            TranslateIcon(
+                translation, translateTo, onTranslate = { mobile -> callbacks.onTranslate(item, mobile) },
+                onOpenGoogle = { Actions.openUrl(context, googleTranslateUrl(m.body, translateTo)) },
+            )
+        }
+        }
         if (showMeta) Row(Modifier.padding(start = 6.dp, end = 6.dp, top = 3.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             if (m.starred) Icon(Icons.Outlined.Star, null, Modifier.padding(end = 3.dp).size(12.dp), tint = colors.tertiary)
             val meta = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp, letterSpacing = 0.1.sp)
@@ -259,12 +269,6 @@ fun MessageBubble(
                 MessageStatus.DELAYED -> UndoCountdown(m.nextAttemptAt) { callbacks.onUndo(m.id) }
                 MessageStatus.SCHEDULED, MessageStatus.WAITING_FOR_SERVICE, MessageStatus.QUEUED -> TextButton(onClick = { callbacks.onUndo(m.id) }) { Text(stringResource(R.string.cancel)) }
             }
-        }
-        if (!outgoing && (translateTo != null || translation != null)) {
-            TranslateAction(
-                translation, translateTo, onTranslate = { mobile -> callbacks.onTranslate(item, mobile) },
-                onOpenGoogle = { Actions.openUrl(context, googleTranslateUrl(m.body, translateTo)) },
-            )
         }
         if (showInsights && !outgoing) InsightChips(item, risky, onRisky = { pendingRiskyUrl = it })
     }
@@ -290,56 +294,70 @@ fun MessageBubble(
     }
 }
 
-/** One-tap translation under an incoming bubble: Translate → Show original, with pack download on mobile data. */
+/**
+ * The small translate symbol beside an incoming bubble. Tap to translate, tap again for the
+ * original; it spins while working, turns into a download arrow when a language pack is needed,
+ * and anything that goes wrong is said in a short toast instead of a row of text.
+ */
 @Composable
-private fun TranslateAction(state: TranslationUi?, target: String?, onTranslate: (allowMobileData: Boolean) -> Unit, onOpenGoogle: () -> Unit) {
+private fun TranslateIcon(state: TranslationUi?, target: String?, onTranslate: (allowMobileData: Boolean) -> Unit, onOpenGoogle: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    @Composable fun link(text: String, mobile: Boolean = false, icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.Translate) {
-        Row(
-            Modifier.padding(start = 4.dp).clip(RoundedCornerShape(12.dp)).clickable { onTranslate(mobile) }.padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(icon, null, Modifier.size(16.dp), tint = colors.primary)
-            Spacer(Modifier.width(6.dp))
-            Text(text, style = MaterialTheme.typography.labelLarge, color = colors.primary, fontWeight = FontWeight.Medium)
+    val context = LocalContext.current
+    val error = state as? TranslationUi.Error
+    val errorText = error?.let {
+        when (it.reason) {
+            TranslationError.SAME_LANGUAGE -> stringResource(R.string.tr_same)
+            TranslationError.UNKNOWN_LANGUAGE -> stringResource(R.string.tr_unknown)
+            TranslationError.UNSUPPORTED -> stringResource(R.string.tr_unsupported)
+            TranslationError.OFFLINE -> stringResource(R.string.tr_offline)
+            TranslationError.FAILED -> stringResource(R.string.tr_failed)
         }
     }
-    when (state) {
-        null -> target?.let { link(stringResource(R.string.translate_to, languageName(it))) }
-        TranslationUi.Loading -> Row(Modifier.padding(start = 12.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = colors.primary)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.translating), style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant)
-        }
-        is TranslationUi.Done -> link(stringResource(R.string.show_original))
-        is TranslationUi.NeedsDownload -> Column(Modifier.padding(top = 2.dp)) {
-            Text(
-                stringResource(R.string.translate_needs_download, languageName(state.from)),
-                style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant,
-                modifier = Modifier.padding(start = 12.dp, end = 12.dp),
-            )
-            link(stringResource(R.string.download_translate), mobile = true, icon = Icons.Outlined.Download)
-        }
-        is TranslationUi.Error -> Row(Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                when (state.reason) {
-                    TranslationError.SAME_LANGUAGE -> stringResource(R.string.tr_same)
-                    TranslationError.UNKNOWN_LANGUAGE -> stringResource(R.string.tr_unknown)
-                    TranslationError.UNSUPPORTED -> stringResource(R.string.tr_unsupported)
-                    TranslationError.OFFLINE -> stringResource(R.string.tr_offline)
-                    TranslationError.FAILED -> stringResource(R.string.tr_failed)
-                },
-                style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            if (state.reason == TranslationError.OFFLINE || state.reason == TranslationError.FAILED) link(stringResource(R.string.try_again), icon = Icons.Outlined.Refresh)
-            // Whatever the phone couldn't do, the Google Translate app or website can.
-            if (state.reason != TranslationError.SAME_LANGUAGE && state.reason != TranslationError.OFFLINE) {
-                Row(
-                    Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpenGoogle).padding(horizontal = 8.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) { Text(stringResource(R.string.open_google_translate), style = MaterialTheme.typography.labelLarge, color = colors.primary, fontWeight = FontWeight.Medium) }
+    val openGoogle = stringResource(R.string.open_google_translate)
+    val toast = errorText?.let {
+        if (error.reason == TranslationError.UNSUPPORTED || error.reason == TranslationError.UNKNOWN_LANGUAGE) "$it\n$openGoogle →" else it
+    }
+    val downloadText = (state as? TranslationUi.NeedsDownload)?.let { stringResource(R.string.translate_needs_download, languageName(it.from)) }
+    LaunchedEffect(state) {
+        (toast ?: downloadText)?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+    }
+    val description = when (state) {
+        null -> target?.let { stringResource(R.string.translate_to, languageName(it)) }.orEmpty()
+        TranslationUi.Loading -> stringResource(R.string.translating)
+        is TranslationUi.Done -> stringResource(R.string.show_original)
+        is TranslationUi.NeedsDownload -> stringResource(R.string.download_translate)
+        is TranslationUi.Error -> errorText.orEmpty()
+    }
+    val active = state is TranslationUi.Done
+    Box(
+        Modifier
+            .padding(start = 4.dp, bottom = 2.dp)
+            .size(32.dp)
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .background(if (active) colors.primary.copy(alpha = 0.14f) else androidx.compose.ui.graphics.Color.Transparent)
+            .clickable(enabled = state != TranslationUi.Loading) {
+                when {
+                    state is TranslationUi.NeedsDownload -> onTranslate(true)
+                    error == null -> onTranslate(false)
+                    error.reason == TranslationError.OFFLINE || error.reason == TranslationError.FAILED -> onTranslate(false)
+                    // Whatever the phone couldn't do, the Google Translate app or website can.
+                    error.reason != TranslationError.SAME_LANGUAGE -> onOpenGoogle()
+                }
             }
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        when (state) {
+            TranslationUi.Loading -> CircularProgressIndicator(Modifier.size(15.dp), strokeWidth = 2.dp, color = colors.primary)
+            is TranslationUi.NeedsDownload -> Icon(Icons.Outlined.Download, null, Modifier.size(18.dp), tint = colors.primary)
+            else -> Icon(
+                Icons.Outlined.Translate, null, Modifier.size(18.dp),
+                tint = when {
+                    active -> colors.primary
+                    error != null -> colors.error.copy(alpha = 0.8f)
+                    else -> colors.onSurfaceVariant.copy(alpha = 0.75f)
+                },
+            )
         }
     }
 }

@@ -186,7 +186,7 @@ private fun HomePane(nav: NavHostController) {
         val twoPane = width >= 720.dp
         if (!twoPane) {
             InboxScreen(
-                vm = inboxVm, title = stringResource(R.string.messages), selectedConversation = null,
+                vm = inboxVm, title = stringResource(R.string.app_name), selectedConversation = null,
                 onOpen = { id, section -> nav.navigate(ChatRoute(id, section = section?.name.orEmpty())) }, onNewMessage = { nav.navigate(NewChatRoute()) },
                 onSearch = { nav.navigate(SearchRoute) }, onNavigate = onNavigate,
             )
@@ -194,7 +194,7 @@ private fun HomePane(nav: NavHostController) {
             Row(Modifier.fillMaxSize()) {
                 Box(Modifier.width((width * 0.38f).coerceIn(320.dp, 440.dp)).fillMaxHeight()) {
                     InboxScreen(
-                        vm = inboxVm, title = stringResource(R.string.messages), selectedConversation = selected,
+                        vm = inboxVm, title = stringResource(R.string.app_name), selectedConversation = selected,
                         onOpen = { id, section -> selected = id; selectedSection = section?.name.orEmpty() }, onNewMessage = { nav.navigate(NewChatRoute()) },
                         onSearch = { nav.navigate(SearchRoute) }, onNavigate = onNavigate,
                     )

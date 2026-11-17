@@ -136,7 +136,7 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.settingsHubItems(
             YarnLogo(size = 44.dp)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text("Yarn", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
                 Text(
                     if (isDefault) stringResource(R.string.hub_default) else stringResource(R.string.hub_not_default),
                     style = MaterialTheme.typography.bodySmall,
@@ -358,7 +358,7 @@ fun AboutScreen(onBack: () -> Unit) {
             Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 YarnLogo(size = 72.dp)
                 Spacer(Modifier.height(4.dp))
-                Text("Yarn", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 Text(stringResource(R.string.version_n, BuildConfig.VERSION_NAME), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

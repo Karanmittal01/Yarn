@@ -83,7 +83,7 @@ class UiSnapshotTest {
             containerColor = header,
             topBar = {
                 Column(Modifier.background(header)) {
-                    app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.messages), {}, me = karan, onProfile = {})
+                    app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = karan, onProfile = {})
                     androidx.compose.foundation.lazy.LazyRow(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
@@ -134,7 +134,7 @@ class UiSnapshotTest {
     private fun TabMock(rows: List<InboxItem>, selected: InboxGroup) {
         val header = app.yarn.ui.inbox.inboxHeaderColor()
         Column(Modifier.fillMaxSize().background(header)) {
-            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.messages), {}, me = karan, onProfile = {})
+            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = karan, onProfile = {})
             androidx.compose.foundation.lazy.LazyRow(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
@@ -167,7 +167,7 @@ class UiSnapshotTest {
             item(6, "VK-LOANPR", "Pre-approved loan of Rs 5 lakh in 5 minutes! No documents. Apply: loanfast.in", "SPAM", 1, "VK-LOANPR-P", true, InboxGroup.OFFERS),
         )
         Column(Modifier.fillMaxSize().background(header)) {
-            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.messages), {}, me = karan, onProfile = {})
+            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = karan, onProfile = {})
             androidx.compose.foundation.lazy.LazyRow(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),

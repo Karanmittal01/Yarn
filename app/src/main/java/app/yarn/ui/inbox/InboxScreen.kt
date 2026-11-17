@@ -397,11 +397,23 @@ internal fun InboxHeader(
     ) {
         YarnLogo(size = logo)
         Spacer(Modifier.width(14.dp))
+        // "Yarn - AI Messaging": the name large, the tagline quieter beside it.
+        val name = title.substringBefore(" - ")
+        val tagline = title.substringAfter(" - ", "")
+        val quiet = MaterialTheme.colorScheme.onSurfaceVariant
         Text(
-            title,
+            androidx.compose.ui.text.buildAnnotatedString {
+                append(name)
+                if (tagline.isNotEmpty()) {
+                    pushStyle(androidx.compose.ui.text.SpanStyle(fontSize = (titleSize * 0.6f).sp, color = quiet, letterSpacing = 0.2.sp))
+                    append("  $tagline")
+                    pop()
+                }
+            },
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Normal, fontSize = titleSize.sp),
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f).semantics { heading() },
         )
         if (onSearch != null) {
