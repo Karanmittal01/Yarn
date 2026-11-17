@@ -238,6 +238,22 @@ class UiSnapshotTest {
         app.yarn.ui.bin.BinContent(app.yarn.ui.bin.BinSearch.filter(binSearchItems, q), 7, emptySet(), onToggle = {}, onRestore = {}, onDeleteForever = {},
             onRestoreAll = {}, onEmpty = {}, onBack = {}, now = now, query = q, total = binSearchItems.size, onSelectAll = {})
     }
+    // Senders from a real bin, deleted before they had names: each shows its current name and logo.
+    private val realBin = listOf(
+        binned(11, "SNITCH", "VM-SNITCH-S", "1 item(s) from your SNITCH order 1234567 have been delivered.", 70),
+        binned(12, "XPBEES", "AX-XPBEES-S", "Order:10000001 from Tata Cliq of Super You Protein Wafer Bars is out for delivery", 70),
+        binned(13, "PHEASY", "JD-PHEASY-S", "<#> Use OTP 1111 to login to your account on PharmEasy.", 70),
+        binned(14, "MGCPNP", "AD-MGCPNP-S", "<#> Your magicpin code for login is: 222222. Do not share it with anyone.", 30),
+        binned(15, "FRCHBT", "VM-FRCHBT-S", "3333 is your OTP to login to your Freecharge Biz Account.", 30),
+        binned(16, "QKWLLT", "VK-QKWLLT-S", "Your QuikWallet a/c debited for Rs.100.00 and credited to billpay@upi", 70),
+        binned(17, "COUPLX", "JD-COUPLX-S", "Dear Customer, Rs.500.00 is credited into your COUPL Card.", 70),
+        binned(18, "HSQUAR", "AD-HSQUAR-S", "<#> Hudle up! Your one-time password is 44444 to login to The Hudle App", 30),
+        binned(19, "PLAYO", "JD-PLAYO-S", "OTP - 55555. Please enter this in your Playo app.", 30),
+        binned(20, "57575711", "57575711", "Your Apple Account Code is: 666666. Don't share it with anyone.", 50),
+    )
+    @Test @Config(qualifiers = "w411dp-h1560dp-xxhdpi") fun binRealSenders() = shot(true, "57_bin_named_senders_dark") {
+        app.yarn.ui.bin.BinContent(realBin, 30, emptySet(), onToggle = {}, onRestore = {}, onDeleteForever = {}, onRestoreAll = {}, onEmpty = {}, onBack = {}, now = now)
+    }
     @Test fun binEmpty() = shot(false, "41_bin_empty") {
         app.yarn.ui.bin.BinContent(emptyList(), 7, emptySet(), onToggle = {}, onRestore = {}, onDeleteForever = {}, onRestoreAll = {}, onEmpty = {}, onBack = {}, now = now)
     }

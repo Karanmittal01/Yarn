@@ -683,6 +683,25 @@ object SenderNames {
         Brand("DMRCIN", "Delhi Metro"),
         Brand("MMRDAM", "Mumbai Metro"),
         Brand("MUMMET", "Mumbai Metro"),
+        Brand("QKWLLT", "QuikWallet"),
+        Brand("QWIKWL", "QuikWallet"),
+        Brand("GYFTRR", "GyFTR"),
+        Brand("LPHILP", "Louis Philippe"),
+        Brand("LOUISP", "Louis Philippe"),
+        Brand("WOOHOO", "Woohoo"),
+        Brand("HSQUAR", "Hudle"),
+        Brand("HUDLEI", "Hudle"),
+        Brand("TALUXE", "Tata CLiQ Luxury"),
+        Brand("TCLUXE", "Tata CLiQ Luxury"),
+        Brand("COUPLX", "Coupl"),
+        Brand("COUPLM", "Coupl"),
+        Brand("XPBEES", "XpressBees"),
+        Brand("SLCBNK", "slice"),
+        Brand("PHEASY", "PharmEasy"),
+        Brand("MGCPNP", "magicpin"),
+        Brand("FRCHBT", "Freecharge"),
+        Brand("MYCLIQ", "Tata CLiQ"),
+        Brand("APWELL", "Apollo"),
         Brand("BAGIC", "Bajaj Allianz"),
         Brand("BALIC", "Bajaj Allianz"),
         Brand("NIACL", "New India Assurance"),
@@ -734,6 +753,8 @@ object SenderNames {
         Brand("DHBVN", "DHBVN"),
         Brand("UHBVN", "UHBVN"),
         Brand("UMANG", "UMANG"),
+        Brand("GYFTR", "GyFTR"),
+        Brand("PLAYO", "Playo"),
         Brand("VDTH", "d2h"),
         Brand("ZEE5", "ZEE5"),
         // The original list, each with the category its messages usually are.
@@ -994,9 +1015,15 @@ object SenderNames {
     private val NONE = Brand("", "")
     private val found = java.util.concurrent.ConcurrentHashMap<String, Brand>()
 
+    /** Well-known numeric short codes; they have no letters to match a prefix against. */
+    private val SHORT_CODES = mapOf(
+        "57575711" to Brand("57575711", "Apple"),
+    )
+
     private fun known(address: String): Brand? {
         val a = address.trim()
-        if (a.contains('@') || a.none { it.isLetter() }) return null
+        if (a.contains('@')) return null
+        if (a.none { it.isLetter() }) return if (a.startsWith("+")) null else SHORT_CODES[a.filter(Char::isDigit)]
         val token = SenderAnalyzer.brandToken(a)
         val hit = found.getOrPut(token) { KNOWN.firstOrNull { token.startsWith(it.prefix) } ?: NONE }
         return hit.takeIf { it !== NONE }
@@ -1011,8 +1038,9 @@ object SenderNames {
     /** Readable name for an alphanumeric sender, or null when [address] isn't one. */
     fun pretty(address: String): String? {
         val a = address.trim()
-        if (a.contains('@') || a.none { it.isLetter() }) return null
-        return known(a)?.name ?: SenderAnalyzer.brandToken(a)
+        if (a.contains('@')) return null
+        known(a)?.let { return it.name }
+        return if (a.none { it.isLetter() }) null else SenderAnalyzer.brandToken(a)
     }
 
     /** The usual category of a well-known business sender, used as a gentle prior. */

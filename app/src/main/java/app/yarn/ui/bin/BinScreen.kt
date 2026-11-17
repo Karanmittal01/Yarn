@@ -392,12 +392,12 @@ private fun BinRow(b: BinEntity, selected: Boolean, now: Long, query: String = "
         } else {
             val context = androidx.compose.ui.platform.LocalContext.current
             val logo = remember(b.address) { if (b.addresses.size > 1) null else app.yarn.ui.common.BrandLogos.uri(context, b.address) }
-            Avatar(b.title, logo, size = 44.dp, isGroup = b.addresses.size > 1, neutral = b.address.any { it.isLetter() })
+            Avatar(BinSearch.title(b), logo, size = 44.dp, isGroup = b.addresses.size > 1, neutral = b.address.any { it.isLetter() })
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(BinSearch.highlight(b.title, query, mark), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(BinSearch.highlight(remember(b.id, b.title) { BinSearch.title(b) }, query, mark), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
                 Text(Format.listTime(context, b.date), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

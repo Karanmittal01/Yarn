@@ -6,6 +6,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import app.yarn.data.db.BinEntity
+import app.yarn.intelligence.SenderNames
 
 /**
  * Finds messages in the recycle bin. Every word typed must appear in the chat's name, the sender, the
@@ -18,7 +19,7 @@ object BinSearch {
         val words = words(query)
         if (words.isEmpty()) return true
         val text = buildString {
-            append(b.title).append('\n').append(b.address).append('\n').append(b.body)
+            append(b.title).append('\n').append(title(b)).append('\n').append(b.address).append('\n').append(b.body)
             b.subject?.let { append('\n').append(it) }
             b.attachments.forEach { a -> a.fileName?.let { append('\n').append(it) } }
         }.lowercase()
@@ -27,6 +28,13 @@ object BinSearch {
             w in text || w.count(Char::isDigit) >= 3 && w.all { it.isDigit() || it in "+-() " } && w.filter(Char::isDigit) in numbers
         }
     }
+
+    /**
+     * The name to show: the bin keeps the chat's name from when it was deleted, so a business that has since
+     * got a proper name ("SNITCH" -> "Snitch") shows the new one.
+     */
+    fun title(b: BinEntity): String =
+        if (b.addresses.size <= 1 && SenderNames.brandKey(b.address) != null) SenderNames.pretty(b.address) ?: b.title else b.title
 
     fun filter(items: List<BinEntity>, query: String): List<BinEntity> =
         if (words(query).isEmpty()) items else items.filter { matches(it, query) }

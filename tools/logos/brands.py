@@ -477,3 +477,27 @@ NEW = [
     ("Delhi Metro", "delhimetrorail.com", ["DMRCRL", "DMRCIN"]),
     ("Mumbai Metro", "mmrda.maharashtra.gov.in", ["MMRDAM", "MUMMET"]),
 ]
+
+# Added from senders seen in a real inbox (Nov 2026).
+NEW += [
+    ("QuikWallet", "quikwallet.com", ["QKWLLT", "QWIKWL"]),
+    ("GyFTR", "gyftr.com", ["GYFTRR", "GYFTR"]),
+    ("Louis Philippe", "louisphilippe.com", ["LPHILP", "LOUISP"]),
+    ("Woohoo", "woohoo.in", ["WOOHOO"]),
+    ("Hudle", "hudle.in", ["HSQUAR", "HUDLEI"]),
+    ("Playo", "playo.co", ["PLAYO"]),
+    ("Tata CLiQ Luxury", "luxury.tatacliq.com", ["TALUXE", "TCLUXE"]),
+    ("Coupl", "coupl.money", ["COUPLX", "COUPLM"]),
+]
+
+# New sender IDs for brands Yarn already knows (name, prefixes): they share that brand's logo.
+ALIASES = [
+    ("XpressBees", ["XPBEES"]),
+    ("slice", ["SLCBNK"]),
+    ("PharmEasy", ["PHEASY"]),
+    ("magicpin", ["MGCPNP"]),
+    ("Freecharge", ["FRCHBT"]),
+    ("Tata CLiQ", ["MYCLIQ"]),
+    ("Apollo", ["APWELL"]),
+]
+

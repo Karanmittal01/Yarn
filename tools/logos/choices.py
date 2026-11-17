@@ -108,3 +108,9 @@ pick(X, "saraswatbank", "kotaklife", "pnbmetlife", "sbimutualfund", "5paisa", "g
 pick("c1", "sbi", "yesbank", "axisbank")
 TUNE["yesbank"] = {"ops": [("crop", 0.03, 0.30, 0.53, 0.69)]}
 TUNE["axisbank"] = {"ops": [("crop", 0.0, 0.0, 0.29, 1.0)]}
+
+# Senders from a real inbox (Nov 2026).
+pick(P, "quikwallet", "gyftr", "louisphilippe", "hudle", "playo")
+pick(W, "woohoo", "tatacliqluxury", "coupl")
+# Snitch: its website uses the same lattice "S" as the app, so it is the real mark.
+pick(P, "snitch")
