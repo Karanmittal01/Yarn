@@ -163,9 +163,9 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     val sims: StateFlow<List<SimInfo>> = c.sims.sims
 
     /** The crash report from last time, until it's shared or dismissed. */
-    private val _crash = MutableStateFlow(if (initial.view == InboxView.ALL) app.yarn.CrashLog.pending() else null)
-    val crash: StateFlow<String?> = _crash
-    fun dismissCrash() { app.yarn.CrashLog.dismiss(); _crash.value = null }
+    // Live, because a crash Android noted (native code, out of memory) is read just after launch.
+    val crash: StateFlow<String?> = if (initial.view == InboxView.ALL) app.yarn.CrashLog.pendingReport else MutableStateFlow(null)
+    fun dismissCrash() { app.yarn.CrashLog.dismiss() }
 
     /** Sorting / re-sorting progress, and any backup or restore under way. */
     val job = c.progress.job

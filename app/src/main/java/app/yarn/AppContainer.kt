@@ -183,6 +183,8 @@ class YarnApplication : Application() {
         app.yarn.i18n.AppLanguage.applyTo(this)
         container = AppContainer(this)
         container.start()
+        // Crashes the handler couldn't catch (native code, out of memory) are noted by Android; read them now.
+        container.scope.launch { CrashLog.collectExitReasons(this@YarnApplication) }
     }
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
