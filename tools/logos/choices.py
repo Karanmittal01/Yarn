@@ -114,3 +114,77 @@ pick(P, "quikwallet", "gyftr", "louisphilippe", "hudle", "playo")
 pick(W, "woohoo", "tatacliqluxury", "coupl")
 # Snitch: its website uses the same lattice "S" as the app, so it is the real mark.
 pick(P, "snitch")
+
+# Logos the user supplied (Nov 2026): Blue Dart and Shopwise were missing; Jio's official white-on-red mark.
+pick("user", "bluedart", "jio", "shopwise")
+TUNE["bluedart"] = {"ops": [("outside", 0.499, 0.499, 0.40, (255, 255, 255))], "inner": 0.47, "cap": 0.80}
+TUNE["jio"] = {"ops": [("outside", 0.5, 0.5, 0.47, (255, 0, 0))]}
+TUNE["shopwise"] = {"ops": [("crop", 0.10, 0.10, 0.90, 0.85)]}
+
+# Round 3 review, page 1: fintech, banks, insurers, funds, lenders.
+pick(W, "stashfin", "moneytap", "paysense", "cheq", "goodscore", "jiofinance", "wintwealth", "gripinvest", "axisdirect",
+     "hdfcsky", "scripbox", "fisdom", "paypal", "westernunion", "bookmyforex", "xoxoday", "twid", "crifhighmark", "equifax",
+     "wazirx", "coinswitch", "mudrex", "zebpay", "augmont", "mmtcpamp", "rupeek", "indiagold", "shivalikbank", "nkgsbbank",
+     "barclays", "turtlemint", "pluminsurance", "zuno", "royalsundaram", "iffcotokio", "canarahsbclife", "bandhanlife",
+     "ageasfederal", "indiafirstlife", "sudlife", "pramericalife", "orientalinsurance", "nationalinsurance", "bandhanmf",
+     "jmfinancial", "whiteoakcapital", "samco", "aliceblue", "choice", "religare", "nuvama", "gichousing", "repcohome",
+     "satincreditcare")
+pick(P, "truebalance", "onescore", "stablemoney", "gullak", "intermiles", "coindcx", "safegold", "abhyudayabank",
+     "kalupurbank", "apnasahakaribank", "rajkotnagarikbank", "coverfox", "renewbuy", "ditto", "futuregenerali", "magmahdi",
+     "shriramgeneral", "universalsompo", "aviva", "shriramlife", "franklintempleton", "invescomf", "canararobeco",
+     "sundarammf", "barodabnpparibasmf", "licmf", "mahindramanulife", "ventura", "mcx", "sammaancapital", "aadharhousing",
+     "aptus", "muthootfincorp", "spandana", "creditaccessgrameen")
+pick(X, "sbmbank", "qwikcilver", "payback", "unitybank", "capitalsmallfinancebank", "nainitalbank", "bharatcoopbank",
+     "janatasahakaribank", "libertygeneral", "unionmf", "pgimindia")
+# Round 3, page 2: lenders, internet, home, gadgets, fashion, beauty, footwear.
+pick(W, "ugrocapital", "flexiloans", "kinaracapital", "avanse", "incred", "siti", "fastway", "netplus", "keralavision",
+     "shopclues", "woodenstreet", "livspace", "homelane", "bergerpaints", "jaquar", "crompton", "bajajelectricals",
+     "ttkprestige", "butterfly", "luminous", "iqoo", "poco", "tecno", "lava", "mivi", "jbl", "acer", "canon", "zebronics",
+     "ambrane", "zara", "soch", "wowskinscience", "minimalist", "myglamm", "forestessentials", "kamaayurveda", "patanjali",
+     "reebok", "crocs")
+pick(P, "fusionfinance", "asirvad", "indifi", "tikona", "alliancebroadband", "den", "connectbroadband", "moglix", "hometown",
+     "asianpaints", "hindware", "borosil", "milton", "cello", "dyson", "livpure", "aosmith", "exide", "amaron", "bigc",
+     "noise", "fireboltt", "boult", "tcl", "marksspencer", "uspoloassn", "jackjones", "wforwoman", "libas", "themancompany",
+     "bombayshavingcompany", "mcaffeine", "thedermaco", "dotkey", "himalaya", "healthglow", "titaneye", "redtape",
+     "libertyshoes", "relaxo", "neemans")
+pick(X, "credila", "sify", "nilkamal", "duroflex", "kurlon", "orientelectric", "usha", "atomberg", "wonderchef", "vguard",
+     "sangeethamobiles", "bajajelectronics", "infinix", "panasonic", "portronics", "beardo", "bathbodyworks", "mochi",
+     "pcjeweller")
+# Round 3, page 3: jewellers, stores, food, gifts, rides, hotels, airlines, apps.
+pick(W, "bluestone", "grtjewellers", "lalithaajewellery", "naturesbasket", "ratnadeep", "vishalmegamart", "vmart", "heritage",
+     "thirdwavecoffee", "cafecoffeeday", "chaipoint", "bikanervala", "ovenstory", "biryanibykilo", "freshmenu", "healthkart",
+     "muscleblaze", "manmatters", "fernsnpetals", "igp", "winni", "snabbit", "rentomojo", "furlenco", "savaari", "revv",
+     "royalbrothers", "nammametro", "hyderabadmetro", "chennaimetro", "expedia", "ihg", "radisson", "starair", "fly91",
+     "etihad", "singaporeairlines", "lufthansa", "britishairways", "flydubai", "intrcity", "nuego", "flixbus",
+     "bengaluruairport", "digiyatra", "hoichoi", "pokerbaazi", "x", "josh", "tinder", "bumble", "aisle")
+pick(P, "giva", "pngjewellers", "reliancejewels", "moreretail", "spar", "motherdairy", "bluetokai", "timhortons", "lapinoz",
+     "paradisebiryani", "oziva", "bebodywise", "traya", "hamleys", "bakingo", "supertails", "headsupfortails", "quickride",
+     "bounce", "akbartravels", "hyatt", "hilton", "accor", "sterlingholidays", "clubmahindra", "zostel", "thaiairways",
+     "airarabia", "airasia", "zingbus", "delhiairport", "vfsglobal", "blsinternational", "hungama", "shemaroome", "stage",
+     "a23", "snapchat", "moj")
+pick(X, "candere", "tbz", "bhima", "yogabar", "archies", "crossword", "meru", "oberoihotels", "paytminsider")
+# Round 3, page 4: matrimony, business apps, hospitals, labs, learning, jobs, homes, discoms, government.
+pick(W, "tally", "vyapar", "instamojo", "petpooja", "wellnessforever", "davaindia", "kimshospitals", "dragarwalseyehospital",
+     "yashodahospitals", "kokilabenhospital", "hindujahospital", "neubergdiagnostics", "orangehealth", "pathkindlabs",
+     "coursera", "udemy", "duolingo", "doubtnut", "careers360", "srichaitanya", "teachmint", "seekho", "timesjobs", "hirist",
+     "instahyre", "jobhai", "stanzaliving", "zolo", "embassygroup", "inorbit", "mgvcl", "apepdcl", "jbvnl",
+     "mpcentraldiscom", "cspdcl", "torrentgas", "bhagyanagargas", "mngl", "bbmp", "eshram", "shreemaruticourier")
+pick(P, "shaadicom", "bharatmatrimony", "jeevansathi", "zoom", "khatabook", "okcredit", "rainbowchildrenshospital",
+     "motherhoodhospitals", "clovedental", "artemis", "parashealth", "vijayadiagnostic", "agilusdiagnostics", "fittr",
+     "collegedunia", "shiksha", "fiitjee", "narayanagroup", "classplus", "masai", "squareyards", "puravankara",
+     "shapoorjipallonji", "hiranandani", "phoenixmalls", "nexusmalls", "best", "ugvcl", "dgvcl", "pgvcl", "apspdcl",
+     "tgnpdcl", "tpcentralodisha", "nbpdcl", "sbpdcl", "mpeastdiscom", "hpseb", "upcl", "avvnl", "jdvvnl", "hescom",
+     "mescom", "gescom", "sabarmatigas", "bwssb", "hmwssb", "pmkisan", "cbic", "mca", "delhipolice", "safexpress")
+pick(X, "carehospitals", "nta", "hirect", "tatahousing", "mpwestdiscom", "gailgas", "ghmc", "irdai")
+# Round 3, page 5: couriers, cars, bikes, tyres, charging.
+pick(W, "pidge", "volkswagen", "citroen", "bmw", "mercedesbenz", "audi", "volvocars", "byd", "ktm", "revolt", "gomechanic",
+     "statiq")
+pick(P, "aramex", "ups", "tciexpress", "vrllogistics", "jeep", "suzukimotorcycle", "droom", "bikewale", "ceat")
+pick(X, "jawa", "mrf", "apollotyres", "jktyre")
+pick(X, "inorbit")  # its icon may not be the mall's own
+# From Wikimedia Commons wordmarks, cropped to the symbol.
+pick("c1", "bandhanbank", "bankofmaharashtra")
+pick("cu", "unionbank")
+TUNE["bandhanbank"] = {"ops": [("crop", 0.0, 0.0, 0.215, 1.0)]}
+TUNE["unionbank"] = {"ops": [("crop", 0.0, 0.0, 0.26, 1.0)]}
+TUNE["bankofmaharashtra"] = {"ops": [("crop", 0.0, 0.0, 0.232, 0.76)]}

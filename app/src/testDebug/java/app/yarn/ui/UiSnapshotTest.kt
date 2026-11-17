@@ -430,6 +430,19 @@ class UiSnapshotTest {
         item(9, "Amazon", "Your order of boAt Airdopes has been delivered", "SHOPPING", 0, "AX-AMAZON-S", true, InboxGroup.SHOPPING),
         item(10, "IndiGo", "Web check-in is open for 6E 2134 BLR-DEL", "TRAVEL", 0, "JD-INDIGO-S", true, InboxGroup.TRAVEL),
     )
+    private val moreLogos get() = withLogos(
+        item(1, "Jio", "Your Jio number xxxxxx1234 recharge of Rs 349 is successful", "BILLS", 0, "JM-JIOINF-S", true, InboxGroup.UPDATES),
+        item(2, "Blue Dart", "Your order with Blue Dart AWB# 12345678901 was delivered to SELF", "DELIVERY", 0, "BZ-BLUDRT-S", true, InboxGroup.SHOPPING),
+        item(3, "Shopwise", "Congratulations, your Amazon Pay E-Gift Voucher is here", "PROMOTIONS", 0, "VM-SHPWSE-S", true, InboxGroup.OFFERS),
+        item(4, "Union Bank", "Your A/c XX1234 is credited by Rs 5,000.00", "BANKING", 0, "AD-UNIONB-S", true, InboxGroup.TRANSACTIONS),
+        item(5, "Bandhan Bank", "Rs 1,200 debited from A/c XX5678 via UPI", "BANKING", 0, "VM-BANDHN-S", true, InboxGroup.TRANSACTIONS),
+        item(6, "CheQ", "Your credit card bill of Rs 3,357 has been paid via CheQ", "PAYMENTS", 0, "AD-CHEQAP-S", true, InboxGroup.TRANSACTIONS),
+        item(7, "IndiGo", "Your boarding pass for 6E 2134 is ready", "TRAVEL", 0, "JD-INDIGO-S", true, InboxGroup.TRAVEL),
+        item(8, "Zara", "Your Zara order has been shipped", "SHOPPING", 0, "AD-ZARAIN-S", true, InboxGroup.SHOPPING),
+        item(9, "Duolingo", "Keep your streak going! 5 minutes a day", "PROMOTIONS", 0, "VM-DUOLNG-P", true, InboxGroup.OFFERS),
+        item(10, "BMW", "Your BMW service is due next week", "UPDATES", 0, "AD-BMWIND-S", true, InboxGroup.UPDATES),
+    )
+    @Test fun inboxMoreLogos() = shot(true, "58_inbox_more_logos_dark") { InboxMock(moreLogos) }
     @Test fun inboxLogosDark() = shot(true, "52_inbox_brand_logos_dark") { InboxMock(logoInbox) }
     @Test fun inboxLogosLight() = shot(false, "53_inbox_brand_logos_light") { InboxMock(logoInbox) }
 

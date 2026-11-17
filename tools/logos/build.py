@@ -24,7 +24,7 @@ for slug, src in sorted(C.items()):
     dest = os.path.join(OUT, slug + ".webp")
     img.save(dest, "WEBP", quality=86, method=6)
     total += os.path.getsize(dest)
-    cells.append((m[slug]["name"], [img]))
+    cells.append((m.get(slug, {}).get("name", slug), [img]))
 sheet(cells, os.path.join(os.path.dirname(os.path.abspath(__file__)), "sheets", "final.png"), cols=12, d=64, pair=False)
 for i in range(0, len(cells), 120):
     sheet(cells[i:i + 120], os.path.join(os.path.dirname(os.path.abspath(__file__)), "sheets", f"final_{i // 120 + 1}.png"), cols=12, d=64, pair=False)

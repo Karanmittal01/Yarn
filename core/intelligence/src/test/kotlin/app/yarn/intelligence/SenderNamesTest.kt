@@ -34,6 +34,7 @@ class SenderNamesTest {
     }
 
     @Test fun unknownSendersKeepTheirCode() {
-        assertThat(SenderNames.pretty("VM-SHPWSE-S")).isEqualTo("SHPWSE")
+        assertThat(SenderNames.pretty("VM-RPCARD-S")).isEqualTo("RPCARD")
+        assertThat(SenderNames.pretty("VM-SHPWSE-S")).isEqualTo("Shopwise")
     }
 }
