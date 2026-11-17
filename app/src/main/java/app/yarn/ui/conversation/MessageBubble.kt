@@ -488,7 +488,8 @@ private fun linkify(
 private fun InsightChips(item: MessageWithAttachments, risky: Set<String>, onRisky: (String) -> Unit) {
     val context = LocalContext.current
     val m = item.message
-    // Quick actions (copy, call, open, track…) only for recent messages; older ones stay as they are.
+    // Quick actions only for recent messages. Links, phone numbers and emails get none: they're
+    // already tappable in the text itself.
     if (System.currentTimeMillis() - m.date > SUGGESTION_WINDOW_MS) return
     val entities = item.entities.distinctBy { it.type + it.value }
     val verdict = runCatching { SpamVerdict.valueOf(m.spamVerdict) }.getOrDefault(SpamVerdict.CLEAN)
@@ -503,14 +504,6 @@ private fun InsightChips(item: MessageWithAttachments, risky: Set<String>, onRis
                     },
                     label = { Text(stringResource(R.string.copy_code_chip, e.value)) },
                     leadingIcon = { Icon(Icons.Outlined.ContentCopy, null, Modifier.size(AssistChipDefaults.IconSize)) },
-                )
-            }
-            EntityType.URL.name -> if (verdict != SpamVerdict.SCAM) chips += {
-                val bad = e.value in risky
-                AssistChip(
-                    onClick = { if (bad) onRisky(e.value) else Actions.openUrl(context, e.value) },
-                    label = { Text(if (bad) stringResource(R.string.suspicious_link) else stringResource(R.string.open_host, e.attributes["host"] ?: stringResource(R.string.link_generic))) },
-                    leadingIcon = { Icon(if (bad) Icons.Outlined.Warning else Icons.Outlined.Link, null, Modifier.size(AssistChipDefaults.IconSize)) },
                 )
             }
             EntityType.DATE_TIME.name -> if (m.category != "OTP" && m.category != "BANKING") chips += {
@@ -531,14 +524,8 @@ private fun InsightChips(item: MessageWithAttachments, risky: Set<String>, onRis
                     leadingIcon = { Icon(Icons.Outlined.LocalShipping, null, Modifier.size(AssistChipDefaults.IconSize)) },
                 )
             }
-            EntityType.PHONE.name -> if (verdict == SpamVerdict.CLEAN || verdict == SpamVerdict.PROMOTIONAL) chips += {
-                AssistChip(onClick = { Actions.dial(context, e.value) }, label = { Text(stringResource(R.string.call_n, e.text)) }, leadingIcon = { Icon(Icons.Outlined.Call, null, Modifier.size(AssistChipDefaults.IconSize)) })
-            }
             EntityType.ADDRESS.name -> chips += {
                 AssistChip(onClick = { Actions.map(context, e.value) }, label = { Text(stringResource(R.string.directions)) }, leadingIcon = { Icon(Icons.Outlined.Directions, null, Modifier.size(AssistChipDefaults.IconSize)) })
-            }
-            EntityType.EMAIL.name -> chips += {
-                AssistChip(onClick = { Actions.email(context, e.value) }, label = { Text(stringResource(R.string.email)) }, leadingIcon = { Icon(Icons.Outlined.Email, null, Modifier.size(AssistChipDefaults.IconSize)) })
             }
             EntityType.BOOKING_REF.name, EntityType.ORDER_ID.name, EntityType.UPI_ID.name -> chips += {
                 AssistChip(

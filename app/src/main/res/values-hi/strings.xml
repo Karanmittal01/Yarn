@@ -820,4 +820,12 @@
     <string name="online_translation">ज़रूरत पर ऑनलाइन अनुवाद</string>
     <string name="online_translation_sub">Hinglish और जिन भाषाओं का फ़ोन अनुवाद नहीं कर सकता, वे Google Translate पर जाती हैं। सिर्फ़ वही मैसेज भेजा जाता है जिसका आप अनुवाद करते हैं।</string>
     <string name="open_google_translate">Google Translate में खोलें</string>
+    <string name="edit_profile">प्रोफ़ाइल बदलें</string>
+    <string name="add_your_name">अपना नाम जोड़ें</string>
+    <string name="your_name">आपका नाम</string>
+    <string name="change_photo">फ़ोटो बदलें</string>
+    <string name="remove_photo">फ़ोटो हटाएँ</string>
+    <string name="use_photo">यह फ़ोटो लगाएँ</string>
+    <string name="crop_hint">ज़ूम के लिए पिंच करें, खिसकाने के लिए खींचें</string>
+    <string name="profile_private_note">सिर्फ़ इसी फ़ोन पर Yarn में दिखता है। किसी को भेजा नहीं जाता।</string>
 </resources>

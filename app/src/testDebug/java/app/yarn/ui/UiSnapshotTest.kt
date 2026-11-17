@@ -359,10 +359,43 @@ class UiSnapshotTest {
     @Test fun chatRunsDark() = shot(true, "45_chat_runs_delivered_dark") { RunsMock() }
     @Test fun chatRunsLight() = shot(false, "46_chat_runs_delivered_light") { RunsMock() }
     @Test fun accountSheetDark() = shot(true, "47_account_sheet_dark") {
-        app.yarn.ui.inbox.AccountSheetContent(karan, listOf(jio, airtel), true, {}, {}, {}, {})
+        androidx.compose.material3.Surface(color = app.yarn.ui.settings.settingsPageColor(), contentColor = MaterialTheme.colorScheme.onSurface) { app.yarn.ui.inbox.AccountSheetContent(karan, listOf(jio, airtel), true, app.yarn.data.prefs.AppSettings(otpAutoDeleteMinutes = 240), {}, {}, {}, {}, {}) }
     }
     @Test fun accountSheetLight() = shot(false, "48_account_sheet_light") {
-        app.yarn.ui.inbox.AccountSheetContent(karan, listOf(jio), true, {}, {}, {}, {})
+        androidx.compose.material3.Surface(color = app.yarn.ui.settings.settingsPageColor(), contentColor = MaterialTheme.colorScheme.onSurface) { app.yarn.ui.inbox.AccountSheetContent(null, listOf(jio), true, app.yarn.data.prefs.AppSettings(), {}, {}, {}, {}, {}) }
+    }
+
+    @Test fun profileEditorDark() = shot(true, "49_profile_editor_dark") {
+        androidx.compose.material3.Surface(color = app.yarn.ui.settings.settingsPageColor(), contentColor = MaterialTheme.colorScheme.onSurface) {
+            app.yarn.ui.inbox.ProfileEditor("Karan Mittal", null, onSave = { _, _, _ -> }, onBack = {})
+        }
+    }
+    @Test fun photoCropper() = shot(true, "50_photo_cropper") {
+        // A stand-in photo: a soft diagonal gradient with a bright disc where a face would be.
+        val bmp = android.graphics.Bitmap.createBitmap(1200, 900, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bmp)
+        canvas.drawPaint(android.graphics.Paint().apply { shader = android.graphics.LinearGradient(0f, 0f, 1200f, 900f, 0xFF3D7BFF.toInt(), 0xFFFF9A62.toInt(), android.graphics.Shader.TileMode.CLAMP) })
+        canvas.drawCircle(600f, 420f, 220f, android.graphics.Paint().apply { color = 0xFFF6D7B0.toInt(); isAntiAlias = true })
+        app.yarn.ui.inbox.PhotoCropper(bmp, onCancel = {}, onDone = {})
+    }
+
+    @Test fun chatLinksNoButtons() = shot(true, "51_chat_links_no_buttons_dark") {
+        val noop = app.yarn.ui.conversation.BubbleCallbacks({}, {}, {}, {}, {}, { _, _ -> })
+        // The real extractor finds the link, number and code, exactly as on the phone.
+        val extractor = app.yarn.intelligence.EntityExtractor()
+        fun analysed(id: Long, body: String, minutesAgo: Long) = msg(id, body, false, 1, minutesAgo).let { w ->
+            w.copy(entities = with(app.yarn.ai.IntelligenceEngine) { extractor.extract(body, w.message.date).map { it.toRow(id, "rules") } })
+        }
+        Column(Modifier.fillMaxSize().background(app.yarn.ui.theme.chatBackdrop()).padding(top = 32.dp)) {
+            app.yarn.ui.conversation.MessageBubble(
+                analysed(1, "Dear Customer, your SBI Credit Card statement is ready. View it at https://sbicard.com/statement or call 1860 180 1290 for help. -SBI Card", 120),
+                null, false, false, null, true, noop,
+            )
+            app.yarn.ui.conversation.MessageBubble(
+                analysed(2, "Your OTP for login is 482913. Do not share it with anyone. -SBI", 5),
+                null, false, false, null, true, noop,
+            )
+        }
     }
 
     @Test fun chatDualSimLight() = shot(false, "15_chat_dual_sim_translate_light") { ChatMock(translated = false) }

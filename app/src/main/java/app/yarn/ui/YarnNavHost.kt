@@ -183,6 +183,7 @@ private fun HomePane(nav: NavHostController) {
             InboxDestination.Archived -> nav.navigate(FolderRoute(InboxView.ARCHIVED.name))
             InboxDestination.Blocked -> nav.navigate(FolderRoute(InboxView.BLOCKED.name))
             InboxDestination.Settings -> nav.navigate(SettingsRoute)
+            is InboxDestination.Setting -> nav.navigate(SettingsSubRoute(d.page.name))
             InboxDestination.Cleanup -> nav.navigate(SettingsSubRoute(SettingsPage.CLEANUP.name))
             InboxDestination.Bin -> nav.navigate(BinRoute)
             InboxDestination.Spam -> nav.navigate(FolderRoute(InboxView.SPAM.name))

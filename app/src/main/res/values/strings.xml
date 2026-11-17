@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Yarn - AI Messaging</string>
+    <string name="app_name" translatable="false">Messages</string>
+    <string name="brand_name" translatable="false">Yarn - AI Messaging</string>
     <string name="shortcut_new_message">New message</string>
     <string name="group_personal">Personal</string>
     <string name="group_otp">OTP</string>
@@ -821,4 +822,12 @@
     <string name="online_translation">Translate online when needed</string>
     <string name="online_translation_sub">Hinglish and languages your phone can\'t translate go to Google Translate. Only the message you translate is sent.</string>
     <string name="open_google_translate">Open in Google Translate</string>
+    <string name="edit_profile">Edit profile</string>
+    <string name="add_your_name">Add your name</string>
+    <string name="your_name">Your name</string>
+    <string name="change_photo">Change photo</string>
+    <string name="remove_photo">Remove photo</string>
+    <string name="use_photo">Use photo</string>
+    <string name="crop_hint">Pinch to zoom, drag to move</string>
+    <string name="profile_private_note">Shown only in Yarn on this phone. It isn\'t sent to anyone.</string>
 </resources>

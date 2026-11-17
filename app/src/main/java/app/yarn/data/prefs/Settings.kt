@@ -44,6 +44,9 @@ fun AppSettings.notifyFor(group: CategoryGroup): NotifyMode = notifyTabs[group] 
 
 data class AppSettings(
     val onboardingDone: Boolean = false,
+    /** Your name and picture as set in Yarn; blank falls back to your "Me" card in Contacts. */
+    val profileName: String = "",
+    val profilePhoto: String = "",
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = false,
     /** Ask the network to confirm delivery, so sent messages can show "Delivered". */
@@ -106,6 +109,8 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore("s
 class SettingsRepository(private val context: Context) {
     private object K {
         val onboardingDone = booleanPreferencesKey("onboarding_done")
+        val profileName = stringPreferencesKey("profile_name")
+        val profilePhoto = stringPreferencesKey("profile_photo")
         val theme = stringPreferencesKey("theme")
         val dynamicColor = booleanPreferencesKey("dynamic_color")
         // A new key: delivery reports used to default to off, and everyone should now get them.
@@ -164,6 +169,8 @@ class SettingsRepository(private val context: Context) {
             val old = readFrom(p, AppSettings())
             val s = transform(old)
             p[K.onboardingDone] = s.onboardingDone
+            p[K.profileName] = s.profileName
+            p[K.profilePhoto] = s.profilePhoto
             p[K.theme] = s.theme.name
             p[K.dynamicColor] = s.dynamicColor
             p[K.deliveryReports] = s.deliveryReports
@@ -224,6 +231,8 @@ class SettingsRepository(private val context: Context) {
 
     private fun readFrom(p: Preferences, d: AppSettings): AppSettings = AppSettings(
         onboardingDone = p[K.onboardingDone] ?: d.onboardingDone,
+        profileName = p[K.profileName] ?: d.profileName,
+        profilePhoto = p[K.profilePhoto] ?: d.profilePhoto,
         theme = p[K.theme]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: d.theme,
         dynamicColor = p[K.dynamicColor] ?: d.dynamicColor,
         deliveryReports = p[K.deliveryReports] ?: d.deliveryReports,

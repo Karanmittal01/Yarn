@@ -142,6 +142,8 @@ sealed interface InboxDestination {
     data object Cleanup : InboxDestination
     data object Bin : InboxDestination
     data object Spam : InboxDestination
+    /** One settings page, opened straight from the profile page. */
+    data class Setting(val page: app.yarn.ui.settings.SettingsPage) : InboxDestination
 }
 
 @Composable
@@ -357,9 +359,11 @@ fun InboxScreen(
         AccountSheet(
             me = me, sims = sims,
             hasUnread = items.orEmpty().any { it.conversation.unreadCount > 0 },
+            settings = settings,
             onMarkAllRead = vm::markAllRead,
             onNavigate = onNavigate,
             onFeedback = { shareFeedback(context, app.yarn.CrashLog.all()) },
+            onSaveProfile = vm::saveProfile,
             onDismiss = { account = false },
         )
     }

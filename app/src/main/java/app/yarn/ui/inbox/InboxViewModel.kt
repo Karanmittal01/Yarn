@@ -137,11 +137,24 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
         }
     }.stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), listOf(InboxChip(R.string.chip_all, InboxFilter())))
 
-    /** Your own card from Contacts, for the profile button. */
-    val me: StateFlow<app.yarn.data.contacts.ContactInfo?> = c.contacts.version
-        .map { c.contacts.me() }
+    /** You, for the profile button: the name and picture set in Yarn, else your "Me" card in Contacts. */
+    val me: StateFlow<app.yarn.data.contacts.ContactInfo?> = combine(c.contacts.version, c.settings.settings) { _, s ->
+        val card = c.contacts.me()
+        val name = s.profileName.ifBlank { card?.name.orEmpty() }
+        val photo = s.profilePhoto.ifBlank { card?.photoUri.orEmpty() }
+        if (name.isBlank() && photo.isBlank()) null else app.yarn.data.contacts.ContactInfo(name, photo.ifBlank { null }, null, false)
+    }
         .flowOn(Dispatchers.IO)
         .stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun saveProfile(name: String, photo: android.graphics.Bitmap?, removePhoto: Boolean) = viewModelScope.launch(Dispatchers.IO + app.yarn.CrashLog.handler) {
+        val uri = when {
+            photo != null -> app.yarn.ui.inbox.ProfilePhoto.save(c.app, photo)
+            removePhoto -> { app.yarn.ui.inbox.ProfilePhoto.clear(c.app); "" }
+            else -> null
+        }
+        c.settings.update { it.copy(profileName = name, profilePhoto = uri ?: it.profilePhoto) }
+    }
 
     val sims: StateFlow<List<SimInfo>> = c.sims.sims
 
