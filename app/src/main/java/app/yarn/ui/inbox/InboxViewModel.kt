@@ -107,7 +107,11 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
         }
         return InboxItem(
             conversation = c0,
-            photoUri = if (c0.isGroup || business) null else c.contacts.lookup(address)?.photoUri,
+            photoUri = when {
+                c0.isGroup -> null
+                business -> app.yarn.ui.common.BrandLogos.uri(c.app, address)
+                else -> c.contacts.lookup(address)?.photoUri
+            },
             isBusiness = business,
             group = section ?: InboxGroup.of(category),
             otpCode = code?.first,

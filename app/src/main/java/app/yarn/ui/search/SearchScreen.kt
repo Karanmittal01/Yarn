@@ -125,7 +125,11 @@ fun SearchScreen(vm: SearchViewModel, onBack: () -> Unit, onOpen: (conversationI
                         ListItem(
                             headlineContent = { Text(c.title) },
                             supportingContent = { Text(c.snippet, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            leadingContent = { Avatar(c.title, null, size = 40.dp, isGroup = c.isGroup) },
+                            leadingContent = {
+                                val context = androidx.compose.ui.platform.LocalContext.current
+                                val logo = if (c.isGroup) null else app.yarn.ui.common.BrandLogos.uri(context, c.addresses.firstOrNull())
+                                Avatar(c.title, logo, size = 40.dp, isGroup = c.isGroup)
+                            },
                             modifier = Modifier.clickable { onOpen(c.id, null) },
                         )
                     }

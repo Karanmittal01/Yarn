@@ -4,7 +4,9 @@ import android.content.Context
 import android.text.format.DateFormat
 import android.text.format.DateUtils
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Box
@@ -128,7 +130,18 @@ fun Avatar(
             icon != null -> androidx.compose.material3.Icon(icon, null, tint = tint, modifier = Modifier.size(size * 0.46f))
             else -> Text(Avatars.initial(name), color = tint, fontWeight = FontWeight.SemiBold, fontSize = (size.value * 0.4f).sp)
         }
-        if (photoUri != null) AsyncImage(model = photoUri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size))
+        if (BrandLogos.isLogo(photoUri)) {
+            // Bundled business logos are tiny and decoded once, so they appear instantly while scrolling.
+            val context = LocalContext.current
+            val logo = remember(photoUri) { BrandLogos.bitmap(context, photoUri!!)?.asImageBitmap() }
+            if (logo != null) {
+                androidx.compose.foundation.Image(logo, null, Modifier.size(size), contentScale = ContentScale.Crop)
+                // A hairline keeps white logos from melting into a white page.
+                Box(Modifier.size(size).border(0.75.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f), CircleShape))
+            }
+        } else if (photoUri != null) {
+            AsyncImage(model = photoUri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size))
+        }
     }
 }
 

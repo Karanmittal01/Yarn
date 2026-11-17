@@ -178,7 +178,10 @@ fun ConversationScreen(
         return
     }
     val canReply = conv.addresses.isNotEmpty() && conv.addresses.all { PhoneNumbers.isDialable(it) || PhoneNumbers.isEmail(it) }
-    val photo = if (!conv.isGroup) participants[conv.addresses.firstOrNull()]?.photoUri else null
+    val photo = if (!conv.isGroup) {
+        val address = conv.addresses.firstOrNull()
+        participants[address]?.photoUri ?: app.yarn.ui.common.BrandLogos.uri(context, address)
+    } else null
 
     Box(Modifier.fillMaxSize().background(app.yarn.ui.theme.chatBackdrop())) {
     Scaffold(

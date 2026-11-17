@@ -102,6 +102,8 @@ class Notifier(
     }
 
     private fun avatar(photoUri: String?, name: String): IconCompat {
+        // A bundled business logo is already framed for a circle, so it's used as is.
+        app.yarn.ui.common.BrandLogos.bitmap(context, photoUri ?: "")?.let { return IconCompat.createWithBitmap(it) }
         val bitmap: Bitmap? = photoUri?.let { uri ->
             runCatching { context.contentResolver.openInputStream(Uri.parse(uri))?.use { BitmapFactory.decodeStream(it) } }.getOrNull()
         }
@@ -110,11 +112,11 @@ class Notifier(
 
     private fun person(address: String, iso: String): Person {
         val contact = contacts.lookup(address)
-        val name = contact?.name ?: PhoneNumbers.format(address, iso)
+        val name = contact?.name ?: app.yarn.intelligence.SenderNames.pretty(address) ?: PhoneNumbers.format(address, iso)
         return Person.Builder()
             .setName(name)
             .setKey(PhoneNumbers.matchKey(address))
-            .setIcon(avatar(contact?.photoUri, name))
+            .setIcon(avatar(contact?.photoUri ?: app.yarn.ui.common.BrandLogos.uri(context, address), name))
             .apply { contact?.lookupUri?.let { setUri(it.toString()) } }
             .setImportant(contact?.starred == true)
             .build()

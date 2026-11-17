@@ -77,7 +77,7 @@ class UiSnapshotTest {
     }
 
     @androidx.compose.runtime.Composable
-    private fun InboxMock() {
+    private fun InboxMock(rows: List<InboxItem> = inbox) {
         val header = app.yarn.ui.inbox.inboxHeaderColor()
         androidx.compose.material3.Scaffold(
             containerColor = header,
@@ -105,12 +105,12 @@ class UiSnapshotTest {
                     .background(MaterialTheme.colorScheme.surface),
             ) {
                 androidx.compose.foundation.lazy.LazyColumn(contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 10.dp)) {
-                    items(inbox.size) { i ->
+                    items(rows.size) { i ->
                         app.yarn.ui.inbox.SwipeableRow(true, app.yarn.data.prefs.SwipeAction.ARCHIVE, app.yarn.data.prefs.SwipeAction.DELETE, false, {}) {
-                            ConversationRow(inbox[i], false, false, {}, {})
+                            ConversationRow(rows[i], false, false, {}, {})
                         }
                     }
-                    item { app.yarn.ui.inbox.InboxCount(inbox) }
+                    item { app.yarn.ui.inbox.InboxCount(rows) }
                 }
             }
         }
@@ -378,6 +378,26 @@ class UiSnapshotTest {
         canvas.drawCircle(600f, 420f, 220f, android.graphics.Paint().apply { color = 0xFFF6D7B0.toInt(); isAntiAlias = true })
         app.yarn.ui.inbox.PhotoCropper(bmp, onCancel = {}, onDone = {})
     }
+
+    // A typical inbox, with each sender's logo where its sender ID is a known brand.
+    private fun withLogos(vararg rows: InboxItem): List<InboxItem> {
+        val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        return rows.map { it.copy(photoUri = app.yarn.ui.common.BrandLogos.uri(ctx, it.conversation.addresses.first())) }
+    }
+    private val logoInbox get() = withLogos(
+        item(1, "TRAI", "स्पैम कॉल्स से परेशान है? TRAI DND ऐप पर स्पैम की शिकायत दर्ज करें।", "UPDATES", 0, "VM-TRAIND-G", true, InboxGroup.UPDATES),
+        item(2, "Yes Bank", "Dear Customer, your request for Aadhaar Detail for YES BANK Customer ID 1234567 is received", "UPDATES", 0, "AX-YESBNK-S", true, InboxGroup.UPDATES),
+        item(3, "HDFC Bank", "Reward Points Credited: 3000 To HDFC Bank Credit Card 1111 On 16/NOV/2026", "BANKING", 0, "VM-HDFCBK-S", true, InboxGroup.TRANSACTIONS),
+        item(4, "HSBC", "HSBC: Rs 115.0 spent on your HSBC Credit Card ending 2222 at SWIGGY on 17 Nov 2026", "BANKING", 0, "JD-HSBCIN-S", true, InboxGroup.TRANSACTIONS),
+        item(5, "Swiggy Toing", "Your payment for Toing order #100000000000001 was not completed. Amount will be refunded", "SHOPPING", 0, "VM-SWGTNG-S", true, InboxGroup.SHOPPING),
+        item(6, "AU Bank", "Alert! INR 1.00 credited to AU Bank Credit Card XX3333 from Apollo Pharm on 16-11-2026", "BANKING", 0, "AD-AUBANK-S", true, InboxGroup.TRANSACTIONS),
+        item(7, "SBI Card", "Dear Cardholder, with the Balance Transfer on EMI facility on your SBI Card", "PROMOTIONS", 0, "AD-SBICRD-P", true, InboxGroup.OFFERS),
+        item(8, "SBI", "Dear Customer, transaction number 1234 for Rs 500 is successful", "BANKING", 0, "AD-SBIINB-S", true, InboxGroup.TRANSACTIONS),
+        item(9, "Amazon", "Your order of boAt Airdopes has been delivered", "SHOPPING", 0, "AX-AMAZON-S", true, InboxGroup.SHOPPING),
+        item(10, "IndiGo", "Web check-in is open for 6E 2134 BLR-DEL", "TRAVEL", 0, "JD-INDIGO-S", true, InboxGroup.TRAVEL),
+    )
+    @Test fun inboxLogosDark() = shot(true, "52_inbox_brand_logos_dark") { InboxMock(logoInbox) }
+    @Test fun inboxLogosLight() = shot(false, "53_inbox_brand_logos_light") { InboxMock(logoInbox) }
 
     @Test fun chatLinksNoButtons() = shot(true, "51_chat_links_no_buttons_dark") {
         val noop = app.yarn.ui.conversation.BubbleCallbacks({}, {}, {}, {}, {}, { _, _ -> })

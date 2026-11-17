@@ -277,7 +277,9 @@ private fun BinRow(b: BinEntity, selected: Boolean, now: Long, onToggle: () -> U
                 Icon(Icons.Filled.Check, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onPrimary)
             }
         } else {
-            Avatar(b.title, null, size = 44.dp, isGroup = b.addresses.size > 1, neutral = b.address.any { it.isLetter() })
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val logo = remember(b.address) { if (b.addresses.size > 1) null else app.yarn.ui.common.BrandLogos.uri(context, b.address) }
+            Avatar(b.title, logo, size = 44.dp, isGroup = b.addresses.size > 1, neutral = b.address.any { it.isLetter() })
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
