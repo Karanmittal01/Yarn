@@ -184,6 +184,11 @@ class OnlineTranslator {
 /** ML Kit Smart Reply: on-device, English only, declines sensitive topics by design. */
 class SmartReplyService {
     private val generator by lazy { SmartReply.getClient() }
+    /**
+     * The model is native code and isn't safe to run twice at once. A caller that gives up (the chat moved on)
+     * doesn't stop a run already started, so the lock is held until the run itself finishes.
+     */
+    private val lock = Mutex()
 
     data class Turn(val text: String, val timestamp: Long, val fromMe: Boolean, val senderId: String)
 
@@ -193,10 +198,15 @@ class SmartReplyService {
             if (it.fromMe) TextMessage.createForLocalUser(it.text, it.timestamp)
             else TextMessage.createForRemoteUser(it.text, it.timestamp, it.senderId)
         }
-        return runCatching {
-            val result = withTimeoutOrNull(3000) { generator.suggestReplies(messages).await() } ?: return emptyList()
-            if (result.status == SmartReplySuggestionResult.STATUS_SUCCESS) result.suggestions.map { it.text } else emptyList()
-        }.getOrDefault(emptyList())
+        return lock.withLock {
+            runCatching {
+                val task = generator.suggestReplies(messages)
+                val result = kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                    withTimeoutOrNull(5_000) { task.await() }
+                } ?: return@runCatching emptyList()
+                if (result.status == SmartReplySuggestionResult.STATUS_SUCCESS) result.suggestions.map { it.text } else emptyList()
+            }.getOrDefault(emptyList())
+        }
     }
 }
 

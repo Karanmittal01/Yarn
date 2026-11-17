@@ -174,8 +174,9 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
         }
         // Refresh smart replies, scam warnings and read state whenever the thread changes.
         viewModelScope.launch(app.yarn.CrashLog.handler) {
-            conversation.filterNotNull().map { it.lastMessageAt to it.unreadCount }.distinctUntilChanged().collect { (_, unread) ->
-                if (visible && unread > 0) c.conversations.markRead(listOf(conversationId), section.value?.categories.orEmpty())
+            // Keyed on the messages, not lastMessageAt: saving the draft while typing bumps that every pause.
+            conversation.filterNotNull().map { it.messagesKey() }.distinctUntilChanged().collect { key ->
+                if (visible && key.unread > 0) c.conversations.markRead(listOf(conversationId), section.value?.categories.orEmpty())
                 refreshInsights()
             }
         }
@@ -201,6 +202,9 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
         super.onCleared()
     }
 
+    /** The messages smart replies were last worked out for; the same messages don't run the model again. */
+    private var repliesFor: List<Pair<Long, Long>>? = null
+
     private fun refreshInsights() {
         smartJob?.cancel()
         smartJob = viewModelScope.launch(Dispatchers.Default + app.yarn.CrashLog.handler) {
@@ -214,7 +218,10 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
                 } else null
             }
             val category = Category.fromName(conv.category) ?: Category.PERSONAL
+            val seen = recent.map { it.id to it.date }
+            if (seen == repliesFor) return@launch
             _smartReplies.value = if (conv.spam || conv.blocked) emptyList<String>() to Engine.RULES else c.assistant.smartReplies(recent, category)
+            repliesFor = seen
         }
     }
 
@@ -410,3 +417,9 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
         }
     }
 }
+
+/** What changes when a message arrives, is read, sent or deleted, and not when the draft is saved. */
+internal data class MessagesKey(val count: Int, val unread: Int, val snippet: String, val fromMe: Boolean, val status: Int)
+
+internal fun app.yarn.data.db.ConversationEntity.messagesKey() = MessagesKey(messageCount, unreadCount, snippet, snippetFromMe, snippetStatus)
+

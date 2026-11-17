@@ -168,7 +168,7 @@ fun ConversationScreen(
         highlight = null
     }
     // Keep the newest message in view when it arrives, unless the user scrolled up.
-    LaunchedEffect(conversation?.lastMessageAt) {
+    LaunchedEffect(conversation?.messagesKey()) {
         if (listState.firstVisibleItemIndex <= 1 && highlight == null) listState.animateScrollToItem(0)
     }
 
