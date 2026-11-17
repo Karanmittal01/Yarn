@@ -222,3 +222,7 @@ pick("g2", "ucobank", "subway", "sangeethamobiles")
 pick("g3", "svcbank", "sbimutualfund")
 TUNE["ucobank"] = {"ops": [("crop", 0.0, 0.195, 1.0, 0.86), ("pad", 0.06, (255, 255, 255))]}
 TUNE["subway"] = {"ops": [("brighten", 2.0)]}
+
+# Smytten (SMYTTN): navy disc with transparent corners, so fill them navy and let it fill the circle.
+pick(P, "smytten")
+TUNE["smytten"] = {"ops": [("outside", 0.5, 0.5, 0.49, (15, 22, 40))]}

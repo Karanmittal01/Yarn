@@ -10,7 +10,7 @@ class SenderNamesTest {
             "JD-PHEASY-S" to "PharmEasy", "AD-MGCPNP-S" to "magicpin", "VM-FRCHBT-S" to "Freecharge", "JM-MYCLIQ-S" to "Tata CLiQ",
             "AD-TALUXE-P" to "Tata CLiQ Luxury", "VK-QKWLLT-S" to "QuikWallet", "JD-COUPLX-S" to "Coupl", "AX-GYFTRR-S" to "GyFTR",
             "VM-WOOHOO-S" to "Woohoo", "AD-HSQUAR-S" to "Hudle", "JD-PLAYO-S" to "Playo", "VM-LPHILP-P" to "Louis Philippe",
-            "AD-APWELL-S" to "Apollo",
+            "AD-APWELL-S" to "Apollo", "JD-SMYTTN-P" to "Smytten",
         )
         for ((address, name) in expected) assertThat(SenderNames.pretty(address)).isEqualTo(name)
     }
@@ -19,6 +19,12 @@ class SenderNamesTest {
         assertThat(SenderNames.brandKey("VM-HDFCBK-S")).isEqualTo("hdfcbank")
         assertThat(SenderNames.brandKey("JD-SWGTNG-S")).isEqualTo("swiggytoing")
         assertThat(SenderNames.brandKey("VM-ACMEIN-T")).isNull()
+    }
+
+    @Test fun jiosCodeNumberIsJio() {
+        assertThat(SenderNames.pretty("620021")).isEqualTo("Jio")
+        assertThat(SenderNames.brandKey("620021")).isEqualTo("jio")
+        assertThat(SenderNames.brandKey("+91620021")).isNull()
     }
 
     @Test fun applesCodeNumberIsApple() {

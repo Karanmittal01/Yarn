@@ -1132,6 +1132,8 @@ object SenderNames {
         Brand("CEATLT", "CEAT"),
         Brand("JKTYRE", "JK Tyre"),
         Brand("STATIQ", "Statiq"),
+        Brand("SMYTTN", "Smytten"),
+        Brand("SMYTEN", "Smytten"),
         Brand("XPBEES", "XpressBees"),
         Brand("SLCBNK", "slice"),
         Brand("PHEASY", "PharmEasy"),
@@ -1458,6 +1460,7 @@ object SenderNames {
     /** Well-known numeric short codes; they have no letters to match a prefix against. */
     private val SHORT_CODES = mapOf(
         "57575711" to Brand("57575711", "Apple"),
+        "620021" to Brand("620021", "Jio"),
     )
 
     private fun known(address: String): Brand? {

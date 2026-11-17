@@ -956,3 +956,8 @@ ALIASES += [
     ("Swiggy", ["SWGYIN"]),
 ]
 
+# From the user's inbox (Nov 2026).
+NEW += [
+    ("Smytten", "smytten.com", ["SMYTTN", "SMYTEN"]),
+]
+

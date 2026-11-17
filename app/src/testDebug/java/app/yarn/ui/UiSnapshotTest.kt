@@ -456,6 +456,16 @@ class UiSnapshotTest {
         item(10, "Subway", "Sub of the day: buy 1 get 1 free", "PROMOTIONS", 0, "VM-SUBWAY-P", true, InboxGroup.OFFERS),
     )
     @Test fun inboxLastLogos() = shot(true, "59_inbox_found_logos_dark") { InboxMock(lastLogos) }
+    // The top of the user's inbox: Smytten and Jio's number-only sender now have logos.
+    private val topOfInbox get() = withLogos(
+        item(1, "Bank of Baroda", "Dear BOB UPI User: Your account is credited with INR 2.00", "BANKING", 0, "AD-BOBTXN-S", true, InboxGroup.TRANSACTIONS),
+        item(2, "Smytten", "Flash Sale! Get Full-size trials from Foxtale, Novology & more at 4 trial points till midnight", "PROMOTIONS", 0, "JD-SMYTTN-P", true, InboxGroup.OFFERS),
+        item(3, "Domino's", "<#>Your Domino's login OTP is 123456", "OTP", 0, "VM-DOMINO-S", true, InboxGroup.OTP, "123456"),
+        item(4, "Jio", "क्या आप अपना Jio नंबर xxxxxx1234 चालू रखना चाहते हैं?", "UPDATES", 0, "620021", true, InboxGroup.UPDATES),
+        item(5, "Tata CLiQ", "Hi, your order of Fitspire YOR Daily Rose Falooda is confirmed", "SHOPPING", 0, "JM-MYCLIQ-S", true, InboxGroup.SHOPPING),
+        item(6, "MobiKwik", "Your KYC is due for update by January 17, 2027", "UPDATES", 0, "AD-MOBIKW-S", true, InboxGroup.UPDATES),
+    )
+    @Test fun inboxTop() = shot(true, "60_inbox_smytten_jio_dark") { InboxMock(topOfInbox) }
     @Test fun inboxLogosDark() = shot(true, "52_inbox_brand_logos_dark") { InboxMock(logoInbox) }
     @Test fun inboxLogosLight() = shot(false, "53_inbox_brand_logos_light") { InboxMock(logoInbox) }
 
