@@ -188,3 +188,37 @@ pick("cu", "unionbank")
 TUNE["bandhanbank"] = {"ops": [("crop", 0.0, 0.0, 0.215, 1.0)]}
 TUNE["unionbank"] = {"ops": [("crop", 0.0, 0.0, 0.26, 1.0)]}
 TUNE["bankofmaharashtra"] = {"ops": [("crop", 0.0, 0.0, 0.232, 0.76)]}
+
+# Round 4: the last ones, from each brand's own website (h1 = site icon, h2/h3 = header logo) where possible.
+pick(P, "cowin", "southindianbank")
+pick("site", "campus", "lakme", "dlf", "dhbvn")
+pick("h1", "karnatakabank", "nainitalbank")
+pick("h2", "plum", "kalyanjewellers", "hp", "lenovo", "whirlpool", "haier", "jungleerummy", "zupee", "lodha",
+     "professionalcouriers", "trackon", "saraswatbank", "pnbmetlife", "geojit", "hdbfinancial", "manappuram", "shadowfax",
+     "incometaxdept", "sbmbank")
+pick("h3", "tatamotors", "sbimutualfund")
+pick(W, "bluestar", "sotc", "mpl", "kotaklife", "herofincorp", "ltfinance", "dtdc", "ujjivanbank",
+     "capitalsmallfinancebank", "janatasahakaribank")
+pick(P, "pgimindia", "bharatgas")
+pick("h2", "credila", "sify", "nilkamal", "duroflex", "kurlon", "usha", "atomberg", "vguard", "infinix", "beardo",
+     "bathbodyworks", "mochi", "pcjeweller", "candere", "bhima", "archies", "crossword", "oberoihotels", "paytminsider",
+     "inorbit", "gailgas", "irdai", "jawa", "mrf", "apollotyres", "jktyre")
+pick("h3", "yogabar", "tatahousing")
+pick(W, "orientelectric", "wonderchef", "bajajelectronics", "portronics")
+# BSNL's Play icon has a "NEW" ribbon in the corner: paint it out and keep the globe and name.
+pick(P, "bsnl")
+TUNE["bsnl"] = {"ops": [("fill", 0.6, 0.68, 1.0, 1.0, (255, 255, 255)), ("crop", 0.2, 0.03, 0.8, 0.77)]}
+pick("h2", "nainitalbank")
+pick(X, "incometaxdept", "sbimutualfund")  # their header captures are banners with tiny text
+TUNE["bsnl"] = {"ops": [("fill", 0.6, 0.68, 1.0, 1.0, (255, 255, 255)), ("recolor", (238, 242, 238), 70, (255, 255, 255), 0.5, 0.5, 0.0),
+                        ("crop", 0.2, 0.03, 0.8, 0.77)]}
+pick("h2", "pgimindia")
+TUNE["bsnl"] = {"ops": [("fill", 0.6, 0.68, 1.0, 1.0, (255, 255, 255)), ("recolor", (238, 242, 238), 70, (255, 255, 255), 0.5, 0.5, 0.0),
+                        ("crop", 0.24, 0.03, 0.76, 0.665)]}
+TUNE["bsnl"] = {"ops": [("fill", 0.6, 0.68, 1.0, 1.0, (255, 255, 255)), ("recolor", (238, 242, 238), 130, (255, 255, 255), 0.5, 0.5, 0.0),
+                        ("crop", 0.22, 0.03, 0.78, 0.69)]}
+# Second website pass.
+pick("g2", "ucobank", "subway", "sangeethamobiles")
+pick("g3", "svcbank", "sbimutualfund")
+TUNE["ucobank"] = {"ops": [("crop", 0.0, 0.195, 1.0, 0.86), ("pad", 0.06, (255, 255, 255))]}
+TUNE["subway"] = {"ops": [("brighten", 2.0)]}

@@ -443,6 +443,19 @@ class UiSnapshotTest {
         item(10, "BMW", "Your BMW service is due next week", "UPDATES", 0, "AD-BMWIND-S", true, InboxGroup.UPDATES),
     )
     @Test fun inboxMoreLogos() = shot(true, "58_inbox_more_logos_dark") { InboxMock(moreLogos) }
+    private val lastLogos get() = withLogos(
+        item(1, "UCO Bank", "Your A/c XX1234 is debited by Rs 500.00", "BANKING", 0, "AD-UCOBNK-S", true, InboxGroup.TRANSACTIONS),
+        item(2, "Karnataka Bank", "Rs 2,000 credited to your A/c XX5678", "BANKING", 0, "VM-KARBNK-S", true, InboxGroup.TRANSACTIONS),
+        item(3, "BSNL", "Your BSNL bill of Rs 499 is generated", "BILLS", 0, "BZ-BSNLIN-S", true, InboxGroup.UPDATES),
+        item(4, "DTDC", "Your shipment D12345678 is out for delivery", "DELIVERY", 0, "JD-DTDCIN-S", true, InboxGroup.SHOPPING),
+        item(5, "HP", "Your HP laptop warranty is expiring soon", "UPDATES", 0, "AD-HPINDA-S", true, InboxGroup.UPDATES),
+        item(6, "Lenovo", "Your Lenovo order has been shipped", "SHOPPING", 0, "VM-LENOVO-S", true, InboxGroup.SHOPPING),
+        item(7, "Tata Motors", "Your Nexon service is due on 25 Nov", "UPDATES", 0, "AD-TATAMT-S", true, InboxGroup.UPDATES),
+        item(8, "Kalyan Jewellers", "Gold rate today: Rs 7,250/g. Visit your nearest showroom", "PROMOTIONS", 0, "VM-KALYAN-P", true, InboxGroup.OFFERS),
+        item(9, "MRF", "Your MRF tyre warranty is registered", "UPDATES", 0, "AD-MRFLTD-S", true, InboxGroup.UPDATES),
+        item(10, "Subway", "Sub of the day: buy 1 get 1 free", "PROMOTIONS", 0, "VM-SUBWAY-P", true, InboxGroup.OFFERS),
+    )
+    @Test fun inboxLastLogos() = shot(true, "59_inbox_found_logos_dark") { InboxMock(lastLogos) }
     @Test fun inboxLogosDark() = shot(true, "52_inbox_brand_logos_dark") { InboxMock(logoInbox) }
     @Test fun inboxLogosLight() = shot(false, "53_inbox_brand_logos_light") { InboxMock(logoInbox) }
 

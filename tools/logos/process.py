@@ -36,6 +36,11 @@ def prepare(im, ops):
             near = np.abs(a[..., :3].astype(int) - np.array(op[1])).sum(axis=2) < op[2]
             a[far & near, :3] = op[3]
             im = Image.fromarray(a)
+        elif op[0] == "brighten":
+            # Undo a dark overlay (a page's pop-up scrim) captured with the logo.
+            a = np.asarray(im).astype(np.float32)
+            a[..., :3] = np.clip(a[..., :3] * op[1], 0, 255)
+            im = Image.fromarray(a.astype(np.uint8))
         elif op[0] == "outside":
             cx, cy, r = op[1] * w, op[2] * h, op[3] * w
             m = Image.new("L", im.size, 255)
