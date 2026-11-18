@@ -1,11 +1,6 @@
 package app.yarn.ui.inbox
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -51,13 +47,11 @@ import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.GppMaybe
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.StarOutline
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,8 +67,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import app.yarn.R
 import app.yarn.data.contacts.ContactInfo
 import app.yarn.telephony.SimInfo
@@ -110,11 +102,11 @@ internal fun MyAvatar(name: String?, photo: String?, size: androidx.compose.ui.u
 }
 
 /**
- * Your profile and everything else in one page, like Google Messages' account page: your card (tap
- * to change your name or picture), your folders, then Yarn's settings, each opening its own page.
+ * Your profile and everything else, as one screen: your card (tap to change your name or picture), your
+ * folders, then Yarn's settings. Every option opens on top of it, so Back always comes back here.
  */
 @Composable
-fun AccountSheet(
+fun ProfileScreen(
     me: ContactInfo?,
     sims: List<SimInfo>,
     hasUnread: Boolean,
@@ -123,34 +115,35 @@ fun AccountSheet(
     onNavigate: (InboxDestination) -> Unit,
     onFeedback: () -> Unit,
     onSaveProfile: (name: String, photo: android.graphics.Bitmap?, removePhoto: Boolean) -> Unit,
-    onDismiss: () -> Unit,
+    onClose: () -> Unit,
 ) {
-    val shown = remember { MutableTransitionState(false) }
-    LaunchedEffect(Unit) { shown.targetState = true }
-    var editing by remember { mutableStateOf(false) }
-    fun close(then: () -> Unit = {}) { onDismiss(); then() }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        androidx.activity.compose.BackHandler(enabled = editing) { editing = false }
-        AnimatedVisibility(shown, enter = app.yarn.ui.theme.Motion.rise, exit = app.yarn.ui.theme.Motion.sink) {
-            androidx.compose.material3.Surface(color = app.yarn.ui.settings.settingsPageColor(), contentColor = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxSize()) {
-                androidx.compose.animation.AnimatedContent(editing, transitionSpec = app.yarn.ui.theme.Motion.crossfade(), label = "profilePage") { edit ->
-                    if (edit) {
-                        ProfileEditor(
-                            name = me?.name.orEmpty(), photo = me?.photoUri,
-                            onSave = { name, photo, remove -> onSaveProfile(name, photo, remove); editing = false },
-                            onBack = { editing = false },
-                        )
-                    } else {
-                        AccountSheetContent(
-                            me, sims, hasUnread, settings,
-                            onMarkAllRead = { close(onMarkAllRead) },
-                            onNavigate = { d -> close { onNavigate(d) } },
-                            onFeedback = { close(onFeedback) },
-                            onEditProfile = { editing = true },
-                            onDismiss = onDismiss,
-                        )
-                    }
-                }
+    var editing by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = editing) { editing = false }
+    androidx.compose.material3.Surface(color = app.yarn.ui.settings.settingsPageColor(), contentColor = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxSize()) {
+        androidx.compose.animation.AnimatedContent(
+            editing,
+            // Editing slides in like any other page of this menu.
+            transitionSpec = {
+                if (targetState) app.yarn.ui.theme.Motion.pushEnter togetherWith app.yarn.ui.theme.Motion.pushExit
+                else app.yarn.ui.theme.Motion.popEnter togetherWith app.yarn.ui.theme.Motion.popExit
+            },
+            label = "profilePage",
+        ) { edit ->
+            if (edit) {
+                ProfileEditor(
+                    name = me?.name.orEmpty(), photo = me?.photoUri,
+                    onSave = { name, photo, remove -> onSaveProfile(name, photo, remove); editing = false },
+                    onBack = { editing = false },
+                )
+            } else {
+                AccountSheetContent(
+                    me, sims, hasUnread, settings,
+                    onMarkAllRead = onMarkAllRead,
+                    onNavigate = onNavigate,
+                    onFeedback = onFeedback,
+                    onEditProfile = { editing = true },
+                    onDismiss = onClose,
+                )
             }
         }
     }
@@ -178,41 +171,41 @@ fun AccountSheetContent(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
     ) {
-        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.End) {
-            IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, stringResource(R.string.close), Modifier.size(26.dp)) }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, stringResource(R.string.close), Modifier.size(24.dp)) }
         }
         // Who you are: compact, and a tap away from changing.
         Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(card)
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(card)
                 .clickable(onClickLabel = stringResource(R.string.edit_profile), onClick = onEditProfile)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(58.dp).border(2.dp, ring, CircleShape), contentAlignment = Alignment.Center) {
-                MyAvatar(name, me?.photoUri, 52.dp)
+            Box(Modifier.size(50.dp).border(2.dp, ring, CircleShape), contentAlignment = Alignment.Center) {
+                MyAvatar(name, me?.photoUri, 44.dp)
             }
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     name ?: stringResource(R.string.add_your_name),
-                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp), fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp), fontWeight = FontWeight.Medium,
                     color = if (name != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 sims.forEach { sim ->
-                    Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                        if (sims.size > 1) app.yarn.ui.common.SimBadge(sim, Modifier.padding(end = 6.dp), height = 12.dp)
+                    Row(Modifier.padding(top = 1.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (sims.size > 1) app.yarn.ui.common.SimBadge(sim, Modifier.padding(end = 5.dp), height = 11.dp)
                         Text(
                             listOfNotNull(sim.number?.takeIf { it.isNotBlank() }, sim.carrier).joinToString(" · "),
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp), color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
             }
-            Icon(Icons.Outlined.Edit, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Outlined.Edit, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         SheetGroup(card) {
             SheetItem(Icons.Outlined.StarOutline, stringResource(R.string.starred)) { onNavigate(InboxDestination.Starred) }
             SheetItem(Icons.Outlined.Archive, stringResource(R.string.archived)) { onNavigate(InboxDestination.Archived) }
@@ -221,7 +214,7 @@ fun AccountSheetContent(
             SheetItem(Icons.Outlined.Block, stringResource(R.string.blocked)) { onNavigate(InboxDestination.Blocked) }
             SheetItem(Icons.Outlined.DoneAll, stringResource(R.string.mark_all_read), enabled = hasUnread, onClick = onMarkAllRead)
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         // Settings live right here; each row opens its own page.
         fun open(page: SettingsPage) = onNavigate(InboxDestination.Setting(page))
         SheetGroup(card) {
@@ -235,7 +228,7 @@ fun AccountSheetContent(
                 value = if (app.yarn.data.repo.Cleaner.isAutoCleanOn(settings)) stringResource(R.string.auto) else null,
             ) { open(SettingsPage.CLEANUP) }
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         SheetGroup(card) {
             SheetItem(Icons.Outlined.Backup, stringResource(R.string.backup_restore)) { open(SettingsPage.BACKUP) }
             SheetItem(Icons.AutoMirrored.Outlined.HelpOutline, stringResource(R.string.help_feedback), onClick = onFeedback)
@@ -244,7 +237,7 @@ fun AccountSheetContent(
         Text(
             stringResource(R.string.private_on_phone),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
     }
@@ -252,7 +245,7 @@ fun AccountSheetContent(
 
 @Composable
 private fun SheetGroup(color: Color, content: @Composable () -> Unit) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(color).padding(vertical = 6.dp)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(color).padding(vertical = 4.dp)) {
         content()
     }
 }
@@ -261,12 +254,13 @@ private fun SheetGroup(color: Color, content: @Composable () -> Unit) {
 private fun SheetItem(icon: ImageVector, title: String, enabled: Boolean = true, value: String? = null, onClick: () -> Unit) {
     val ink = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.38f)
     Row(
-        Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick).padding(start = 22.dp, end = 20.dp, top = 15.dp, bottom = 15.dp),
+        // Menu-like rows: about 46dp, still an easy tap.
+        Modifier.fillMaxWidth().heightIn(min = 46.dp).clickable(enabled = enabled, onClick = onClick).padding(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, Modifier.size(24.dp), tint = ink)
-        Spacer(Modifier.width(20.dp))
-        Text(title, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp), color = ink, modifier = Modifier.weight(1f))
-        value?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1) }
+        Icon(icon, null, Modifier.size(20.dp), tint = ink)
+        Spacer(Modifier.width(16.dp))
+        Text(title, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp, lineHeight = 20.sp), color = ink, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        value?.let { Text(it, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp), color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1) }
     }
 }

@@ -27,6 +27,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.yarn.ui.inbox.ProfileScreen
 import app.yarn.data.repo.InboxFilter
 import app.yarn.data.repo.InboxGroup
 import app.yarn.data.repo.InboxView
@@ -69,6 +72,7 @@ import app.yarn.R
 @Serializable data class FolderRoute(val view: String)
 @Serializable object StarredRoute
 @Serializable object BinRoute
+@Serializable object ProfileRoute
 
 /** Navigation requests coming from outside the UI (notifications, share sheet, other apps). */
 sealed interface ExternalNav {
@@ -90,14 +94,45 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
     }
 
     // Every screen moves the same way: an iOS-style push and pop (see Motion).
+    // The profile page rises over the inbox like a sheet, which stays put underneath.
     NavHost(
         nav, startDestination = HomeRoute,
         enterTransition = { app.yarn.ui.theme.Motion.pushEnter },
-        exitTransition = { app.yarn.ui.theme.Motion.pushExit },
-        popEnterTransition = { app.yarn.ui.theme.Motion.popEnter },
+        exitTransition = {
+            if (targetState.destination.hasRoute<ProfileRoute>()) androidx.compose.animation.ExitTransition.KeepUntilTransitionsFinished
+            else app.yarn.ui.theme.Motion.pushExit
+        },
+        popEnterTransition = {
+            if (initialState.destination.hasRoute<ProfileRoute>()) androidx.compose.animation.EnterTransition.None
+            else app.yarn.ui.theme.Motion.popEnter
+        },
         popExitTransition = { app.yarn.ui.theme.Motion.popExit },
     ) {
         composable<HomeRoute> { HomePane(nav) }
+        composable<ProfileRoute>(
+            enterTransition = { app.yarn.ui.theme.Motion.rise },
+            popExitTransition = { app.yarn.ui.theme.Motion.sink },
+        ) { entry ->
+            // The inbox's own ViewModel, so the profile shows the same you, SIMs and unread state.
+            val home = androidx.compose.runtime.remember(entry) { nav.getBackStackEntry<HomeRoute>() }
+            val inboxVm = yarnViewModel(key = "inbox", owner = home) { InboxViewModel(it, InboxFilter()) }
+            val me by inboxVm.me.collectAsStateWithLifecycle()
+            val sims by inboxVm.sims.collectAsStateWithLifecycle()
+            val settings by inboxVm.settings.collectAsStateWithLifecycle()
+            val items by inboxVm.items.collectAsStateWithLifecycle()
+            val context = androidx.compose.ui.platform.LocalContext.current
+            ProfileScreen(
+                me = me, sims = sims,
+                hasUnread = items.orEmpty().any { it.conversation.unreadCount > 0 },
+                settings = settings,
+                // Back to the inbox, where "Undo" shows.
+                onMarkAllRead = { inboxVm.markAllRead(); nav.popBackStack() },
+                onNavigate = { d -> navigateTo(nav, d) },
+                onFeedback = { app.yarn.ui.inbox.shareFeedback(context, app.yarn.CrashLog.all()) },
+                onSaveProfile = inboxVm::saveProfile,
+                onClose = { nav.popBackStack() },
+            )
+        }
         composable<ChatRoute> { entry ->
             val r = entry.toRoute<ChatRoute>()
             val section = app.yarn.data.repo.InboxGroup.entries.firstOrNull { it.name == r.section }
@@ -177,18 +212,7 @@ private fun HomePane(nav: NavHostController) {
     val inboxVm = yarnViewModel(key = "inbox") { InboxViewModel(it, InboxFilter()) }
     var selected by rememberSaveable { mutableStateOf<Long?>(null) }
     var selectedSection by rememberSaveable { mutableStateOf("") }
-    val onNavigate: (InboxDestination) -> Unit = { d ->
-        when (d) {
-            InboxDestination.Starred -> nav.navigate(StarredRoute)
-            InboxDestination.Archived -> nav.navigate(FolderRoute(InboxView.ARCHIVED.name))
-            InboxDestination.Blocked -> nav.navigate(FolderRoute(InboxView.BLOCKED.name))
-            InboxDestination.Settings -> nav.navigate(SettingsRoute)
-            is InboxDestination.Setting -> nav.navigate(SettingsSubRoute(d.page.name))
-            InboxDestination.Cleanup -> nav.navigate(SettingsSubRoute(SettingsPage.CLEANUP.name))
-            InboxDestination.Bin -> nav.navigate(BinRoute)
-            InboxDestination.Spam -> nav.navigate(FolderRoute(InboxView.SPAM.name))
-        }
-    }
+    val onNavigate: (InboxDestination) -> Unit = { d -> navigateTo(nav, d) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val width = maxWidth
         val twoPane = width >= 720.dp
@@ -234,3 +258,18 @@ private fun HomePane(nav: NavHostController) {
         }
     }
 }
+
+private fun navigateTo(nav: NavHostController, d: InboxDestination) {
+    when (d) {
+        InboxDestination.Profile -> nav.navigate(ProfileRoute) { launchSingleTop = true }
+        InboxDestination.Starred -> nav.navigate(StarredRoute)
+        InboxDestination.Archived -> nav.navigate(FolderRoute(InboxView.ARCHIVED.name))
+        InboxDestination.Blocked -> nav.navigate(FolderRoute(InboxView.BLOCKED.name))
+        InboxDestination.Settings -> nav.navigate(SettingsRoute)
+        is InboxDestination.Setting -> nav.navigate(SettingsSubRoute(d.page.name))
+        InboxDestination.Cleanup -> nav.navigate(SettingsSubRoute(SettingsPage.CLEANUP.name))
+        InboxDestination.Bin -> nav.navigate(BinRoute)
+        InboxDestination.Spam -> nav.navigate(FolderRoute(InboxView.SPAM.name))
+    }
+}
+

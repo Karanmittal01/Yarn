@@ -77,9 +77,14 @@ val Context.container: AppContainer get() = (applicationContext as YarnApplicati
 
 /** Creates a ViewModel with access to the app container. */
 @Composable
-inline fun <reified VM : ViewModel> yarnViewModel(key: String? = null, crossinline create: (AppContainer) -> VM): VM {
+inline fun <reified VM : ViewModel> yarnViewModel(
+    key: String? = null,
+    owner: androidx.lifecycle.ViewModelStoreOwner? = null,
+    crossinline create: (AppContainer) -> VM,
+): VM {
     val container = LocalContext.current.container
     return viewModel(
+        viewModelStoreOwner = owner ?: checkNotNull(androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner.current),
         key = key,
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")

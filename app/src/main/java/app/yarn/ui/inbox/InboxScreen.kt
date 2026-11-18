@@ -144,6 +144,8 @@ sealed interface InboxDestination {
     data object Spam : InboxDestination
     /** One settings page, opened straight from the profile page. */
     data class Setting(val page: app.yarn.ui.settings.SettingsPage) : InboxDestination
+    /** Your profile and Yarn's settings. */
+    data object Profile : InboxDestination
 }
 
 @Composable
@@ -173,7 +175,6 @@ fun InboxScreen(
     val me by vm.me.collectAsStateWithLifecycle()
     val sims by vm.sims.collectAsStateWithLifecycle()
     val crash by vm.crash.collectAsStateWithLifecycle()
-    var account by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -238,7 +239,7 @@ fun InboxScreen(
                         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     )
-                    else -> InboxHeader(title = title, onSearch = onSearch, me = me, collapsed = scrolled, onProfile = { account = true })
+                    else -> InboxHeader(title = title, onSearch = onSearch, me = me, collapsed = scrolled, onProfile = { onNavigate(InboxDestination.Profile) })
                 }
                 }
                 if (showChips && chips.size > 1) {
@@ -353,19 +354,6 @@ fun InboxScreen(
                 ) { Icon(Icons.Filled.ArrowUpward, stringResource(R.string.scroll_to_top)) }
             }
         }
-    }
-
-    if (account) {
-        AccountSheet(
-            me = me, sims = sims,
-            hasUnread = items.orEmpty().any { it.conversation.unreadCount > 0 },
-            settings = settings,
-            onMarkAllRead = vm::markAllRead,
-            onNavigate = onNavigate,
-            onFeedback = { shareFeedback(context, app.yarn.CrashLog.all()) },
-            onSaveProfile = vm::saveProfile,
-            onDismiss = { account = false },
-        )
     }
 
     confirmDelete?.let { ids ->
