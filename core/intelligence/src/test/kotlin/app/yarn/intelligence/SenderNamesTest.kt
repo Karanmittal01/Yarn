@@ -11,7 +11,7 @@ class SenderNamesTest {
             "AD-TALUXE-P" to "Tata CLiQ Luxury", "VK-QKWLLT-S" to "QuikWallet", "JD-COUPLX-S" to "Coupl", "AX-GYFTRR-S" to "GyFTR",
             "VM-WOOHOO-S" to "Woohoo", "AD-HSQUAR-S" to "Hudle", "JD-PLAYO-S" to "Playo", "VM-LPHILP-P" to "Louis Philippe",
             "AD-APWELL-S" to "Apollo", "JD-SMYTTN-P" to "Smytten",
-            "VM-BIGBKT-S" to "bigbasket", "AD-MYSBIC-S" to "SBI Card", "JD-SHPFAS-S" to "Shipfast", "VM-HOIYTC-S" to "Hoi", "VK-RMATIC-S" to "Routematic",
+            "VM-BIGBKT-S" to "bigbasket", "AD-MYSBIC-S" to "SBI Card", "JD-SHPFAS-S" to "Shipfast", "VM-HOIYTC-S" to "Hoi", "VK-RMATIC-S" to "Routematic", "AD-ADHAAR-G" to "UIDAI (Aadhaar)", "VM-QWKCLR-S" to "Qwikcilver", "JD-PAYRWD-S" to "Pay with Rewards",
         )
         for ((address, name) in expected) assertThat(SenderNames.pretty(address)).isEqualTo(name)
     }
@@ -25,6 +25,12 @@ class SenderNamesTest {
     @Test fun jiosCodeNumberIsJio() {
         assertThat(SenderNames.pretty("620021")).isEqualTo("Jio")
         assertThat(SenderNames.brandKey("620021")).isEqualTo("jio")
+        // As it reaches the phone: with the carrier's prefix and suffix.
+        assertThat(SenderNames.pretty("JK-620021-P")).isEqualTo("Jio") // exactly as on the user's phone
+        assertThat(SenderNames.brandKey("JK-620021-P")).isEqualTo("jio")
+        assertThat(SenderNames.pretty("JM-620021-S")).isEqualTo("Jio")
+        assertThat(SenderNames.brandKey("VK-620021")).isEqualTo("jio")
+        assertThat(SenderNames.pretty("JM-620022-S")).isEqualTo("620022")
         assertThat(SenderNames.brandKey("+91620021")).isNull()
     }
 

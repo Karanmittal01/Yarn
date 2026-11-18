@@ -1138,6 +1138,7 @@ object SenderNames {
         Brand("SHPFST", "Shipfast"),
         Brand("HOIYTC", "Hoi"),
         Brand("RMATIC", "Routematic"),
+        Brand("PAYRWD", "Pay with Rewards"),
         Brand("XPBEES", "XpressBees"),
         Brand("SLCBNK", "slice"),
         Brand("PHEASY", "PharmEasy"),
@@ -1148,6 +1149,8 @@ object SenderNames {
         Brand("SHPWSE", "Shopwise"),
         Brand("LIVQUK", "QuikWallet"),
         Brand("SWGYIN", "Swiggy"),
+        Brand("ADHAAR", "UIDAI (Aadhaar)"),
+        Brand("QWKCLR", "Qwikcilver"),
         Brand("BIGBKT", "bigbasket"),
         Brand("MYSBIC", "SBI Card"),
         Brand("BAGIC", "Bajaj Allianz"),
@@ -1474,6 +1477,8 @@ object SenderNames {
         if (a.contains('@')) return null
         if (a.none { it.isLetter() }) return if (a.startsWith("+")) null else SHORT_CODES[a.filter(Char::isDigit)]
         val token = SenderAnalyzer.brandToken(a)
+        // Numeric headers also arrive with the carrier's prefix ("JM-620021-S"): the number is what counts.
+        if (token.isNotEmpty() && token.all(Char::isDigit)) return SHORT_CODES[token]
         val hit = found.getOrPut(token) { KNOWN.firstOrNull { token.startsWith(it.prefix) } ?: NONE }
         return hit.takeIf { it !== NONE }
     }

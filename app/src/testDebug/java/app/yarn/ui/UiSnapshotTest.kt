@@ -465,7 +465,7 @@ class UiSnapshotTest {
         item(1, "Bank of Baroda", "Dear BOB UPI User: Your account is credited with INR 2.00", "BANKING", 0, "AD-BOBTXN-S", true, InboxGroup.TRANSACTIONS),
         item(2, "Smytten", "Flash Sale! Get Full-size trials from Foxtale, Novology & more at 4 trial points till midnight", "PROMOTIONS", 0, "JD-SMYTTN-P", true, InboxGroup.OFFERS),
         item(3, "Domino's", "<#>Your Domino's login OTP is 123456", "OTP", 0, "VM-DOMINO-S", true, InboxGroup.OTP, "123456"),
-        item(4, "Jio", "क्या आप अपना Jio नंबर xxxxxx1234 चालू रखना चाहते हैं?", "UPDATES", 0, "620021", true, InboxGroup.UPDATES),
+        item(4, "Jio", "क्या आप अपना Jio नंबर xxxxxx1234 चालू रखना चाहते हैं?", "UPDATES", 0, "JM-620021-S", true, InboxGroup.UPDATES),
         item(5, "Tata CLiQ", "Hi, your order of Fitspire YOR Daily Rose Falooda is confirmed", "SHOPPING", 0, "JM-MYCLIQ-S", true, InboxGroup.SHOPPING),
         item(6, "MobiKwik", "Your KYC is due for update by January 17, 2027", "UPDATES", 0, "AD-MOBIKW-S", true, InboxGroup.UPDATES),
     )
@@ -476,6 +476,12 @@ class UiSnapshotTest {
         item(3, "Hoi", "Your Booking ID for Encalm Lounge, T3 INT DEP, Delhi is: HOI0000001. Booking valid for 3 hours", "TRAVEL", 0, "VM-HOIYTC-S", true, InboxGroup.TRAVEL),
     )
     @Test fun inboxHoiRoutematic() = shot(true, "62_inbox_hoi_routematic_dark") { InboxMock(travelInbox) }
+    private val rewardsInbox get() = withLogos(
+        item(1, "Qwikcilver", "Dear Customer, Your OTP for Flipkart SuperCoins gift card is 123456", "OTP", 0, "VM-QWKCLR-S", true, InboxGroup.OTP, "123456"),
+        item(2, "UIDAI (Aadhaar)", "123456 is OTP for Aadhaar (XX1234) (valid for 10 mins)", "OTP", 0, "AD-ADHAAR-G", true, InboxGroup.OTP, "654321"),
+        item(3, "Pay with Rewards", "You have spent INR 174 using your Pay with Rewards account", "BANKING", 0, "JD-PAYRWD-S", true, InboxGroup.TRANSACTIONS),
+    )
+    @Test fun inboxRewards() = shot(true, "63_inbox_aadhaar_qwikcilver_rewards_dark") { InboxMock(rewardsInbox) }
 
     // Notification icons: before (square tile) and after (cut round), with the phone's app badge in the corner.
     @Test fun notificationIcons() {

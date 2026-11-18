@@ -962,8 +962,11 @@ NEW += [
     ("Shipfast", "shipfast.in", ["SHPFAS", "SHPFST"]),
     ("Hoi", "hoi.in", ["HOIYTC"]),
     ("Routematic", "routematic.com", ["RMATIC"]),
+    ("Pay with Rewards", "paywithrewards.com", ["PAYRWD"]),
 ]
 ALIASES += [
+    ("UIDAI (Aadhaar)", ["ADHAAR"]),
+    ("Qwikcilver", ["QWKCLR"]),
     ("bigbasket", ["BIGBKT"]),
     ("SBI Card", ["MYSBIC"]),
 ]
