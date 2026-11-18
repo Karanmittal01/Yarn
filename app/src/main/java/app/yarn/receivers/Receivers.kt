@@ -71,9 +71,10 @@ class SmsDeliveredReceiver : BroadcastReceiver() {
         val id = intent.getLongExtra(MessageSender.EXTRA_MESSAGE_ID, -1)
         val attempt = intent.getIntExtra(MessageSender.EXTRA_ATTEMPT, -1)
         val providerId = intent.getLongExtra(MessageSender.EXTRA_PROVIDER_ID, -1)
+        val recipient = intent.getIntExtra(MessageSender.EXTRA_RECIPIENT, -1)
         val pdu = intent.getByteArrayExtra("pdu")
         val format = intent.getStringExtra("format")
-        async(context) { sender.onSmsDelivered(id, attempt, providerId, pdu, format) }
+        async(context) { sender.onSmsDelivered(id, attempt, providerId, recipient, pdu, format) }
     }
 }
 

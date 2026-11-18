@@ -116,6 +116,7 @@ data class MessageEntity(
     val partsTotal: Int = 0,
     val partsSent: Int = 0,
     val partsFailed: Int = 0,
+    /** Recipients whose delivery report came in, as a bitmask (a count past 30 recipients); see messaging.Delivery. */
     val partsDelivered: Int = 0,
     val subId: Int = -1,
     val read: Boolean = true,

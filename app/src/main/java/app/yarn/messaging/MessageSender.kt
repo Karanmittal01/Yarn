@@ -183,6 +183,12 @@ class MessageSender(
     private suspend fun recoverStuck() {
         for (m in db.messages().stuckSending(System.currentTimeMillis() - 10 * 60_000L)) {
             if (System.currentTimeMillis() - maxOf(m.nextAttemptAt, m.date) < 10 * 60_000L) continue
+            // The "sent" callback never came, but the recipient got it: that's delivered, not failed.
+            if (m.deliveryReport && Delivery.complete(m.partsDelivered, Delivery.recipients(m.address))) {
+                db.messages().update(m.copy(status = MessageStatus.DELIVERED, dateSent = m.date, errorCode = 0))
+                db.conversations().refresh(m.conversationId)
+                continue
+            }
             db.messages().update(m.copy(status = MessageStatus.FAILED, errorCode = -2))
             db.conversations().refresh(m.conversationId)
             notifier.notifyFailed(m, conversationTitle(m.conversationId), context.getString(R.string.status_unknown_retry))
@@ -225,10 +231,11 @@ class MessageSender(
         var lastError = 0
         recipients.forEachIndexed { r, recipient ->
             val sent = ArrayList<PendingIntent>()
-            val delivered = ArrayList<PendingIntent>()
+            // One delivery report per recipient, on the last part (see Delivery).
+            val delivered = ArrayList<PendingIntent?>()
             parts.indices.forEach { p ->
                 sent += smsIntent(SmsSentReceiver::class.java, m.id, attempt, r, p, providerIds.getOrNull(r) ?: -1)
-                if (m.deliveryReport) delivered += smsIntent(SmsDeliveredReceiver::class.java, m.id, attempt, r, p, providerIds.getOrNull(r) ?: -1)
+                delivered += if (m.deliveryReport && p == parts.lastIndex) smsIntent(SmsDeliveredReceiver::class.java, m.id, attempt, r, p, providerIds.getOrNull(r) ?: -1) else null
             }
             try {
                 sms.sendMultipartTextMessage(recipient, null, parts, sent, if (m.deliveryReport) delivered else null)
@@ -248,6 +255,7 @@ class MessageSender(
             .setData(Uri.parse("yarn://sms/${cls.simpleName}/$messageId/$attempt/$recipient/$part"))
             .putExtra(EXTRA_MESSAGE_ID, messageId)
             .putExtra(EXTRA_ATTEMPT, attempt)
+            .putExtra(EXTRA_RECIPIENT, recipient)
             .putExtra(EXTRA_PROVIDER_ID, providerId)
         // Mutable: the telephony stack attaches error codes / status-report PDUs as extras.
         return PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
@@ -272,21 +280,25 @@ class MessageSender(
         }
     }
 
-    suspend fun onSmsDelivered(messageId: Long, attempt: Int, providerId: Long, pdu: ByteArray?, format: String?) = callbackLock.withLock {
+    suspend fun onSmsDelivered(messageId: Long, attempt: Int, providerId: Long, recipient: Int, pdu: ByteArray?, format: String?) = callbackLock.withLock {
         val m = db.messages().get(messageId) ?: return@withLock
         if (m.attempts != attempt) return@withLock
-        val status = runCatching { SmsMessage.createFromPdu(pdu, format).status }.getOrDefault(0)
-        // TP-Status: 0x00-0x1F delivered, 0x20-0x3F still trying, >= 0x40 permanent failure.
-        when {
-            status < 0x20 -> {
-                val delivered = m.partsDelivered + 1
-                val done = delivered >= m.partsTotal
-                db.messages().update(m.copy(partsDelivered = delivered, status = if (done && m.status == MessageStatus.SENT) MessageStatus.DELIVERED else m.status))
-                if (done && providerId > 0) providerLock.withLock { store.updateSmsDeliveryStatus(providerId, Telephony.Sms.STATUS_COMPLETE) }
+        val tpStatus = runCatching { SmsMessage.createFromPdu(pdu, format).status }.getOrDefault(0)
+        when (Delivery.report(tpStatus)) {
+            Delivery.Report.DELIVERED -> {
+                if (providerId > 0) providerLock.withLock { store.updateSmsDeliveryStatus(providerId, Telephony.Sms.STATUS_COMPLETE) }
+                val recipients = Delivery.recipients(m.address)
+                val delivered = Delivery.record(m.partsDelivered, recipient, recipients)
+                // A report can beat the last "sent" callback; finishSuccess then marks it delivered.
+                val status = if (Delivery.complete(delivered, recipients) && m.status == MessageStatus.SENT) MessageStatus.DELIVERED else m.status
+                db.messages().update(m.copy(partsDelivered = delivered, status = status))
             }
-            status >= 0x40 -> {
+            Delivery.Report.PENDING -> {
+                if (providerId > 0) providerLock.withLock { store.updateSmsDeliveryStatus(providerId, Telephony.Sms.STATUS_PENDING) }
+            }
+            Delivery.Report.FAILED -> {
                 if (providerId > 0) providerLock.withLock { store.updateSmsDeliveryStatus(providerId, Telephony.Sms.STATUS_FAILED) }
-                db.messages().update(m.copy(status = MessageStatus.FAILED, errorCode = status))
+                db.messages().update(m.copy(status = MessageStatus.FAILED, errorCode = tpStatus))
                 notifier.notifyFailed(m, conversationTitle(m.conversationId), context.getString(R.string.not_delivered))
             }
         }
@@ -295,7 +307,9 @@ class MessageSender(
 
     private suspend fun finishSuccess(m: MessageEntity) {
         val sentAt = System.currentTimeMillis()
-        db.messages().update(m.copy(status = MessageStatus.SENT, dateSent = sentAt, errorCode = 0))
+        // Delivery reports that arrived before the last "sent" callback still count.
+        val delivered = m.deliveryReport && Delivery.complete(m.partsDelivered, Delivery.recipients(m.address))
+        db.messages().update(m.copy(status = if (delivered) MessageStatus.DELIVERED else MessageStatus.SENT, dateSent = sentAt, errorCode = 0))
         providerLock.withLock {
             if (m.kind == MessageKind.SMS) {
                 (listOfNotNull(m.providerId) + m.extraProviderIds.orEmpty().split(',').mapNotNull { it.toLongOrNull() })
@@ -478,6 +492,7 @@ class MessageSender(
     companion object {
         private const val TAG = "MessageSender"
         const val EXTRA_MESSAGE_ID = "message_id"
+        const val EXTRA_RECIPIENT = "recipient"
         const val EXTRA_ATTEMPT = "attempt"
         const val EXTRA_PROVIDER_ID = "provider_id"
         const val EXTRA_FILE = "file"
