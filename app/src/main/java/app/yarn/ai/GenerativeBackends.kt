@@ -164,6 +164,7 @@ class LocalLlmService(private val context: Context) {
     }
 
     suspend fun generate(path: String, prompt: String, maxTokens: Int = 768): String? = withContext(Dispatchers.Default) {
+        if (!app.yarn.NativeGuard.allowed(app.yarn.NativeGuard.Feature.LOCAL_LLM)) return@withContext null
         lock.withLock {
             runCatching {
                 if (engine == null || loadedPath != path) {

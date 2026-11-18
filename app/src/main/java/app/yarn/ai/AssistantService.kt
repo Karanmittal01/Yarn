@@ -44,7 +44,6 @@ class AssistantService(
     private val nano: GeminiNanoService,
     private val localLlm: LocalLlmService,
     private val selfHosted: SelfHostedAiService,
-    private val smartReply: SmartReplyService,
     private val language: LanguageService,
     private val mlEntities: MlEntityService,
 ) {
@@ -124,8 +123,8 @@ class AssistantService(
         val ordered = recent.sortedBy { it.date }.filter { it.body.isNotBlank() }
         val last = ordered.lastOrNull() ?: return emptyList<String>() to Engine.RULES
         if (last.outgoing) return emptyList<String>() to Engine.RULES
-        val ml = smartReply.suggest(ordered.map { SmartReplyService.Turn(it.body, it.date, it.outgoing, it.address) })
-        if (ml.isNotEmpty()) return ml to Engine.ML_KIT
+        // Yarn's own reply rules: Google's Smart Reply model crashed natively on some phones (Android 17),
+        // closing the app, so it isn't used.
         return QuickReplies.suggest(last.body, category) to Engine.RULES
     }
 

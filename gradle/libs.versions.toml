@@ -19,7 +19,6 @@ sqlite = "2.6.1"
 coroutines = "1.10.2"
 serialization = "1.9.0"
 mlkitEntity = "16.0.0-beta6"
-mlkitSmartReply = "17.0.4"
 mlkitTranslate = "17.0.3"
 mlkitLanguageId = "17.0.6"
 mlkitGenAi = "1.0.0-beta1"
@@ -69,7 +68,6 @@ coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", 
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 mlkit-entity-extraction = { module = "com.google.mlkit:entity-extraction", version.ref = "mlkitEntity" }
-mlkit-smart-reply = { module = "com.google.mlkit:smart-reply", version.ref = "mlkitSmartReply" }
 mlkit-translate = { module = "com.google.mlkit:translate", version.ref = "mlkitTranslate" }
 mlkit-language-id = { module = "com.google.mlkit:language-id", version.ref = "mlkitLanguageId" }
 mlkit-genai-summarization = { module = "com.google.mlkit:genai-summarization", version.ref = "mlkitGenAi" }

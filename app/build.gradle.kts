@@ -154,7 +154,6 @@ dependencies {
     implementation(libs.serialization.json)
 
     implementation(libs.mlkit.entity.extraction)
-    implementation(libs.mlkit.smart.reply)
     implementation(libs.mlkit.translate)
     implementation(libs.mlkit.language.id)
     implementation(libs.mlkit.genai.prompt)

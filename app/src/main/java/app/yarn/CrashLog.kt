@@ -91,12 +91,17 @@ object CrashLog {
         exits.maxOfOrNull { it.timestamp }?.let { newest -> runCatching { seenFile.writeText(maxOf(newest, since).toString()) } }
         // A Java crash the handler already wrote up in full needs no second copy.
         val handled = pending() != null
-        val found = exits
-            .filter { it.timestamp > since && it.reason in CRASHES }
+        val recent = exits.filter { it.timestamp > since && it.reason in CRASHES }
+        val nativeAt = recent.filter { it.reason == ApplicationExitInfo.REASON_CRASH_NATIVE }.map { it.timestamp }
+        val found = recent
             .filterNot { it.reason == ApplicationExitInfo.REASON_CRASH && handled }
+            // Android files a native crash twice: once as a native crash, once as a plain crash with no detail.
+            .filterNot { e -> e.reason == ApplicationExitInfo.REASON_CRASH && nativeAt.any { kotlin.math.abs(it - e.timestamp) < 3_000 } }
             .sortedByDescending { it.timestamp }
         if (found.isEmpty()) return
-        val text = found.joinToString("\n\n") { describe(it) }
+        val shown = found.take(MAX_SHOWN)
+        val text = shown.joinToString("\n\n") { describe(it) } +
+            (if (found.size > shown.size) "\n\n…and ${found.size - shown.size} earlier crash(es)" else "")
         runCatching {
             val file = File(d, "last_crash.txt")
             file.writeText((if (file.exists()) file.readText() + "\n\n" else "") + text)
@@ -119,9 +124,35 @@ object CrashLog {
         val head = "CRASH $time · $reason $where · Yarn ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) · " +
             "Android ${Build.VERSION.RELEASE} · ${Build.MANUFACTURER} ${Build.MODEL}\n" +
             "process ${e.processName} · status ${e.status} · memory ${e.pss / 1024} MB (rss ${e.rss / 1024} MB)" +
-            (e.description?.let { "\n$it" } ?: "")
+            (e.description?.takeIf { it.isNotBlank() && it != "crash" }?.let { "\n$it" } ?: "")
         return head + trace(e)
     }
+
+    /**
+     * For a native crash: the app library that failed, the frames around it, and (when Yarn can) the feature
+     * switched off so it doesn't crash again. The other threads, just waiting, are left out.
+     */
+    internal fun nativeSummary(runs: List<String>): String {
+        val at = runs.indexOfFirst { "/data/app/" in it && APP_LIB.containsMatchIn(it) }
+        if (at < 0) return runs.joinToString("\n").take(3_000)
+        val library = APP_LIB.find(runs[at])!!.groupValues[1]
+        val feature = NativeGuard.featureFor(library)
+        feature?.let(NativeGuard::disable)
+        // The crashing thread's frames run until the next thread's name (a bare word, no brackets or path).
+        val frames = ArrayList<String>()
+        for (i in maxOf(0, at - 2) until minOf(runs.size, at + 30)) {
+            val r = runs[i]
+            if (BUILD_ID.matches(r) || r.startsWith("2?/data/misc/apexdata")) continue
+            if (i > at && '(' !in r && '/' !in r) break
+            frames += r.replace(Regex("/data/app/[^ ]*?/(base\\.apk|split_[^!]*\\.apk|lib/)"), "…/$1")
+        }
+        val what = feature?.let { "\nTurned off until the next update: ${it.label}" }.orEmpty()
+        return "Crashed in $library$what\n" + frames.joinToString("\n").take(3_000)
+    }
+
+    private val BUILD_ID = Regex("""B [0-9a-f]{32}"?""")
+    private val APP_LIB = Regex("""(lib[A-Za-z0-9_.\-]+?\.so)""")
+    private const val MAX_SHOWN = 6
 
     /**
      * What Android kept of the moment it stopped: the thread dump for a hang, or the native backtrace (a binary
@@ -131,7 +162,7 @@ object CrashLog {
     private fun trace(e: ApplicationExitInfo): String {
         val bytes = runCatching { e.traceInputStream?.use { it.readNBytesCompat(256 * 1024) } }.getOrNull() ?: return ""
         val text = if (e.reason == ApplicationExitInfo.REASON_CRASH_NATIVE) {
-            printable(bytes).joinToString("\n")
+            nativeSummary(printable(bytes))
         } else {
             String(bytes, Charsets.UTF_8).let { t ->
                 // For a hang, the main thread is what matters.

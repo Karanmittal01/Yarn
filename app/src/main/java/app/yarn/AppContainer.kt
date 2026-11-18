@@ -22,7 +22,6 @@ import app.yarn.ai.LanguageService
 import app.yarn.ai.LocalLlmService
 import app.yarn.ai.MlEntityService
 import app.yarn.ai.SelfHostedAiService
-import app.yarn.ai.SmartReplyService
 import app.yarn.ai.TranslationService
 import app.yarn.backup.BackupManager
 import app.yarn.data.contacts.ContactsRepository
@@ -81,7 +80,7 @@ class AppContainer(val app: Application) {
     val sync by lazy { TelephonySync(app, db, store, conversations, providerLock) }
     val nano by lazy { GeminiNanoService(app) }
     val localLlm by lazy { LocalLlmService(app) }
-    val assistant by lazy { AssistantService(settings, nano, localLlm, SelfHostedAiService(), SmartReplyService(), language, mlEntities) }
+    val assistant by lazy { AssistantService(settings, nano, localLlm, SelfHostedAiService(), language, mlEntities) }
     val backup by lazy { BackupManager(app, db, store, sync, providerLock) }
     val drive by lazy { GoogleDrive(app) }
     val cleaner by lazy { Cleaner(db, conversations, settings) }
@@ -180,6 +179,7 @@ class YarnApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         CrashLog.install(this)
+        NativeGuard.install(this)
         app.yarn.i18n.AppLanguage.applyTo(this)
         container = AppContainer(this)
         container.start()

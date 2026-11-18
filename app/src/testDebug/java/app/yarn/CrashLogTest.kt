@@ -5,6 +5,7 @@ import android.app.ApplicationExitInfo
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -26,6 +27,8 @@ class CrashLogTest {
     @Before fun clean() {
         File(context.filesDir, "crash").deleteRecursively()
         CrashLog.install(context)
+        NativeGuard.install(context, versionCode = 3700)
+        NativeGuard.reset()
     }
 
     private fun exit(reason: Int, at: Long, description: String? = null, trace: ByteArray? = null) =
@@ -37,17 +40,58 @@ class CrashLogTest {
                 .build(),
         )
 
-    @Test fun nativeCrashBecomesAReport() {
-        // A tombstone is binary; its library and function names are what's worth keeping.
-        val tombstone = byteArrayOf(0x0A, 0x12) + "/data/app/lib/arm64/libsqlcipher.so".toByteArray() + byteArrayOf(0, 1, 2) +
-            "sqlite3VdbeExec+1234".toByteArray() + byteArrayOf(0x7F, 0x00)
-        exit(ApplicationExitInfo.REASON_CRASH_NATIVE, now - 3_600_000, "crash", tombstone)
+    private fun runs(vararg parts: String): ByteArray = parts.fold(byteArrayOf()) { acc, p -> acc + p.toByteArray() + byteArrayOf(0x12, 0x00) }
+
+    // Shaped like the real tombstone from the Galaxy S25 Ultra: waiting threads, then the crashing one.
+    private val smartReplyTombstone = runs(
+        "SIGSEGV", "SEGV_MAPERR@", "binder:5398_2", "android::IPCThreadState::talkWithDriver(bool)(", "DefaultDispatch",
+        "pool-6-thread-3",
+        "tflite::ops::builtin::reduce::GetOutputShape(TfLiteContext*)(",
+        "2~/data/app/~~abc==/app.yarn.messages-xyz==/split_config.arm64_v8a.apk!libpredictor_jni.so8",
+        "hobbes::mlkit::SmartReplyPredictor::Predict(",
+        "EJava_com_google_mlkit_nl_smartreply_jni_PredictorJni_predictHobbesJNI(",
+        "HeapTaskDaemon", "art::gc::TaskProcessor::RunAllTasks(art::Thread*)(",
+    )
+
+    @Test fun nativeCrashNamesTheLibraryAndSwitchesItsFeatureOff() {
+        exit(ApplicationExitInfo.REASON_CRASH_NATIVE, now - 3_600_000, "crash", smartReplyTombstone)
         CrashLog.collectExitReasons(context, now)
         val report = CrashLog.pendingReport.value!!
         assertTrue(report, report.contains("Native crash in the background"))
-        assertTrue(report, report.contains("libsqlcipher.so"))
-        assertTrue(report, report.contains("sqlite3VdbeExec"))
+        assertTrue(report, report.contains("Crashed in libpredictor_jni.so"))
+        assertTrue(report, report.contains("SmartReplyPredictor::Predict"))
+        assertTrue(report, report.contains("Turned off until the next update: Suggested replies"))
         assertTrue(report, report.contains("memory 175 MB"))
+        // The waiting threads aren't worth reading.
+        assertFalse(report, report.contains("HeapTaskDaemon"))
+        assertFalse(NativeGuard.allowed(NativeGuard.Feature.SMART_REPLY))
+        assertTrue(NativeGuard.allowed(NativeGuard.Feature.TRANSLATE))
+    }
+
+    @Test fun switchedOffFeaturesComeBackAfterAnUpdate() {
+        NativeGuard.disable(NativeGuard.Feature.TRANSLATE)
+        NativeGuard.install(context, versionCode = 3700)
+        assertFalse(NativeGuard.allowed(NativeGuard.Feature.TRANSLATE))
+        NativeGuard.install(context, versionCode = 3800)
+        assertTrue(NativeGuard.allowed(NativeGuard.Feature.TRANSLATE))
+    }
+
+    @Test fun nativeCrashFiledTwiceIsReportedOnce() {
+        // Android records a native crash as a native crash and again as a plain "crash" with no detail.
+        exit(ApplicationExitInfo.REASON_CRASH, now - 60_000, "crash")
+        exit(ApplicationExitInfo.REASON_CRASH_NATIVE, now - 60_400, "crash", smartReplyTombstone)
+        CrashLog.collectExitReasons(context, now)
+        val report = CrashLog.pendingReport.value!!
+        assertEquals(1, Regex("^CRASH", RegexOption.MULTILINE).findAll(report).count())
+        assertTrue(report.contains("Native crash"))
+    }
+
+    @Test fun manyCrashesAreCapped() {
+        repeat(9) { exit(ApplicationExitInfo.REASON_CRASH_NATIVE, now - (it + 1) * 60_000L, "crash", smartReplyTombstone) }
+        CrashLog.collectExitReasons(context, now)
+        val report = CrashLog.pendingReport.value!!
+        assertEquals(6, Regex("^CRASH", RegexOption.MULTILINE).findAll(report).count())
+        assertTrue(report.contains("and 3 earlier"))
     }
 
     @Test fun hangKeepsTheMainThread() {

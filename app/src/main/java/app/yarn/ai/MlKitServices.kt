@@ -13,9 +13,6 @@ import com.google.mlkit.nl.entityextraction.EntityExtractorOptions
 import com.google.mlkit.nl.entityextraction.TrackingNumberEntity
 import com.google.mlkit.nl.languageid.LanguageIdentification
 import com.google.mlkit.nl.languageid.LanguageIdentifier
-import com.google.mlkit.nl.smartreply.SmartReply
-import com.google.mlkit.nl.smartreply.SmartReplySuggestionResult
-import com.google.mlkit.nl.smartreply.TextMessage
 import com.google.mlkit.common.model.RemoteModelManager
 import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.TranslateRemoteModel
@@ -36,7 +33,7 @@ class LanguageService {
     private val identifier: LanguageIdentifier by lazy { LanguageIdentification.getClient() }
 
     /** BCP-47 tag or null when undetermined. */
-    suspend fun identify(text: String): String? = runCatching {
+    suspend fun identify(text: String): String? = if (!app.yarn.NativeGuard.allowed(app.yarn.NativeGuard.Feature.LANGUAGE_ID)) null else runCatching {
         identifier.identifyLanguage(text.take(500)).await().takeIf { it != "und" }
     }.getOrNull()
 }
@@ -87,6 +84,9 @@ class TranslationService(
             return if (sourceTag == null) Result.UnknownLanguage else Result.Unsupported(sourceTag)
         }
         if (source == target) return Result.SameLanguage
+        if (!app.yarn.NativeGuard.allowed(app.yarn.NativeGuard.Feature.TRANSLATE)) {
+            return if (allowOnline) translateOnline(text, targetTag) else Result.Failed("Offline translation is off on this phone")
+        }
         val offline = translateOffline(text, source, target, allowMobileData)
         return if (offline is Result.Failed && allowOnline) translateOnline(text, targetTag) else offline
     }
@@ -181,35 +181,6 @@ class OnlineTranslator {
     }
 }
 
-/** ML Kit Smart Reply: on-device, English only, declines sensitive topics by design. */
-class SmartReplyService {
-    private val generator by lazy { SmartReply.getClient() }
-    /**
-     * The model is native code and isn't safe to run twice at once. A caller that gives up (the chat moved on)
-     * doesn't stop a run already started, so the lock is held until the run itself finishes.
-     */
-    private val lock = Mutex()
-
-    data class Turn(val text: String, val timestamp: Long, val fromMe: Boolean, val senderId: String)
-
-    suspend fun suggest(conversation: List<Turn>): List<String> {
-        if (conversation.isEmpty() || conversation.last().fromMe) return emptyList()
-        val messages = conversation.takeLast(10).map {
-            if (it.fromMe) TextMessage.createForLocalUser(it.text, it.timestamp)
-            else TextMessage.createForRemoteUser(it.text, it.timestamp, it.senderId)
-        }
-        return lock.withLock {
-            runCatching {
-                val task = generator.suggestReplies(messages)
-                val result = kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
-                    withTimeoutOrNull(5_000) { task.await() }
-                } ?: return@runCatching emptyList()
-                if (result.status == SmartReplySuggestionResult.STATUS_SUCCESS) result.suggestions.map { it.text } else emptyList()
-            }.getOrDefault(emptyList())
-        }
-    }
-}
-
 /**
  * ML Kit entity extraction complements the rule-based extractor with learned models for addresses,
  * date/times, flight and tracking numbers. The model (~5 MB per language) downloads on Wi-Fi.
@@ -221,6 +192,7 @@ class MlEntityService {
     @Volatile private var ready = false
 
     suspend fun ensureModel(allowMobileData: Boolean = false): Boolean {
+        if (!app.yarn.NativeGuard.allowed(app.yarn.NativeGuard.Feature.ENTITIES)) return false
         if (ready) return true
         return runCatching {
             if (!extractor.isModelDownloaded().await()) {
@@ -235,6 +207,7 @@ class MlEntityService {
     suspend fun isModelDownloaded(): Boolean = runCatching { extractor.isModelDownloaded().await() }.getOrDefault(false)
 
     suspend fun extract(text: String, referenceTime: Long, zone: ZoneId = ZoneId.systemDefault()): List<Entity> {
+        if (!app.yarn.NativeGuard.allowed(app.yarn.NativeGuard.Feature.ENTITIES)) return emptyList()
         if (!ready && !isModelDownloaded()) return emptyList()
         ready = true
         val params = EntityExtractionParams.Builder(text)
