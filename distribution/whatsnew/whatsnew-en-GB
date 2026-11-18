@@ -1,3 +1,2 @@
-Fixed crashes when opening or replying in a chat. Suggested replies now come from Yarn's own reply rules.
-If a built-in feature ever causes a crash, Yarn switches it off until the next update instead of crashing again.
-Routematic and Hoi now show their names and logos.
+Double ticks are now reliable: long messages and ones with emoji or Hindi show Delivered as soon as they arrive.
+Group messages show Delivered once everyone has received them.
