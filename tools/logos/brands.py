@@ -960,6 +960,8 @@ ALIASES += [
 NEW += [
     ("Smytten", "smytten.com", ["SMYTTN", "SMYTEN"]),
     ("Shipfast", "shipfast.in", ["SHPFAS", "SHPFST"]),
+    ("Hoi", "hoi.in", ["HOIYTC"]),
+    ("Routematic", "routematic.com", ["RMATIC"]),
 ]
 ALIASES += [
     ("bigbasket", ["BIGBKT"]),

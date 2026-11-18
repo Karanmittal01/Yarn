@@ -11,7 +11,7 @@ class SenderNamesTest {
             "AD-TALUXE-P" to "Tata CLiQ Luxury", "VK-QKWLLT-S" to "QuikWallet", "JD-COUPLX-S" to "Coupl", "AX-GYFTRR-S" to "GyFTR",
             "VM-WOOHOO-S" to "Woohoo", "AD-HSQUAR-S" to "Hudle", "JD-PLAYO-S" to "Playo", "VM-LPHILP-P" to "Louis Philippe",
             "AD-APWELL-S" to "Apollo", "JD-SMYTTN-P" to "Smytten",
-            "VM-BIGBKT-S" to "bigbasket", "AD-MYSBIC-S" to "SBI Card", "JD-SHPFAS-S" to "Shipfast",
+            "VM-BIGBKT-S" to "bigbasket", "AD-MYSBIC-S" to "SBI Card", "JD-SHPFAS-S" to "Shipfast", "VM-HOIYTC-S" to "Hoi", "VK-RMATIC-S" to "Routematic",
         )
         for ((address, name) in expected) assertThat(SenderNames.pretty(address)).isEqualTo(name)
     }

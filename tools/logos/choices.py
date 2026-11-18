@@ -230,3 +230,7 @@ TUNE["smytten"] = {"ops": [("outside", 0.5, 0.5, 0.49, (15, 22, 40))]}
 # Shipfast (SHPFAS), Velocity's shipping service: its site icon matches the logo the user sent; keep the blue square.
 pick(W, "shipfast")
 TUNE["shipfast"] = {"ops": [("crop", 0.12, 0.12, 0.88, 0.88)]}
+
+# Hoi (HOIYTC, airport lounges; app by PAX Innovation) and Routematic (RMATIC, office cabs).
+pick(P, "hoi")
+pick(W, "routematic")

@@ -470,6 +470,12 @@ class UiSnapshotTest {
         item(6, "MobiKwik", "Your KYC is due for update by January 17, 2027", "UPDATES", 0, "AD-MOBIKW-S", true, InboxGroup.UPDATES),
     )
     @Test fun inboxTop() = shot(true, "60_inbox_smytten_jio_dark") { InboxMock(topOfInbox) }
+    private val travelInbox get() = withLogos(
+        item(1, "Routematic", "SS-HR-1234 assigned for your pickup has started. You can track vehicle using mobile app", "TRAVEL", 0, "VK-RMATIC-S", true, InboxGroup.TRAVEL),
+        item(2, "Divya", "You: I miss him too.", "PERSONAL", 0, "+919800000003", false, InboxGroup.PERSONAL),
+        item(3, "Hoi", "Your Booking ID for Encalm Lounge, T3 INT DEP, Delhi is: HOI0000001. Booking valid for 3 hours", "TRAVEL", 0, "VM-HOIYTC-S", true, InboxGroup.TRAVEL),
+    )
+    @Test fun inboxHoiRoutematic() = shot(true, "62_inbox_hoi_routematic_dark") { InboxMock(travelInbox) }
 
     // Notification icons: before (square tile) and after (cut round), with the phone's app badge in the corner.
     @Test fun notificationIcons() {

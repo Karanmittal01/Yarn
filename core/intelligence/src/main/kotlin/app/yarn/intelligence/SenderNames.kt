@@ -1136,6 +1136,8 @@ object SenderNames {
         Brand("SMYTEN", "Smytten"),
         Brand("SHPFAS", "Shipfast"),
         Brand("SHPFST", "Shipfast"),
+        Brand("HOIYTC", "Hoi"),
+        Brand("RMATIC", "Routematic"),
         Brand("XPBEES", "XpressBees"),
         Brand("SLCBNK", "slice"),
         Brand("PHEASY", "PharmEasy"),
