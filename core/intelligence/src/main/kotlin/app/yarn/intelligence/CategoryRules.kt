@@ -150,6 +150,12 @@ object CategoryRules {
         "(?i)(?:your (?!next |first )(?:\\w+ ){0,2}order(?!s| now| to (?:buy|sell))|order (?:#|no\\.|id|number|is|has|was|\\d)|shipped|shipment|dispatched|packed|" +
             "out for delivery|return pickup|parcel|package|courier|unable to deliver|(?:has been|was|is|got) delivered|delivered (?:to|at|today|successfully)|order delivered)",
     )
+    // Store credit handed out as a perk ("Rs. 1,000* credited to your Seiko Power Cash Wallet. Enjoy
+    // your benefits."): an amount with conditions attached, or money that only spends at the brand.
+    // Real money never carries an asterisk.
+    private val PERK_CREDIT = Regex(
+        "(?i)$MONEY\\*|enjoy (?:your |the |these |exclusive )?(?:benefits|perks|privileges)|power ?cash|bonus cash|promo(?:tional)? (?:cash|credits?|balance)",
+    )
     private val DISCOUNT = Regex("(?i)\\d+ ?% ?(?:off|discount|cashback)|use (?:code|coupon)|promo ?code|flat $MONEY off|up ?to $MONEY off")
     private val SERVICE = listOf(Category.OTP, Category.BANKING, Category.PAYMENTS, Category.BILLS, Category.SHOPPING, Category.DELIVERY, Category.TRAVEL)
 
@@ -222,10 +228,13 @@ object CategoryRules {
             for (c in SERVICE + Category.PROMOTIONS + Category.UPDATES) if (c != Category.OTP) scale(c, 0.5f)
         }
 
-        // Did money actually move or fall due? Mentions of "account" or "card" alone don't count.
+        // Did money actually move or fall due? Mentions of "account" or "card" alone don't count,
+        // and nor does a perk credited to spend with the sender.
+        val perk = otp == null && PERK_CREDIT.containsMatchIn(text)
+        if (perk) add(Category.PROMOTIONS, 5f, "Credits a store perk, not money")
         val hasAmount = entities.any { it.type == EntityType.AMOUNT }
-        val moneyEvidence = MONEY_LEAD.containsMatchIn(text) || (get(Category.BILLS) >= 2.5f && hasAmount) ||
-            entities.any { it.type == EntityType.AMOUNT && it.attributes["direction"] in setOf("debit", "credit", "due", "balance") }
+        val moneyEvidence = !perk && (MONEY_LEAD.containsMatchIn(text) || (get(Category.BILLS) >= 2.5f && hasAmount) ||
+            entities.any { it.type == EntityType.AMOUNT && it.attributes["direction"] in setOf("debit", "credit", "due", "balance") })
         if (otp == null && !moneyEvidence) { scale(Category.BANKING, 0.4f); scale(Category.PAYMENTS, 0.5f) }
 
         // A discount or promo code is an advert, unless money moved or an order is under way.
@@ -270,7 +279,7 @@ object CategoryRules {
         val bankSender = brand == Category.BANKING || brand == Category.PAYMENTS
         if (bankSender && otp == null) { scale(Category.DELIVERY, 0.3f); scale(Category.SHOPPING, 0.3f) }
         if (sender.isBusinessLike && otp == null) {
-            val moneyAt = MONEY_LEAD.find(text)?.range?.first
+            val moneyAt = if (perk) null else MONEY_LEAD.find(text)?.range?.first
             val orderAt = ORDER_LEAD.find(text)?.range?.first
             if (moneyAt != null && (orderAt == null || moneyAt < orderAt)) add(Category.PAYMENTS, 5f, "Money moved")
             if (orderAt != null && !bankSender && (moneyAt == null || orderAt < moneyAt)) add(Category.SHOPPING, 5f, "About your order")
@@ -279,7 +288,7 @@ object CategoryRules {
         // Real activity beats marketing lines in footers ("Get 10% cashback on your next order").
         val txn = maxOf(get(Category.OTP), get(Category.BANKING), get(Category.PAYMENTS))
         val order = maxOf(get(Category.SHOPPING), get(Category.DELIVERY))
-        val strongEvidence = (entities.any { it.type == EntityType.AMOUNT && it.attributes["direction"] in setOf("debit", "credit") }) ||
+        val strongEvidence = (!perk && entities.any { it.type == EntityType.AMOUNT && it.attributes["direction"] in setOf("debit", "credit") }) ||
             (moneyEvidence && entities.any { it.type == EntityType.ACCOUNT_REF }) || order >= 5f
         if (sender.commercialSuffix != CommercialSuffix.PROMOTIONAL && strongEvidence && maxOf(txn, order) >= 3.5f) scale(Category.PROMOTIONS, 0.35f)
 

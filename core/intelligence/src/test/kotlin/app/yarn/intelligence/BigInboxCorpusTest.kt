@@ -312,6 +312,14 @@ class BigInboxCorpusTest {
         c("JM-ABHAIN-G", "Your ABHA health ID has been created successfully. ABHA no 12-3456-7890-1234.", U),
         c("VK-NHAIIN-G", "Your FASTag KYC is incomplete. Complete KYC by 31 Oct to avoid deactivation.", U),
 
+        // ---- Store perks dressed as credits (the user's TALUXE chat) ---------------------------------
+        c("VD-TALUXE-S", "UPDATE: Rs. 1,000 credited to your Tissot Power Cash Wallet. Enjoy your benefits.\nAccess here: https://d.sfmsg.co/TALUXE/AbCdE-fG\nTata CLiQ Luxury", F),
+        c("VD-TALUXE-S", "UPDATE: Rs. 1,000* credited to your Seiko Power Cash Wallet. Enjoy your benefits.\nAccess here: https://d.sfmsg.co/TALUXE/HiJkLmN0p\nTata CLiQ Luxury", F),
+        c("JM-MPLAPP-S", "Rs.50 bonus cash credited to your account! Play now and win big.", F),
+        c("AD-MYNTRA-S", "Rs. 500* added to your Myntra wallet. Shop the sale before it ends!", F),
+        // Real store money still counts.
+        c("JD-PAYTMB-S", "Rs.150 cashback has been credited to your Paytm Wallet for your recharge.", T),
+        c("AD-AMAZON-S", "Rs 2,499 refund for your order has been credited to your Amazon Pay balance.", T),
         // ---- Office cabs (the user's RMATIC chat) ---------------------------------------------------
         c("JX-RMATIC-S", "Pickup Details for 08 Oct 13:30\nETA:11:13\nVehicle#:ST-HR-6915\nVehicleType:4 Seater-C Driver:Surender S\nOffice:Cyber 5\nCheck In OTP: 1992\n- RM", O),
         c("JX-RMATIC-S", "ST-HR-6915 assigned for your pick is arriving now.\n- RM", CategoryGroup.TRAVEL),
