@@ -117,6 +117,9 @@ object CategoryRules {
         r(Category.UPDATES, 2.6f, "Account or service change", "logged in", "login (?:alert|detected)", "new device",
             "(?:has been|have been|was) (?:blocked|unblocked|enabled|disabled|linked|delinked|changed|registered|submitted|closed|issued|activated|deactivated|completed|updated|approved)",
             "successfully (?:linked|registered|updated|changed|submitted|completed|closed|logged)", "will be unavailable", "scheduled maintenance", "as requested",
+            "as (?:per )?your (?:request|instructions?)",
+            // A card, account or plan ended: news about the account, not an order or a trip.
+            "(?:card|account|a/c|policy|mandate|subscription|membership|plan|sim|connection|standing instruction|autopay|auto-?debit) (?:[\\w-]+ ){0,3}(?:has been |is |was |stands )?(?:cancelled|canceled|closed|terminated|suspended|deactivated|discontinued|surrendered|hotlisted)",
             "supply will be (?:disrupted|interrupted|affected)", "power (?:cut|outage|shutdown)", "for maintenance",
             "statement (?:for [\\w ]+? )?(?:has been (?:emailed|sent|mailed)|is (?:now )?available)", "will expire (?:on|in)", "new card will be", "renewal card",
             "unlocked", "kyc is due", "complete (?:your |video )?kyc", "on its way", "(?:card|cheque ?book) (?:has been |is )?(?:dispatched|delivered|shipped)", "dispatched via",

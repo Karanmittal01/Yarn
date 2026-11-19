@@ -78,6 +78,8 @@ class MessageAnalyzer(
      * than the rules' best guess.
      */
     fun mayFileAs(input: MessageInput, group: CategoryGroup): Boolean {
+        // A sender ID is a business, never a person writing to you, however friendly it sounds.
+        if (group == CategoryGroup.PERSONAL && input.sender.isBusinessLike) return false
         val evidence = CategoryRules.score(input, extractor.extract(input.text, input.timestampMillis)).evidence
         return evidence.isEmpty() || evidence.any { it.group == group }
     }

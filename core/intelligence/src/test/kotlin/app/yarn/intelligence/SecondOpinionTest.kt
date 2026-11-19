@@ -24,6 +24,13 @@ class SecondOpinionTest {
     }
 
     @Test
+    fun aBusinessIsNeverPersonal() {
+        val text = "Dear Customer, a payment of INR 6,106.20 was received on your Amex Card 1234. Thank you."
+        assertThat(may("VM-AMEXIN-S", text, CategoryGroup.PERSONAL)).isFalse()
+        assertThat(may("+919812345678", "Thank you, see you at dinner", CategoryGroup.PERSONAL)).isTrue()
+    }
+
+    @Test
     fun anAdvertMayStillBeAnOffer() {
         assertThat(may("VM-HDFCBK-S", "Enjoy 10% off on Myntra with your HDFC Bank Credit Card this weekend. T&C apply.", CategoryGroup.OFFERS)).isTrue()
     }
