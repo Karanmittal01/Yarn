@@ -482,6 +482,12 @@ class UiSnapshotTest {
         item(3, "Pay with Rewards", "You have spent INR 174 using your Pay with Rewards account", "BANKING", 0, "JD-PAYRWD-S", true, InboxGroup.TRANSACTIONS),
     )
     @Test fun inboxRewards() = shot(true, "63_inbox_aadhaar_qwikcilver_rewards_dark") { InboxMock(rewardsInbox) }
+    private val neuInbox get() = withLogos(
+        item(1, "Tata Neu", "Asha, welcome to Select tier. Claim new benefits, made for you. Get NeuCard & earn up to 10% Tata NeuCoins.", "PROMOTIONS", 0, "VM-MYTNEU-P", true, InboxGroup.OFFERS),
+        item(2, "American Express", "Dear Cardmember, your Amex Card ending 1234 has been cancelled as per your request.", "UPDATES", 0, "VM-AMEXIN-S", true, InboxGroup.UPDATES),
+        item(3, "HDFC Bank", "Congratulations! We approved your HDFC Bank Credit Card (App No. D26K12345678A0B1).", "UPDATES", 0, "VD-HDFCBK-S", true, InboxGroup.UPDATES),
+    )
+    @Test fun inboxNeu() = shot(true, "64_inbox_tata_neu_dark") { InboxMock(neuInbox) }
 
     // Notification icons: before (square tile) and after (cut round), with the phone's app badge in the corner.
     @Test fun notificationIcons() {

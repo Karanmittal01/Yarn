@@ -1339,6 +1339,8 @@ object SenderNames {
         Brand("TATACQ", "Tata CLiQ", Category.SHOPPING),
         Brand("TCLIQ", "Tata CLiQ", Category.SHOPPING),
         Brand("TATANU", "Tata Neu", Category.SHOPPING),
+        Brand("MYTNEU", "Tata Neu", Category.SHOPPING),
+        Brand("TATNEU", "Tata Neu", Category.SHOPPING),
         Brand("RELDIG", "Reliance Digital", Category.SHOPPING),
         Brand("CROMA", "Croma", Category.SHOPPING),
         Brand("VIJAYS", "Vijay Sales", Category.SHOPPING),
