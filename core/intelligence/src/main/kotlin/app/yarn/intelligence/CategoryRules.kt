@@ -72,7 +72,8 @@ object CategoryRules {
             // Office cabs and shuttles (Routematic, MoveInSync…): pickups, drops and the vehicle.
             "pick ?up details", "drop details", "next pick ?up", "your pick(?:up)?", "vehicle ?(?:#|no\\.?|number|type)", "vehicle (?:has reached|is arriving|has arrived|assigned|is on)",
             "arriving now", "has reached [a-z]", "\\d seater", "eta ?:", "shuttle?", "boarding point", "drop (?:location|point|time|is scheduled)",
-            "your (?:pick ?up|drop) (?:is|has|for)", "(?:login|logout) shift", "your (?:\\w+ )?bus (?:will|is|has)"),
+            "your (?:pick ?up|drop) (?:is|has|for)", "(?:login|logout) shift", "your (?:\\w+ )?bus (?:will|is|has)",
+            "assigned for your (?:pick ?up|pick|drop|trip|ride)", "(?:pick ?up|drop|trip|ride) (?:has )?started", "track (?:your |the )?(?:vehicle|cab|ride|driver|bus)"),
 
         // ---- Marketing ------------------------------------------------------------------------
         r(Category.PROMOTIONS, 2.6f, "Looks like marketing", "sale", "sale is live", "offer", "offers", "discount", "discounts", "\\d+ ?% ?off", "up ?to \\d+ ?%",
@@ -120,6 +121,12 @@ object CategoryRules {
             "statement (?:for [\\w ]+? )?(?:has been (?:emailed|sent|mailed)|is (?:now )?available)", "will expire (?:on|in)", "new card will be", "renewal card",
             "unlocked", "kyc is due", "complete (?:your |video )?kyc", "on its way", "(?:card|cheque ?book) (?:has been |is )?(?:dispatched|delivered|shipped)", "dispatched via",
             "nominee", "\\bnoc\\b", "under (?:police )?verification", "policy (?:has been )?issued", "will mature", "auto-?renewed", "kyc (?:has been|is) (?:completed|updated|verified)"),
+        // An application decided or under way ("We approved your HDFC Bank Credit Card (App No. …)"),
+        // not one being sold: "pre-approved" and "eligible for" stay offers.
+        r(Category.UPDATES, 2.6f, "About your application", "(?<!pre-)(?<!pre)approved your", "(?:we|has|have) (?:\\w+ )?(?:approved|sanctioned|rejected|declined) your",
+            "(?:application|app) (?:no\\.?|number|id) ?:?\\s?[a-z]*\\d[\\w-]*",
+            "your (?:\\w+ ){0,4}application (?:has been |is |was )?(?:approved|received|submitted|processed|rejected|declined|on hold|under (?:review|process))",
+            "(?:view|track|check) (?:the status of )?your application", "use (?:the )?password \\w+ to (?:open|view)"),
         r(Category.WORK, 2.4f, "Mentions work topics", "meeting", "standup", "stand-up", "deadline", "client", "project", "office", "manager", "shift", "deploy",
             "invoice approved", "sprint", "presentation", "conference call", "team", "colleague", "payroll", "salary"),
 
@@ -143,7 +150,11 @@ object CategoryRules {
     private val DISCOUNT = Regex("(?i)\\d+ ?% ?(?:off|discount|cashback)|use (?:code|coupon)|promo ?code|flat $MONEY off|up ?to $MONEY off")
     private val SERVICE = listOf(Category.OTP, Category.BANKING, Category.PAYMENTS, Category.BILLS, Category.SHOPPING, Category.DELIVERY, Category.TRAVEL)
 
-    data class Scores(val probabilities: Map<Category, Float>, val reasons: Map<Category, List<String>>) {
+    /**
+     * [evidence] holds the categories the message itself gave some sign of: its words, codes and
+     * amounts, not just who sent it or the fallback for business senders.
+     */
+    data class Scores(val probabilities: Map<Category, Float>, val reasons: Map<Category, List<String>>, val evidence: Set<Category> = emptySet()) {
         val top: Category get() = probabilities.maxByOrNull { it.value }!!.key
         val topProbability: Float get() = probabilities.getValue(top)
     }
@@ -152,10 +163,12 @@ object CategoryRules {
         val text = input.text
         val raw = HashMap<Category, Float>()
         val reasons = HashMap<Category, MutableList<String>>()
+        val evidence = HashSet<Category>()
         fun get(c: Category) = raw[c] ?: 0f
-        fun add(c: Category, w: Float, why: String) {
+        fun add(c: Category, w: Float, why: String, fromText: Boolean = true) {
             raw[c] = get(c) + w
             reasons.getOrPut(c) { mutableListOf() }.let { if (why !in it) it += why }
+            if (fromText) evidence += c
         }
         fun scale(c: Category, f: Float) { raw[c] = get(c) * f }
 
@@ -192,10 +205,10 @@ object CategoryRules {
 
         val sender = input.sender
         when (sender.kind) {
-            SenderKind.CONTACT -> add(Category.PERSONAL, 3f, "Sender is in your contacts")
-            SenderKind.PHONE_NUMBER -> add(Category.PERSONAL, 2.2f, "Sent from a personal phone number")
+            SenderKind.CONTACT -> add(Category.PERSONAL, 3f, "Sender is in your contacts", fromText = false)
+            SenderKind.PHONE_NUMBER -> add(Category.PERSONAL, 2.2f, "Sent from a personal phone number", fromText = false)
             SenderKind.ALPHANUMERIC, SenderKind.SHORT_CODE -> {
-                add(Category.UPDATES, 0.8f, "Sent by a business sender ID")
+                add(Category.UPDATES, 0.8f, "Sent by a business sender ID", fromText = false)
                 scale(Category.PERSONAL, 0.15f)
                 scale(Category.WORK, 0.4f)
             }
@@ -224,26 +237,26 @@ object CategoryRules {
             val name = SenderNames.pretty(sender.address)
             val marketing = promo >= 2.6f && promo > service
             when {
-                marketing -> add(Category.PROMOTIONS, 1f, "Marketing from $name")
+                marketing -> add(Category.PROMOTIONS, 1f, "Marketing from $name", fromText = false)
                 brand == Category.BANKING || brand == Category.PAYMENTS -> {
                     // A bank's name only tips money messages into Transactions; banks also send
                     // safety advice, service notices and adverts, which are filed by what they say.
-                    add(brand, if (moneyEvidence) 3f else 0.6f, "Sent by $name")
+                    add(brand, if (moneyEvidence) 3f else 0.6f, "Sent by $name", fromText = false)
                 }
-                else -> add(brand, 1.2f, "Sent by $name")
+                else -> add(brand, 1.2f, "Sent by $name", fromText = false)
             }
         }
 
         when (sender.commercialSuffix) {
             CommercialSuffix.PROMOTIONAL -> {
                 // Operators only allow advertising on -P headers, so this is always an offer.
-                add(Category.PROMOTIONS, 40f, "Sender header is marked promotional (-P)")
+                add(Category.PROMOTIONS, 40f, "Sender header is marked promotional (-P)", fromText = false)
             }
             CommercialSuffix.TRANSACTIONAL -> {
                 scale(Category.PROMOTIONS, 0.2f)
-                add(if (otp != null) Category.OTP else Category.BANKING, 1f, "Sender header is marked transactional (-T)")
+                add(if (otp != null) Category.OTP else Category.BANKING, 1f, "Sender header is marked transactional (-T)", fromText = false)
             }
-            CommercialSuffix.GOVERNMENT -> add(Category.UPDATES, 2f, "Sender header is marked government (-G)")
+            CommercialSuffix.GOVERNMENT -> add(Category.UPDATES, 2f, "Sender header is marked government (-G)", fromText = false)
             CommercialSuffix.SERVICE, null -> Unit
         }
 
@@ -269,11 +282,11 @@ object CategoryRules {
 
         // A small prior so short, keyword-free messages default sensibly.
         val prior = if (sender.isBusinessLike) Category.UPDATES else Category.PERSONAL
-        add(prior, 0.6f, if (prior == Category.PERSONAL) "Looks like a personal message" else "Sent by a business sender ID")
+        add(prior, 0.6f, if (prior == Category.PERSONAL) "Looks like a personal message" else "Sent by a business sender ID", fromText = false)
 
         // Softmax over non-spam categories; spam is decided by SpamDetector.
         val exps = CATEGORIES.associateWith { exp((get(it) * 0.9f).toDouble()).toFloat() }
         val total = exps.values.sum()
-        return Scores(exps.mapValues { it.value / total }, reasons)
+        return Scores(exps.mapValues { it.value / total }, reasons, evidence)
     }
 }

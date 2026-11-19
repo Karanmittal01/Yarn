@@ -17,6 +17,7 @@ class SmartSorter(
     private val db: YarnDatabase,
     private val nano: GeminiNanoService,
     private val settings: SettingsRepository,
+    private val engine: IntelligenceEngine,
 ) {
     suspend fun isAvailable(): Boolean {
         val s = settings.current()
@@ -55,6 +56,9 @@ class SmartSorter(
         val group = answer?.let { runCatching { InboxGroup.valueOf(it) }.getOrNull() }
             // The model may only call something an OTP when the extractor found a code.
             ?.takeUnless { it == InboxGroup.OTP }
+            // Nor move a message somewhere its own words give no sign of ("We approved your
+            // credit card" is not an offer, "your pickup has started" is not shopping).
+            ?.takeIf { engine.mayFileAs(m, it.kind) }
         val newCategory = when {
             group == null -> current ?: Category.PERSONAL
             InboxGroup.of(current) == group -> current!!

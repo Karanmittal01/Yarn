@@ -115,6 +115,10 @@ class IntelligenceEngine(
         return result
     }
 
+    /** Whether the on-device model may re-file [m] under [group]: see [MessageAnalyzer.mayFileAs]. */
+    fun mayFileAs(m: MessageEntity, group: app.yarn.intelligence.CategoryGroup): Boolean =
+        analyzer.mayFileAs(MessageInput(m.body, senderInfo(m.address), m.date, !m.outgoing, m.hasAttachments), group)
+
     private fun basicCategory(sender: SenderInfo) = if (sender.isBusinessLike) Category.UPDATES else Category.PERSONAL
 
     /** Applies analysis to a message row and returns the updated row plus entity rows. */

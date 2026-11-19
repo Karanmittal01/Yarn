@@ -75,7 +75,7 @@ class AppContainer(val app: Application) {
     val language by lazy { LanguageService() }
     val translation by lazy { TranslationService(app, language) }
     val mlEntities by lazy { MlEntityService() }
-    val smartSorter by lazy { SmartSorter(db, nano, settings) }
+    val smartSorter by lazy { SmartSorter(db, nano, settings, engine) }
     val incoming by lazy { IncomingProcessor(app, db, store, sims, settings, engine, mlEntities, smartSorter, conversations, sender, notifier, providerLock, scope) }
     val sync by lazy { TelephonySync(app, db, store, conversations, providerLock) }
     val nano by lazy { GeminiNanoService(app) }
@@ -195,6 +195,6 @@ class YarnApplication : Application() {
 
     companion object {
         /** Bump when categorisation changes enough that existing messages should be re-sorted. */
-        const val RULES_VERSION = 10
+        const val RULES_VERSION = 11
     }
 }

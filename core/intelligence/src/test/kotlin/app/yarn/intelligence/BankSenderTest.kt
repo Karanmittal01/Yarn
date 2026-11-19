@@ -49,6 +49,11 @@ class BankSenderTest {
 
         // ---- Other banks: notices that are not transactions ---------------------------------------
         c("VM-HDFCBK-S", "Your HDFC Bank Credit Card has been dispatched via Blue Dart AWB 81234567890.", U),
+        // An application that was decided is news about your account, not an advert.
+        c("VD-HDFCBK-S", "Congratulations! We approved your HDFC Bank Credit Card (App No. D26K12345678A0B1). Use password ABCD0101 to view your application in your email", U),
+        c("AD-ICICIB-S", "Your ICICI Bank Personal Loan application 12345678 has been approved. The amount will be credited to your account within 24 hours.", U, T),
+        c("VK-SBICRD-S", "Your SBI Card application (Ref No. 2611ABC123) is under process. Track your application at sbicard.com", U),
+        c("VM-HDFCBK-S", "Congratulations! You are pre-approved for an HDFC Bank Credit Card with zero joining fee. Apply now: hdfc.bank.in/cc T&C", F),
         c("AD-ICICIB-S", "Your ICICI Bank account statement for September 2026 has been emailed to you.", U),
         c("JD-AXISBK-S", "Your Axis Bank Debit Card will expire on 10/26. A new card will be sent to your registered address.", U),
         c("VK-KOTAKB-S", "Your service request SR98765 for address change has been completed.", U),

@@ -1137,7 +1137,6 @@ object SenderNames {
         Brand("SHPFAS", "Shipfast"),
         Brand("SHPFST", "Shipfast"),
         Brand("HOIYTC", "Hoi"),
-        Brand("RMATIC", "Routematic"),
         Brand("PAYRWD", "Pay with Rewards"),
         Brand("XPBEES", "XpressBees"),
         Brand("SLCBNK", "slice"),
@@ -1398,6 +1397,8 @@ object SenderNames {
         Brand("UBER", "Uber", Category.TRAVEL),
         Brand("OLA", "Ola", Category.TRAVEL),
         Brand("RAPIDO", "Rapido", Category.TRAVEL),
+        // Office cabs: pickups, drops and the vehicle on its way.
+        Brand("RMATIC", "Routematic", Category.TRAVEL),
         Brand("IRCTC", "IRCTC", Category.TRAVEL),
         Brand("INDIGO", "IndiGo", Category.TRAVEL),
         Brand("GOINDG", "IndiGo", Category.TRAVEL),

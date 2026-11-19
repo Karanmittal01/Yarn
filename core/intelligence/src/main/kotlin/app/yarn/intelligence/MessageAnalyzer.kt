@@ -71,6 +71,17 @@ class MessageAnalyzer(
         }
     }
 
+    /**
+     * Whether a second opinion (the on-device LLM) may file this message under [group]. When the
+     * message gives the rules nothing to go on, any group is fine; otherwise only one its own
+     * words point to. A model calling a card approval an offer, or a cab pickup shopping, is worse
+     * than the rules' best guess.
+     */
+    fun mayFileAs(input: MessageInput, group: CategoryGroup): Boolean {
+        val evidence = CategoryRules.score(input, extractor.extract(input.text, input.timestampMillis)).evidence
+        return evidence.isEmpty() || evidence.any { it.group == group }
+    }
+
     private fun applySpamLearning(input: MessageInput, base: SpamAssessment): SpamAssessment {
         val addr = LearningState.normalizeAddress(input.sender.address)
         when (learning.senderTrust[addr]) {

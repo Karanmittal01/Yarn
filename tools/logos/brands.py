@@ -59,7 +59,7 @@ EXISTING = [
     ("DTDC", "dtdc.in"), ("India Post", "indiapost.gov.in"), ("Shiprocket", "shiprocket.in"), ("Smartr", "smartr.in"),
     ("Porter", "porter.in"),
     # Travel
-    ("Uber", "uber.com"), ("Ola", "olacabs.com"), ("Rapido", "rapido.bike"), ("IRCTC", "irctc.co.in"),
+    ("Uber", "uber.com"), ("Ola", "olacabs.com"), ("Rapido", "rapido.bike"), ("Routematic", "routematic.com"), ("IRCTC", "irctc.co.in"),
     ("IndiGo", "goindigo.in"), ("Air India", "airindia.com"), ("Air India Express", "airindiaexpress.com"),
     ("Vistara", "airvistara.com"), ("Akasa Air", "akasaair.com"), ("SpiceJet", "spicejet.com"),
     ("MakeMyTrip", "makemytrip.com"), ("Goibibo", "goibibo.com"), ("Cleartrip", "cleartrip.com"), ("Yatra", "yatra.com"),
@@ -961,7 +961,6 @@ NEW += [
     ("Smytten", "smytten.com", ["SMYTTN", "SMYTEN"]),
     ("Shipfast", "shipfast.in", ["SHPFAS", "SHPFST"]),
     ("Hoi", "hoi.in", ["HOIYTC"]),
-    ("Routematic", "routematic.com", ["RMATIC"]),
     ("Pay with Rewards", "paywithrewards.com", ["PAYRWD"]),
 ]
 ALIASES += [

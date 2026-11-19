@@ -315,6 +315,7 @@ class BigInboxCorpusTest {
         // ---- Office cabs (the user's RMATIC chat) ---------------------------------------------------
         c("JX-RMATIC-S", "Pickup Details for 08 Oct 13:30\nETA:11:13\nVehicle#:ST-HR-6915\nVehicleType:4 Seater-C Driver:Surender S\nOffice:Cyber 5\nCheck In OTP: 1992\n- RM", O),
         c("JX-RMATIC-S", "ST-HR-6915 assigned for your pick is arriving now.\n- RM", CategoryGroup.TRAVEL),
+        c("AX-RMATIC-S", "SS-HR-6786 assigned for your pickup has started. You can track vehicle using mobile app.\n- RM", CategoryGroup.TRAVEL),
         c("JX-RMATIC-S", "Vehicle has reached New Ashok nagar. You are the next pickup. You can track the vehicle on mobile app.\n- RM", CategoryGroup.TRAVEL),
         c("JK-RMATIC-S", "Drop Details for 07 Oct 21:00\nVehicle#:DC-HR-4474\nVehicleType:4 Seater-C Driver:Ramesh\nOffice:Cyber 5\nCheck In OTP: 4471\n- RM", O),
         c("VM-MOVEIN-S", "Your cab KA01AB1234 for the 09:00 login shift has been assigned. Driver Mahesh 98XXXXXX21. Boarding point: Gate 2.", CategoryGroup.TRAVEL),
