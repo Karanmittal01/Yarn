@@ -6,6 +6,10 @@ on:
     # Website pages (privacy policy, home page) don't need an app build or release.
     paths-ignore:
       - 'docs/**'
+      # The Play listing has its own workflow (store-listing.yml).
+      - 'distribution/store/**'
+      - 'tools/store/**'
+      - '.github/workflows/store-listing.yml'
   pull_request:
   workflow_dispatch:
 

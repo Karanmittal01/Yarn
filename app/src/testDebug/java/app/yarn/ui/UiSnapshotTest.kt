@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
@@ -16,6 +17,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.layout.size
 import app.yarn.data.db.ConversationEntity
 import app.yarn.data.prefs.ThemeMode
@@ -78,13 +82,13 @@ class UiSnapshotTest {
     }
 
     @androidx.compose.runtime.Composable
-    private fun InboxMock(rows: List<InboxItem> = inbox) {
+    private fun InboxMock(rows: List<InboxItem> = inbox, me: app.yarn.data.contacts.ContactInfo? = karan) {
         val header = app.yarn.ui.inbox.inboxHeaderColor()
         androidx.compose.material3.Scaffold(
             containerColor = header,
             topBar = {
                 Column(Modifier.background(header)) {
-                    app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = karan, onProfile = {})
+                    app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = me, onProfile = {})
                     androidx.compose.foundation.lazy.LazyRow(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
@@ -132,10 +136,10 @@ class UiSnapshotTest {
     )
 
     @androidx.compose.runtime.Composable
-    private fun TabMock(rows: List<InboxItem>, selected: InboxGroup) {
+    private fun TabMock(rows: List<InboxItem>, selected: InboxGroup, me: app.yarn.data.contacts.ContactInfo? = karan) {
         val header = app.yarn.ui.inbox.inboxHeaderColor()
         Column(Modifier.fillMaxSize().background(header)) {
-            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = karan, onProfile = {})
+            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = me, onProfile = {})
             androidx.compose.foundation.lazy.LazyRow(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
@@ -160,15 +164,20 @@ class UiSnapshotTest {
         }
     }
 
-    @Test fun spamTab() = shot(true, "44_spam_tab_dark") {
+    @Test fun spamTab() = shot(true, "44_spam_tab_dark") { SpamMock(karan) }
+
+    @androidx.compose.runtime.Composable
+    private fun SpamMock(me: app.yarn.data.contacts.ContactInfo?) {
         val header = app.yarn.ui.inbox.inboxHeaderColor()
         val spamRows = listOf(
             item(1, "AX-RMGAME", "Congratulations! You won Rs 25,000 cash prize. Claim now at bit.ly/claim-win before it expires", "SPAM", 1, "AX-RMGAME-P", true, InboxGroup.OFFERS),
             item(3, "+91 70123 45678", "Your electricity will be disconnected tonight at 9:30 pm. Call officer 7012345678 immediately", "SPAM", 1, "+917012345678", false, InboxGroup.PERSONAL),
             item(6, "VK-LOANPR", "Pre-approved loan of Rs 5 lakh in 5 minutes! No documents. Apply: loanfast.in", "SPAM", 1, "VK-LOANPR-P", true, InboxGroup.OFFERS),
+            item(9, "+91 81234 56789", "Your parcel is on hold due to an incomplete address. Pay Rs 25 within 12 hours at parcel-redeliver.in", "SPAM", 0, "+918123456789", false, InboxGroup.PERSONAL),
+            item(12, "VM-KYCUPD", "Dear customer, your bank account KYC expires today and the account will be blocked. Update now: kyc-verify.in", "SPAM", 0, "VM-KYCUPD-S", true, InboxGroup.UPDATES),
         )
         Column(Modifier.fillMaxSize().background(header)) {
-            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = karan, onProfile = {})
+            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = me, onProfile = {})
             androidx.compose.foundation.lazy.LazyRow(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
@@ -621,5 +630,112 @@ class UiSnapshotTest {
             androidx.compose.foundation.layout.Spacer(Modifier.size(16.dp))
             travel.forEach { ConversationRow(it, false, false, {}, {}) }
         }
+    }
+
+    // ---- Play Store screenshots (tools/store/frame.py frames them) ----------------------------
+    // Made-up people, numbers and codes only: nothing here comes from a real phone.
+    private val storeMe = app.yarn.data.contacts.ContactInfo("Asha Verma", null, null, false)
+    private val storeJio = app.yarn.telephony.SimInfo(1, 0, "Jio 4G", "Jio", "+91 98000 11111", 0)
+    private val storeAirtel = app.yarn.telephony.SimInfo(2, 1, "airtel", "airtel", "+91 99000 22222", 0)
+    private val storeInbox get() = withLogos(
+        item(1, "Priya Sharma", "Are we still on for dinner tonight?", "PERSONAL", 2, "+919812345678", false, InboxGroup.PERSONAL, pinned = true),
+        item(2, "SBI Card", "423378 is the OTP for Trxn. of INR 375.00 at AMAZON with your SBI Card", "OTP", 1, "AD-SBICRD-T", true, InboxGroup.OTP, "423378"),
+        item(3, "HDFC Bank", "Rs.2,500.00 debited from A/c XX1234 to VPA swiggy@icici", "BANKING", 1, "VM-HDFCBK-S", true, InboxGroup.TRANSACTIONS),
+        item(4, "Swiggy", "Your Swiggy order from Behrouz Biryani is on the way!", "SHOPPING", 0, "AD-SWIGGY-S", true, InboxGroup.SHOPPING),
+        item(5, "IndiGo", "Web check-in is open for your flight 6E 2134 BLR-DEL", "TRAVEL", 0, "JD-INDIGO-S", true, InboxGroup.TRAVEL),
+        item(6, "Mom", "Call me when you're free", "PERSONAL", 0, "+919800000002", false, InboxGroup.PERSONAL),
+        item(7, "Amazon", "Your order of boAt Airdopes has been delivered", "SHOPPING", 0, "AX-AMAZON-S", true, InboxGroup.SHOPPING),
+        item(8, "Jio", "Your Jio recharge of Rs 349 is successful. Enjoy unlimited 5G.", "BILLS", 0, "JM-JIOINF-S", true, InboxGroup.UPDATES),
+        item(9, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.TRAVEL),
+        item(10, "Zepto", "Sale is LIVE! Get flat 50% off on fruits & veggies. Order now", "PROMOTIONS", 0, "JM-ZEPTON-P", true, InboxGroup.OFFERS),
+    )
+    private val storeOtps get() = withLogos(
+        item(1, "Amazon", "382915 is your Amazon OTP. Do not share it with anyone.", "OTP", 1, "AX-AMAZON-S", true, InboxGroup.OTP, "382915"),
+        item(2, "Blue Dart", "Your Blue Dart Secure Delivery Code is 692079 and it's valid for the next 30 minutes.", "OTP", 1, "BZ-BLUDRT-S", true, InboxGroup.OTP, "692079"),
+        item(3, "Swiggy", "Your Swiggy login OTP is 482913. Valid for 10 minutes.", "OTP", 0, "AD-SWIGGY-S", true, InboxGroup.OTP, "482913"),
+        item(5, "PNB", "101073 is your OTP for purchase of INR 1,499.00 at FLIPKART", "OTP", 0, "AD-PNBSMS-S", true, InboxGroup.OTP, "101073"),
+        item(8, "Uber", "Your Uber ride PIN is 4821. Share it with your driver at pickup.", "OTP", 0, "VM-UBERIN-S", true, InboxGroup.OTP, "4821"),
+        item(12, "Zomato", "Your Zomato login code is 750264. Don't share it with anyone.", "OTP", 0, "JD-ZOMATO-S", true, InboxGroup.OTP, "750264"),
+    )
+
+    @androidx.compose.runtime.Composable
+    private fun StoreChat() {
+        val noop = app.yarn.ui.conversation.BubbleCallbacks({}, {}, {}, {}, {}, { _, _ -> })
+        val D = app.yarn.data.db.MessageStatus.DELIVERED
+        val thread = listOf(
+            msg(1, "Hey! Are you coming to Diwali dinner on Saturday?", false, 1, 300),
+            msg(2, "Mom is making chole bhature", false, 1, 299),
+            msg(3, "Yes! Wouldn't miss it", true, 1, 290, D),
+            msg(4, "Kal shaam ko milte hain? Movie dekhne chalenge", false, 1, 62),
+            msg(5, "Perfect, see you at 7", true, 2, 12, D),
+            msg(6, "I'll book the tickets 🎬", true, 2, 11, D),
+        ).map { it.message }
+        Column(Modifier.fillMaxSize().background(app.yarn.ui.theme.chatBackdrop())) {
+            androidx.compose.foundation.layout.Row(
+                Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 30.dp, bottom = 8.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                androidx.compose.material3.IconButton(onClick = {}) { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, null) }
+                app.yarn.ui.common.Avatar("Priya Sharma", null, size = 36.dp)
+                androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
+                Column(Modifier.weight(1f)) {
+                    androidx.compose.material3.Text("Priya Sharma", style = MaterialTheme.typography.titleMedium)
+                    androidx.compose.material3.Text("+91 98123 45678", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                androidx.compose.material3.IconButton(onClick = {}) { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Call, null) }
+                androidx.compose.material3.IconButton(onClick = {}) { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.MoreVert, null) }
+            }
+            thread.forEachIndexed { i, m ->
+                val position = app.yarn.ui.conversation.runPosition(thread.getOrNull(i - 1), m, thread.getOrNull(i + 1))
+                app.yarn.ui.conversation.MessageBubble(
+                    app.yarn.data.db.MessageWithAttachments(m, emptyList(), emptyList()), null, false, false,
+                    if (m.id == 4L) app.yarn.ui.conversation.TranslationUi.Done("Shall we meet tomorrow evening? Let's go to a movie", "hi-Latn", online = true) else null,
+                    true, noop, position = position, latestSent = m.id == 6L, sim = if (m.subId == 2) storeAirtel else storeJio,
+                )
+            }
+            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+            app.yarn.ui.conversation.Composer(
+                text = "", onText = {}, attachments = emptyList(), onAddAttachments = {}, onRemoveAttachment = {},
+                sims = listOf(storeJio, storeAirtel), subId = 2, onSim = {}, smartReplies = listOf("See you then!", "Sounds good", "👍"), onSmartReply = {},
+                onSend = {}, onSchedule = {}, onRewrite = {}, isGroupMms = false,
+            )
+        }
+    }
+    private fun storeBinned(id: Long, title: String, address: String, body: String, hoursAgo: Long, photo: Boolean = false) =
+        binned(id, title, address, body, hoursAgo, photo = photo)
+    private val storeBin = listOf(
+        storeBinned(1, "Priya Sharma", "+919812345678", "Reached home, call you in 10", 1),
+        storeBinned(2, "Mom", "+919800000002", "Don't forget the medicines", 3, photo = true),
+        storeBinned(3, "HDFC Bank", "VM-HDFCBK-S", "Rs.2,500.00 debited from A/c XX1234 to VPA swiggy@icici", 26),
+        storeBinned(4, "Amazon", "AX-AMAZON-S", "Hello from Amazon! We have refunded Rs 1,299 for your return of boAt Airdopes to your original payment method.", 50),
+        storeBinned(5, "Myntra", "AD-MYNTRA-S", "Refund of Rs 899 for your returned Levi's jeans has been processed to your bank account.", 120),
+        storeBinned(6, "IRCTC", "AD-IRCTCI-S", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", 200),
+    )
+
+    @Test fun store1Inbox() = shot(false, "store_1_inbox") { InboxMock(storeInbox, storeMe) }
+    @Test fun store2Otp() = shot(true, "store_2_otp") { TabMock(storeOtps, InboxGroup.OTP, storeMe) }
+    // Shorter screen so the reply bar fits inside the store frame.
+    @Test @Config(qualifiers = "w411dp-h740dp-xxhdpi") fun store3Chat() = shot(false, "store_3_chat") { StoreChat() }
+    @Test fun store4Spam() = shot(true, "store_4_spam") { SpamMock(storeMe) }
+    @Test fun store5Profile() = shot(false, "store_5_profile") {
+        androidx.compose.material3.Surface(color = app.yarn.ui.settings.settingsPageColor(), contentColor = MaterialTheme.colorScheme.onSurface) {
+            app.yarn.ui.inbox.AccountSheetContent(storeMe, listOf(storeJio, storeAirtel), true, app.yarn.data.prefs.AppSettings(otpAutoDeleteMinutes = 240), {}, {}, {}, {}, {})
+        }
+    }
+    @Test fun store6Bin() = shot(true, "store_6_bin") {
+        val q = "refund"
+        app.yarn.ui.bin.BinContent(app.yarn.ui.bin.BinSearch.filter(storeBin, q), 30, emptySet(), onToggle = {}, onRestore = {}, onDeleteForever = {},
+            onRestoreAll = {}, onEmpty = {}, onBack = {}, now = now, query = q, total = storeBin.size, onSelectAll = {})
+    }
+    @Test fun store7Backup() = shot(false, "store_7_backup") {
+        app.yarn.ui.settings.SettingsScaffold("Backup", {}) {
+            backupItems(
+                app.yarn.data.prefs.AppSettings(googleAccount = "you@gmail.com", lastBackupAt = now - 3_600_000, lastBackupBytes = 48_000_000),
+                null, app.yarn.backup.BackupState.Done("Backed up 12,306 messages to Google Drive"), false, null, false, {}, {}, {}, {}, {}, {},
+            )
+        }
+    }
+    @Test fun store8Private() = shot(true, "store_8_private") {
+        app.yarn.ui.settings.SettingsScaffold("Smart features", {}) { smartFeatureItems(app.yarn.data.prefs.AppSettings(), {}, {}, {}) }
     }
 }

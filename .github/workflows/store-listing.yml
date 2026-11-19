@@ -1,0 +1,40 @@
+name: Store listing
+
+# Publishes the Play Store name, descriptions and phone screenshots from distribution/store.
+# App builds and releases are separate (android.yml); listing changes don't start one.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'distribution/store/**'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Only check access and show what would change
+        type: boolean
+        default: false
+
+concurrency:
+  group: play-store-listing
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install the Play API client
+        run: pip install google-api-python-client==2.149.0 google-auth==2.35.0
+
+      - name: Update the Play listing
+        if: ${{ env.PLAY_JSON != '' }}
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          DRY_RUN: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: python tools/store/publish.py $DRY_RUN
