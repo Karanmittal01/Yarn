@@ -146,6 +146,8 @@ sealed interface InboxDestination {
     data class Setting(val page: app.yarn.ui.settings.SettingsPage) : InboxDestination
     /** Your profile and Yarn's settings. */
     data object Profile : InboxDestination
+    /** Yarn's trial and subscription. */
+    data object Plan : InboxDestination
 }
 
 @Composable
@@ -178,6 +180,7 @@ fun InboxScreen(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val plan by remember(context) { (context.applicationContext as app.yarn.YarnApplication).container.licence.access }.collectAsStateWithLifecycle()
     val shareTitle = stringResource(R.string.share_conversation)
     var confirmDelete by remember { mutableStateOf<Set<Long>?>(null) }
     var pickCategory by remember { mutableStateOf<Set<Long>?>(null) }
@@ -288,6 +291,7 @@ fun InboxScreen(
                 contentPadding = PaddingValues(top = 10.dp, bottom = padding.calculateBottomPadding() + 110.dp),
             ) {
                 item(key = "banners", contentType = "banners") {
+                    TrialBanner(plan, onOpen = { onNavigate(InboxDestination.Plan) })
                     crash?.let { report ->
                         CrashBanner(
                             onSend = { shareFeedback(context, report); vm.dismissCrash() },
@@ -417,6 +421,27 @@ internal fun InboxHeader(
             modifier = Modifier.weight(1f),
         )
         ProfileButton(me, onProfile, size = 32.dp)
+    }
+}
+
+/** In the trial's last two days: a reminder, so the end never comes as a surprise. "Later" hides it until Yarn reopens. */
+@Composable
+internal fun TrialBanner(plan: app.yarn.billing.Access, onOpen: () -> Unit) {
+    var later by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    if (later || plan !is app.yarn.billing.Access.Trial || plan.pending || plan.daysLeft > 2) return
+    androidx.compose.material3.Card(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(22.dp),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+    ) {
+        Column(Modifier.padding(start = 18.dp, end = 8.dp, top = 14.dp, bottom = 4.dp)) {
+            Text(pluralStringResource(R.plurals.plan_banner, plan.daysLeft, plan.daysLeft), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text(stringResource(R.string.plan_banner_sub), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(top = 2.dp, end = 10.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                androidx.compose.material3.TextButton(onClick = { later = true }) { Text(stringResource(R.string.later)) }
+                androidx.compose.material3.TextButton(onClick = onOpen) { Text(stringResource(R.string.plan_subscribe)) }
+            }
+        }
     }
 }
 

@@ -35,6 +35,7 @@ import app.yarn.data.repo.InboxGroup
 import app.yarn.data.repo.InboxView
 import app.yarn.ui.cleaner.CleanerScreen
 import app.yarn.ui.cleaner.CleanerViewModel
+import app.yarn.ui.common.container
 import app.yarn.ui.common.yarnViewModel
 import app.yarn.ui.conversation.ConversationScreen
 import app.yarn.ui.conversation.ConversationViewModel
@@ -73,6 +74,7 @@ import app.yarn.R
 @Serializable object StarredRoute
 @Serializable object BinRoute
 @Serializable object ProfileRoute
+@Serializable object PlanRoute
 
 /** Navigation requests coming from outside the UI (notifications, share sheet, other apps). */
 sealed interface ExternalNav {
@@ -121,6 +123,7 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
             val settings by inboxVm.settings.collectAsStateWithLifecycle()
             val items by inboxVm.items.collectAsStateWithLifecycle()
             val context = androidx.compose.ui.platform.LocalContext.current
+            val plan by androidx.compose.runtime.remember { context.container.licence.access }.collectAsStateWithLifecycle()
             ProfileScreen(
                 me = me, sims = sims,
                 hasUnread = items.orEmpty().any { it.conversation.unreadCount > 0 },
@@ -131,8 +134,10 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
                 onFeedback = { app.yarn.ui.inbox.shareFeedback(context, app.yarn.CrashLog.all()) },
                 onSaveProfile = inboxVm::saveProfile,
                 onClose = { nav.popBackStack() },
+                plan = plan,
             )
         }
+        composable<PlanRoute> { app.yarn.ui.paywall.PaywallScreen(onBack = { nav.popBackStack() }) }
         composable<ChatRoute> { entry ->
             val r = entry.toRoute<ChatRoute>()
             val section = app.yarn.data.repo.InboxGroup.entries.firstOrNull { it.name == r.section }
@@ -262,6 +267,7 @@ private fun HomePane(nav: NavHostController) {
 private fun navigateTo(nav: NavHostController, d: InboxDestination) {
     when (d) {
         InboxDestination.Profile -> nav.navigate(ProfileRoute) { launchSingleTop = true }
+        InboxDestination.Plan -> nav.navigate(PlanRoute) { launchSingleTop = true }
         InboxDestination.Starred -> nav.navigate(StarredRoute)
         InboxDestination.Archived -> nav.navigate(FolderRoute(InboxView.ARCHIVED.name))
         InboxDestination.Blocked -> nav.navigate(FolderRoute(InboxView.BLOCKED.name))

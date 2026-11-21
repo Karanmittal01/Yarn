@@ -71,6 +71,7 @@ class MainActivity : FragmentActivity() {
 
         setContent {
             val settings by container.settings.settings.collectAsStateWithLifecycle(initialValue = null)
+            val access by container.licence.access.collectAsStateWithLifecycle()
             val s = settings
             LaunchedEffect(s?.secureScreen) {
                 if (s?.secureScreen == true) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
@@ -87,6 +88,8 @@ class MainActivity : FragmentActivity() {
                             }
                         })
                         locked && s.appLock -> LockScreen()
+                        // Trial over and not bought: Yarn keeps receiving messages, but opens on the plan.
+                        !access.usable -> app.yarn.ui.paywall.PaywallScreen(onBack = null)
                         else -> YarnNavHost(externalNav) { externalNav.value = null }
                     }
                     val updateReady by updates.readyToInstall.collectAsStateWithLifecycle()
@@ -124,6 +127,8 @@ class MainActivity : FragmentActivity() {
         super.onResume()
         container.refreshPlatformState()
         updates.check()
+        // A purchase made or a code redeemed in the Play Store unlocks Yarn on return.
+        lifecycleScope.launch { container.licence.refresh() }
         // Keep the local store in sync with anything that changed while we were away.
         if (settingsSnapshot.onboardingDone) SyncWorker.enqueue(this)
     }

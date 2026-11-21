@@ -3,6 +3,7 @@ package app.yarn
 import app.yarn.ai.SmartSorter
 import app.yarn.backup.GoogleDrive
 import app.yarn.work.GoogleBackupWorker
+import app.yarn.billing.Licence
 import app.yarn.work.ReanalyzeWorker
 import android.app.Application
 import android.content.BroadcastReceiver
@@ -76,6 +77,7 @@ class AppContainer(val app: Application) {
     val translation by lazy { TranslationService(app, language) }
     val mlEntities by lazy { MlEntityService() }
     val smartSorter by lazy { SmartSorter(db, nano, settings, engine) }
+    val licence by lazy { Licence(app, scope) }
     val incoming by lazy { IncomingProcessor(app, db, store, sims, settings, engine, mlEntities, smartSorter, conversations, sender, notifier, providerLock, scope) }
     val sync by lazy { TelephonySync(app, db, store, conversations, providerLock) }
     val nano by lazy { GeminiNanoService(app) }
@@ -99,6 +101,7 @@ class AppContainer(val app: Application) {
 
     fun start() {
         notifier.createChannels()
+        licence.start()
         refreshPlatformState()
         MaintenanceWorker.schedule(app)
         scope.launch {

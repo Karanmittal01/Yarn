@@ -504,6 +504,29 @@ class UiSnapshotTest {
     )
     @Test fun inboxMaximize() = shot(true, "65_inbox_maximize_dark") { InboxMock(maximizeInbox, storeMe) }
 
+    // ---- Yarn's plan: a 5-day trial, then a yearly subscription ---------------------------------
+    private val earlyBird = app.yarn.billing.Licence.Price("₹199", 199_000_000, "INR")
+    @androidx.compose.runtime.Composable
+    private fun Paywall(access: app.yarn.billing.Access, note: String? = null, back: Boolean = false) =
+        app.yarn.ui.paywall.PaywallContent(access, earlyBird, false, note, {}, {}, {}, {}, {}, if (back) ({}) else null)
+    @Test fun planExpired() = shot(false, "66_plan_trial_ended_light") { Paywall(app.yarn.billing.Access.Expired) }
+    @Test fun planExpiredDark() = shot(true, "67_plan_trial_ended_dark") { Paywall(app.yarn.billing.Access.Expired) }
+    @Test fun planTrial() = shot(true, "68_plan_trial_3_days_dark") { Paywall(app.yarn.billing.Access.Trial(3), back = true) }
+    @Test fun planPending() = shot(false, "69_plan_payment_pending") { Paywall(app.yarn.billing.Access.Pending) }
+    @Test fun planSubscribed() = shot(false, "70_plan_subscribed") { Paywall(app.yarn.billing.Access.Unlocked(), back = true) }
+    @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun planHindi() = shot(true, "71_plan_trial_ended_hindi") { Paywall(app.yarn.billing.Access.Expired) }
+    @Test fun planProfileRow() = shot(false, "72_profile_trial_row") {
+        androidx.compose.material3.Surface(color = app.yarn.ui.settings.settingsPageColor(), contentColor = MaterialTheme.colorScheme.onSurface) {
+            app.yarn.ui.inbox.AccountSheetContent(storeMe, listOf(storeJio), true, app.yarn.data.prefs.AppSettings(), {}, {}, {}, {}, {}, plan = app.yarn.billing.Access.Trial(3))
+        }
+    }
+    @Test fun planBanner() = shot(true, "73_inbox_trial_banner_dark") {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 24.dp)) {
+            app.yarn.ui.inbox.TrialBanner(app.yarn.billing.Access.Trial(2)) {}
+            storeInbox.take(4).forEach { ConversationRow(it, false, false, {}, {}) }
+        }
+    }
+
     // Notification icons: before (square tile) and after (cut round), with the phone's app badge in the corner.
     @Test fun notificationIcons() {
         val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()

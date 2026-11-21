@@ -834,4 +834,49 @@
         <item quantity="one">बिन के %2$d मैसेज में से %1$d मिला</item>
         <item quantity="other">बिन के %2$d मैसेज में से %1$d मिले</item>
     </plurals>
+    <string name="plan_trial_title">Yarn पसंद आ रहा है?</string>
+    <plurals name="plan_trial_left">
+        <item quantity="one">आपका फ़्री ट्रायल %d दिन में खत्म होगा। उसके बाद भी Yarn इस्तेमाल करने के लिए सदस्यता लें।</item>
+        <item quantity="other">आपका फ़्री ट्रायल %d दिन में खत्म होगा। उसके बाद भी Yarn इस्तेमाल करने के लिए सदस्यता लें।</item>
+    </plurals>
+    <string name="plan_pending_title">भुगतान बाकी है</string>
+    <string name="plan_pending_sub">Google Play आपके भुगतान की पुष्टि कर रहा है। पूरा होते ही Yarn खुल जाएगा।</string>
+    <string name="plan_expired_title">आपका फ़्री ट्रायल खत्म हो गया है</string>
+    <string name="plan_expired_sub">Yarn इस्तेमाल करते रहने के लिए सदस्यता लें। नए मैसेज आते रहेंगे और आपके फ़ोन पर सुरक्षित रहेंगे।</string>
+    <string name="plan_subscribed_title">आपकी सदस्यता चालू है</string>
+    <string name="plan_subscribed_sub">Yarn का साथ देने के लिए धन्यवाद!</string>
+    <string name="plan_lifetime_title">Yarn हमेशा के लिए आपका है</string>
+    <string name="plan_lifetime_sub">Yarn बनाने में मदद के लिए धन्यवाद!</string>
+    <string name="plan_early_bird">अर्ली-बर्ड कीमत</string>
+    <string name="plan_per_year">/साल</string>
+    <string name="plan_terms">Yarn की हर सुविधा। रद्द करने तक हर साल अपने-आप रिन्यू होती है। Google Play में कभी भी रद्द करें।</string>
+    <string name="plan_feature_tabs">हर मैसेज अपने टैब में: OTP, बैंक, ऑर्डर, यात्रा और ऑफ़र</string>
+    <string name="plan_feature_logos">1,000+ भारतीय कंपनियों के नाम और लोगो</string>
+    <string name="plan_feature_scams">स्कैम और स्पैम से सुरक्षा</string>
+    <string name="plan_feature_ai">स्मार्ट जवाब, अनुवाद और सारांश</string>
+    <string name="plan_feature_backup">आपकी Google Drive पर एन्क्रिप्टेड बैकअप</string>
+    <string name="plan_subscribe_for">%1$s/साल में सदस्यता लें</string>
+    <string name="plan_subscribe">सदस्यता लें</string>
+    <string name="plan_manage">सदस्यता मैनेज करें</string>
+    <string name="plan_check_again">फिर से जांचें</string>
+    <string name="plan_restore">खरीदारी वापस लाएं</string>
+    <string name="plan_redeem">कोड रिडीम करें</string>
+    <string name="plan_other_app">दूसरा SMS ऐप इस्तेमाल करें</string>
+    <string name="plan_messages_safe">दोनों ही तरह से आपके मैसेज आपके फ़ोन पर रहते हैं।</string>
+    <string name="plan_unavailable">Google Play से कनेक्ट नहीं हो सका। इंटरनेट जांचें और फिर कोशिश करें।</string>
+    <string name="plan_failed">भुगतान पूरा नहीं हुआ। कृपया फिर कोशिश करें।</string>
+    <string name="plan_nothing_found">इस Google खाते पर कोई खरीदारी नहीं मिली।</string>
+    <string name="plan_row_trial">Yarn की सदस्यता लें</string>
+    <plurals name="plan_days_left">
+        <item quantity="one">%d दिन बाकी</item>
+        <item quantity="other">%d दिन बाकी</item>
+    </plurals>
+    <string name="plan_row_title">Yarn सदस्यता</string>
+    <string name="plan_active">चालू</string>
+    <string name="plan_lifetime">हमेशा के लिए</string>
+    <plurals name="plan_banner">
+        <item quantity="one">आपका फ़्री ट्रायल %d दिन में खत्म होगा</item>
+        <item quantity="other">आपका फ़्री ट्रायल %d दिन में खत्म होगा</item>
+    </plurals>
+    <string name="plan_banner_sub">ट्रायल के बाद भी अपना इनबॉक्स व्यवस्थित और सुरक्षित रखने के लिए सदस्यता लें।</string>
 </resources>

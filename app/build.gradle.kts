@@ -117,6 +117,7 @@ dependencies {
     implementation(project(":core:crypto"))
 
     implementation(libs.androidx.core.ktx)
+    implementation(libs.play.billing)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

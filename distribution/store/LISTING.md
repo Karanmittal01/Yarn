@@ -27,6 +27,9 @@ AI SMS app that sorts OTPs, bank alerts, orders and offers, and stops scams.
 ```
 Yarn is a fast, private SMS and MMS app with on-device AI that keeps your inbox calm.
 
+TRY IT FREE, THEN ONE SIMPLE PRICE
+Use everything free for 5 days. After that, keep Yarn with a yearly subscription: ₹199 a year at the early-bird price (regular price ₹499). It renews every year until you cancel, and you can cancel anytime in Google Play. No ads, ever.
+
 YOUR INBOX, SORTED
 Every message is filed into Personal, OTP, Transactions, Shopping, Travel, Updates or Offers, so messages from people you care about are never buried under alerts and ads.
 • OTP: one-time codes in one place, with one-tap Copy and automatic clean-up of old codes

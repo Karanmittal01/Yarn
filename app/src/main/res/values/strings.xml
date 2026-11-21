@@ -836,4 +836,49 @@
         <item quantity="one">Found %1$d of %2$d messages</item>
         <item quantity="other">Found %1$d of %2$d messages</item>
     </plurals>
+    <string name="plan_trial_title">Enjoying Yarn?</string>
+    <plurals name="plan_trial_left">
+        <item quantity="one">Your free trial ends in %d day. Subscribe to keep using Yarn after that.</item>
+        <item quantity="other">Your free trial ends in %d days. Subscribe to keep using Yarn after that.</item>
+    </plurals>
+    <string name="plan_pending_title">Payment pending</string>
+    <string name="plan_pending_sub">Google Play is confirming your payment. Yarn unlocks as soon as it\'s done.</string>
+    <string name="plan_expired_title">Your free trial has ended</string>
+    <string name="plan_expired_sub">Subscribe to keep using Yarn. New messages still arrive and stay safe on your phone.</string>
+    <string name="plan_subscribed_title">You\'re subscribed</string>
+    <string name="plan_subscribed_sub">Thank you for supporting Yarn!</string>
+    <string name="plan_lifetime_title">Yarn is yours for life</string>
+    <string name="plan_lifetime_sub">Thank you for helping build Yarn!</string>
+    <string name="plan_early_bird">Early-bird price</string>
+    <string name="plan_per_year">/year</string>
+    <string name="plan_terms">Everything in Yarn. Renews automatically every year until you cancel. Cancel anytime in Google Play.</string>
+    <string name="plan_feature_tabs">Every message in its tab: OTPs, banks, orders, travel and offers</string>
+    <string name="plan_feature_logos">Names and logos for 1,000+ Indian businesses</string>
+    <string name="plan_feature_scams">Scam and spam protection</string>
+    <string name="plan_feature_ai">Smart replies, translation and summaries</string>
+    <string name="plan_feature_backup">Encrypted backup to your Google Drive</string>
+    <string name="plan_subscribe_for">Subscribe for %1$s/year</string>
+    <string name="plan_subscribe">Subscribe</string>
+    <string name="plan_manage">Manage subscription</string>
+    <string name="plan_check_again">Check again</string>
+    <string name="plan_restore">Restore purchase</string>
+    <string name="plan_redeem">Redeem code</string>
+    <string name="plan_other_app">Use another SMS app</string>
+    <string name="plan_messages_safe">Your messages stay on your phone either way.</string>
+    <string name="plan_unavailable">Couldn\'t reach Google Play. Check your connection and try again.</string>
+    <string name="plan_failed">The payment didn\'t go through. Please try again.</string>
+    <string name="plan_nothing_found">No purchase found for this Google account.</string>
+    <string name="plan_row_trial">Subscribe to Yarn</string>
+    <plurals name="plan_days_left">
+        <item quantity="one">%d day left</item>
+        <item quantity="other">%d days left</item>
+    </plurals>
+    <string name="plan_row_title">Yarn subscription</string>
+    <string name="plan_active">Active</string>
+    <string name="plan_lifetime">Lifetime</string>
+    <plurals name="plan_banner">
+        <item quantity="one">Your free trial ends in %d day</item>
+        <item quantity="other">Your free trial ends in %d days</item>
+    </plurals>
+    <string name="plan_banner_sub">Subscribe to keep your inbox sorted and safe after the trial.</string>
 </resources>

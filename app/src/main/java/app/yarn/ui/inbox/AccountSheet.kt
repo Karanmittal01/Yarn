@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Sms
+import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -116,6 +117,7 @@ fun ProfileScreen(
     onFeedback: () -> Unit,
     onSaveProfile: (name: String, photo: android.graphics.Bitmap?, removePhoto: Boolean) -> Unit,
     onClose: () -> Unit,
+    plan: app.yarn.billing.Access? = null,
 ) {
     var editing by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = editing) { editing = false }
@@ -143,6 +145,7 @@ fun ProfileScreen(
                     onFeedback = onFeedback,
                     onEditProfile = { editing = true },
                     onDismiss = onClose,
+                    plan = plan,
                 )
             }
         }
@@ -160,6 +163,7 @@ fun AccountSheetContent(
     onFeedback: () -> Unit,
     onEditProfile: () -> Unit,
     onDismiss: () -> Unit,
+    plan: app.yarn.billing.Access? = null,
 ) {
     val card = app.yarn.ui.settings.settingsCardColor()
     val name = me?.name?.takeIf { it.isNotBlank() }
@@ -206,6 +210,18 @@ fun AccountSheetContent(
             Icon(Icons.Outlined.Edit, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.height(8.dp))
+        // Yarn's plan: the trial's days left, or the subscription.
+        val planRow: Pair<String, String>? = when (plan) {
+            is app.yarn.billing.Access.Trial -> stringResource(R.string.plan_row_trial) to
+                androidx.compose.ui.res.pluralStringResource(R.plurals.plan_days_left, plan.daysLeft, plan.daysLeft)
+            is app.yarn.billing.Access.Unlocked -> stringResource(R.string.plan_row_title) to
+                stringResource(if (plan.lifetime) R.string.plan_lifetime else R.string.plan_active)
+            else -> null
+        }
+        planRow?.let { (title, value) ->
+            SheetGroup(card) { SheetItem(Icons.Outlined.WorkspacePremium, title, value = value) { onNavigate(InboxDestination.Plan) } }
+            Spacer(Modifier.height(8.dp))
+        }
         SheetGroup(card) {
             SheetItem(Icons.Outlined.StarOutline, stringResource(R.string.starred)) { onNavigate(InboxDestination.Starred) }
             SheetItem(Icons.Outlined.Archive, stringResource(R.string.archived)) { onNavigate(InboxDestination.Archived) }
