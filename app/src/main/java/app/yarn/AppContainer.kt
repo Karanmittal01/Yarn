@@ -86,7 +86,7 @@ class AppContainer(val app: Application) {
     val nano by lazy { GeminiNanoService(app) }
     val localLlm by lazy { LocalLlmService(app) }
     val assistant by lazy { AssistantService(settings, nano, localLlm, SelfHostedAiService(), language, mlEntities) }
-    val backup by lazy { BackupManager(app, db, store, sync, providerLock) }
+    val backup by lazy { BackupManager(app, db, store, sync, providerLock, settings) }
     val drive by lazy { GoogleDrive(app) }
     val cleaner by lazy { Cleaner(db, conversations, settings) }
     val shareHolder = ShareHolder()

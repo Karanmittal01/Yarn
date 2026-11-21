@@ -9,6 +9,7 @@ import app.yarn.data.db.CorrectionEntity
 import app.yarn.data.db.MessageKind
 import app.yarn.data.db.SenderRuleEntity
 import app.yarn.data.db.YarnDatabase
+import app.yarn.data.prefs.SettingsRepository
 import app.yarn.data.repo.TelephonySync
 import app.yarn.telephony.DefaultSmsApp
 import app.yarn.telephony.PartToStore
@@ -44,6 +45,8 @@ data class BackupMedia(val entry: String, val mimeType: String, val name: String
 data class BackupConversation(
     val addresses: List<String>, val customTitle: String?, val pinned: Boolean, val archived: Boolean, val muted: Boolean,
     val starred: Boolean, val category: String, val categoryLocked: Boolean,
+    /** An unsent message, and the SIM chosen for replies in this chat. */
+    val draft: String? = null, val draftUpdatedAt: Long = 0, val preferredSubId: Int = -1,
 )
 
 @Serializable
@@ -57,13 +60,19 @@ data class BackupBlock(val type: String, val value: String)
 
 @Serializable
 data class BackupMeta(
-    val version: Int = 1,
+    val version: Int = 2,
     val createdAt: Long,
     val messageCount: Int,
     val conversations: List<BackupConversation>,
     val corrections: List<BackupCorrection>,
     val rules: List<BackupRule>,
     val blocks: List<BackupBlock>,
+    /** Everything below arrived in version 2; older backups simply don't have it. */
+    val settings: BackupSettings? = null,
+    val profileName: String? = null,
+    /** The zip entry holding your profile picture. */
+    val profilePhoto: String? = null,
+    val bin: List<BackupBin> = emptyList(),
 )
 
 sealed interface BackupState {
@@ -85,6 +94,7 @@ class BackupManager(
     private val store: TelephonyStore,
     private val sync: TelephonySync,
     private val providerLock: Mutex,
+    private val settings: SettingsRepository,
 ) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val _state = MutableStateFlow<BackupState>(BackupState.Idle)
@@ -187,12 +197,42 @@ class BackupManager(
                         val input = runCatching { context.contentResolver.openInputStream(Uri.parse(uri)) }.getOrNull() ?: continue
                         input.use { zip.putNextEntry(ZipEntry(entry)); it.copyTo(zip); zip.closeEntry() }
                     }
+                    // You: your name, your picture and every setting.
+                    val s = settings.current()
+                    val photo = s.profilePhoto.takeIf { it.isNotBlank() }?.let { uri ->
+                        val bytes = runCatching { readUri(uri) }.getOrNull() ?: return@let null
+                        zip.putNextEntry(ZipEntry(PROFILE_PHOTO)); zip.write(bytes); zip.closeEntry()
+                        PROFILE_PHOTO
+                    }
+                    // The recycle bin, so deleted messages can still be brought back on the new phone.
+                    var binFile = 0
+                    val bin = db.bin().all().map { b ->
+                        val files = if (!includeMedia) emptyList() else b.attachments.mapNotNull { a ->
+                            val bytes = runCatching { readUri(a.uri) }.getOrNull() ?: return@mapNotNull null
+                            val entry = "bin/${binFile++}"
+                            zip.putNextEntry(ZipEntry(entry)); zip.write(bytes); zip.closeEntry()
+                            BackupMedia(entry, a.mimeType, a.fileName)
+                        }
+                        BackupBin(
+                            b.addresses, b.title, b.kind, b.address, b.body, b.subject, b.date, b.dateSent, b.outgoing, b.status, b.subId,
+                            b.category, b.starred, b.deletedAt, files,
+                        )
+                    }
                     val meta = BackupMeta(
                         createdAt = System.currentTimeMillis(), messageCount = done,
-                        conversations = conversations.map { BackupConversation(it.addresses, it.customTitle, it.pinned, it.archived, it.muted, it.starred, it.category, it.categoryLocked) },
+                        conversations = conversations.map {
+                            BackupConversation(
+                                it.addresses, it.customTitle, it.pinned, it.archived, it.muted, it.starred, it.category, it.categoryLocked,
+                                it.draft, it.draftUpdatedAt, it.preferredSubId,
+                            )
+                        },
                         corrections = db.learning().corrections().map { BackupCorrection(it.text, it.senderAddress, it.senderKind, it.category, it.isSpam, it.createdAt) },
                         rules = db.learning().rules().map { BackupRule(it.address, it.displayAddress, it.category, it.trusted) },
                         blocks = db.blocks().all().map { BackupBlock(it.type, it.value) },
+                        settings = BackupSettings.of(s, app.yarn.i18n.AppLanguage.selected(context)),
+                        profileName = s.profileName,
+                        profilePhoto = photo,
+                        bin = bin,
                     )
                     zip.putNextEntry(ZipEntry("meta.json"))
                     zip.write(json.encodeToString(BackupMeta.serializer(), meta).toByteArray())
@@ -236,14 +276,14 @@ class BackupManager(
                             }
                         }
                         entry.name == "meta.json" -> meta = json.decodeFromString(BackupMeta.serializer(), zip.readBytes().decodeToString())
-                        entry.name.startsWith("media/") -> media[entry.name] = zip.readBytes()
+                        entry.name.startsWith("media/") || entry.name.startsWith("bin/") || entry.name == PROFILE_PHOTO -> media[entry.name] = zip.readBytes()
                     }
                 }
             }
             for (m in pendingMms) if (restoreMms(m, media)) restored++ else skipped++
             _state.value = BackupState.Running(context.getString(R.string.bk_organising), 0, 0)
             sync.sync()
-            meta?.let { applyMeta(it) }
+            meta?.let { applyMeta(it, media) }
             _state.value = BackupState.Done(context.resources.getQuantityString(R.plurals.restored_n, restored, restored) + if (skipped > 0) context.getString(R.string.already_present_n, skipped) else "")
         } catch (e: app.yarn.crypto.BadPassphraseException) {
             _state.value = BackupState.Failed(context.getString(R.string.wrong_passphrase))
@@ -298,18 +338,25 @@ class BackupManager(
         ) != null
     }
 
-    private suspend fun applyMeta(meta: BackupMeta) {
+    private suspend fun applyMeta(meta: BackupMeta, files: Map<String, ByteArray>) {
         val current = db.conversations().all()
         for (bc in meta.conversations) {
             val match = current.firstOrNull { it.addresses.toSet() == bc.addresses.toSet() } ?: continue
+            // A draft written on this phone since is newer than the one in the backup: keep it.
+            val keepDraft = !match.draft.isNullOrBlank() && match.draftUpdatedAt >= bc.draftUpdatedAt
             db.conversations().update(
                 match.copy(
                     customTitle = bc.customTitle, pinned = bc.pinned, archived = bc.archived, muted = bc.muted, starred = bc.starred,
                     category = if (bc.categoryLocked) bc.category else match.category, categoryLocked = bc.categoryLocked,
+                    draft = if (keepDraft) match.draft else bc.draft ?: match.draft,
+                    draftUpdatedAt = if (keepDraft) match.draftUpdatedAt else maxOf(bc.draftUpdatedAt, match.draftUpdatedAt),
+                    preferredSubId = if (bc.preferredSubId != -1) bc.preferredSubId else match.preferredSubId,
                 ),
             )
             db.conversations().refresh(match.id)
         }
+        applyYou(meta, files)
+        restoreBin(meta.bin, files, current)
         val existing = db.learning().corrections().map { it.text to it.createdAt }.toSet()
         meta.corrections.filter { (it.text to it.createdAt) !in existing }.forEach {
             db.learning().insertCorrection(CorrectionEntity(messageId = null, text = it.text, senderAddress = it.senderAddress, senderKind = it.senderKind, fromCategory = null, category = it.category, isSpam = it.isSpam, createdAt = it.createdAt))
@@ -318,5 +365,54 @@ class BackupManager(
         meta.blocks.forEach { db.blocks().insert(BlockRuleEntity(type = it.type, value = it.value, createdAt = System.currentTimeMillis())) }
     }
 
+    /** Your settings, language, name and picture. The backup account and this phone's own state stay. */
+    private suspend fun applyYou(meta: BackupMeta, files: Map<String, ByteArray>) {
+        val photo = meta.profilePhoto?.let { files[it] }
+            ?.let { bytes -> runCatching { android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull() }
+            ?.let { app.yarn.ui.inbox.ProfilePhoto.save(context, it) }
+        settings.update { s ->
+            val restored = meta.settings?.applyTo(s) ?: s
+            restored.copy(
+                profileName = meta.profileName?.takeIf { it.isNotBlank() } ?: s.profileName,
+                profilePhoto = photo ?: s.profilePhoto,
+            )
+        }
+        meta.settings?.language?.let { tag ->
+            withContext(Dispatchers.Main) { runCatching { app.yarn.i18n.AppLanguage.restore(context, tag) } }
+        }
+    }
+
+    /** Puts deleted messages back in the recycle bin, skipping any that are already there. */
+    private suspend fun restoreBin(items: List<BackupBin>, files: Map<String, ByteArray>, chats: List<app.yarn.data.db.ConversationEntity>) {
+        if (items.isEmpty()) return
+        val have = db.bin().all().map { Triple(it.address, it.date, it.body) }.toSet()
+        val dir = File(context.filesDir, "bin").apply { mkdirs() }
+        val rows = items.filter { Triple(it.address, it.date, it.body) !in have }.map { b ->
+            val attachments = b.media.mapNotNull { m ->
+                val bytes = files[m.entry] ?: return@mapNotNull null
+                val target = File(dir, java.util.UUID.randomUUID().toString() + (m.name?.substringAfterLast('.', "")?.takeIf { it.isNotEmpty() && it.length <= 5 }?.let { ".$it" } ?: ""))
+                target.writeBytes(bytes)
+                app.yarn.data.db.BinAttachment(m.mimeType, Uri.fromFile(target).toString(), m.name, target.length())
+            }
+            app.yarn.data.db.BinEntity(
+                conversationId = chats.firstOrNull { it.addresses.toSet() == b.addresses.toSet() }?.id ?: 0,
+                addresses = b.addresses, title = b.title, kind = b.kind, address = b.address, body = b.body, subject = b.subject,
+                date = b.date, dateSent = b.dateSent, outgoing = b.outgoing, status = b.status, subId = b.subId,
+                category = b.category, starred = b.starred, attachments = attachments, deletedAt = b.deletedAt,
+            )
+        }
+        if (rows.isNotEmpty()) db.bin().insertAll(rows)
+    }
+
+    private fun readUri(uri: String): ByteArray? {
+        val u = Uri.parse(uri)
+        val input = if (u.scheme == "file") u.path?.let { File(it).inputStream() } else context.contentResolver.openInputStream(u)
+        return input?.use { it.readBytes() }
+    }
+
     fun reset() { _state.value = BackupState.Idle }
+
+    companion object {
+        private const val PROFILE_PHOTO = "profile/photo.jpg"
+    }
 }

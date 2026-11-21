@@ -40,6 +40,18 @@ object AppLanguage {
         }
     }
 
+    /** Sets the language from a backup ("" follows the phone); the screen catches up on its own. */
+    fun restore(context: Context, tag: String) {
+        if (tag == selected(context)) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.getSystemService(LocaleManager::class.java)?.applicationLocales =
+                if (tag.isEmpty()) LocaleList.getEmptyLocaleList() else LocaleList.forLanguageTags(tag)
+        } else {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, tag).apply()
+            applyTo(context.applicationContext)
+        }
+    }
+
     /** The language Yarn is showing right now ("en", "hi"…). */
     fun current(context: Context): String = context.resources.configuration.locales[0].language
 

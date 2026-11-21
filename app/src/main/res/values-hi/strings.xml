@@ -429,7 +429,7 @@
     <string name="include_media">फ़ोटो और वीडियो भी शामिल करें</string>
     <string name="restore_from_drive">Google Drive से रीस्टोर करें</string>
     <string name="turn_off_backup">Google बैकअप बंद करें</string>
-    <string name="backup_note">बैकअप एन्क्रिप्ट होकर आपके Google Drive के एक निजी Yarn फ़ोल्डर में रखे जाते हैं, जिसे सिर्फ़ Yarn खोल सकता है। ये आपके Google स्टोरेज (15 GB मुफ़्त) में गिने जाते हैं। Yarn का अपना कोई सर्वर नहीं है।</string>
+    <string name="backup_note">बैकअप में आपके मैसेज, सेटिंग, प्रोफ़ाइल नाम और फ़ोटो, ड्राफ़्ट और रीसायकल बिन रहते हैं। ये एन्क्रिप्टेड होकर आपकी Google Drive के एक निजी Yarn फ़ोल्डर में रहते हैं जिसे सिर्फ़ Yarn खोल सकता है, और आपके Google स्टोरेज (15 GB मुफ़्त) में गिने जाते हैं। Yarn के अपने कोई सर्वर नहीं हैं।</string>
     <string name="starred_messages">स्टार किए गए मैसेज</string>
     <string name="starred_empty">किसी मैसेज को दबाकर रखें और उसे यहां रखने के लिए \"स्टार करें\" चुनें।</string>
     <string name="attachment">अटैचमेंट</string>

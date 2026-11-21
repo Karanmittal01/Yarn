@@ -431,7 +431,7 @@
     <string name="include_media">Include photos &amp; videos</string>
     <string name="restore_from_drive">Restore from Google Drive</string>
     <string name="turn_off_backup">Turn off Google backup</string>
-    <string name="backup_note">Backups are encrypted and kept in a private Yarn folder in your Google Drive that only Yarn can open. They count towards your Google storage (15 GB free). Yarn has no servers of its own.</string>
+    <string name="backup_note">Backups hold your messages, settings, profile name and photo, drafts and recycle bin. They are encrypted and kept in a private Yarn folder in your Google Drive that only Yarn can open, and count towards your Google storage (15 GB free). Yarn has no servers of its own.</string>
     <string name="starred_messages">Starred messages</string>
     <string name="starred_empty">Long-press a message and choose Star to keep it here.</string>
     <string name="attachment">Attachment</string>
