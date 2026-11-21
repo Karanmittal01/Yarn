@@ -35,6 +35,12 @@ class FeedbackTest {
     }
 
     @Test
+    fun feedbackGoesToTheDevelopersWhatsAppAndEmail() {
+        assertThat(Feedback.whatsAppNumber(context)).isEqualTo("919999422626")
+        assertThat(Feedback.emailAddress(context)).isEqualTo("karanmittal2626@gmail.com")
+    }
+
+    @Test
     fun aNewInstallHasEverySmartFeatureOn() {
         val s = AppSettings()
         assertThat(s.aiEnabled).isTrue()

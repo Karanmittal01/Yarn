@@ -2,6 +2,6 @@
 <resources>
     <!-- Where feedback and logo requests go. A blank value hides that choice. -->
     <!-- WhatsApp: the number with country code, digits only, e.g. 919800000000. -->
-    <string name="support_whatsapp" translatable="false"></string>
-    <string name="support_email" translatable="false"></string>
+    <string name="support_whatsapp" translatable="false">919999422626</string>
+    <string name="support_email" translatable="false">karanmittal2626@gmail.com</string>
 </resources>
