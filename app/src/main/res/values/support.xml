@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Where feedback and logo requests go. A blank value hides that choice. -->
+    <!-- WhatsApp: the number with country code, digits only, e.g. 919800000000. -->
+    <string name="support_whatsapp" translatable="false"></string>
+    <string name="support_email" translatable="false"></string>
+</resources>

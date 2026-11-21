@@ -1,5 +1,6 @@
 package app.yarn.ui.settings
 
+import app.yarn.data.prefs.sortingOn
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import android.content.Intent
@@ -255,14 +256,17 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.notificationItems(
                 NotifyMode.SILENT to stringResource(R.string.notify_mode_silent),
                 NotifyMode.OFF to stringResource(R.string.notify_mode_off),
             )
-            // Sets every tab at once; shows a value only while all tabs agree.
-            val all = InboxGroup.entries.map { s.notifyFor(it.kind) }.distinct().singleOrNull()
-            ChoiceRow<NotifyMode?>(stringResource(R.string.notify_all_tabs), modes, all, icon = Icons.Outlined.Notifications) { m ->
-                if (m != null) update { it.copy(notifyTabs = InboxGroup.entries.associate { g -> g.kind to m }) }
-            }
-            InboxGroup.entries.forEach { g ->
-                ChoiceRow(stringResource(g.label), modes, s.notifyFor(g.kind), icon = CategoryUi.groupIcon(g)) { m ->
-                    update { it.copy(notifyTabs = it.notifyTabs + (g.kind to m)) }
+            // Tabs exist only while sorting is on; without them every message notifies the normal way.
+            if (s.sortingOn) {
+                // Sets every tab at once; shows a value only while all tabs agree.
+                val all = InboxGroup.entries.map { s.notifyFor(it.kind) }.distinct().singleOrNull()
+                ChoiceRow<NotifyMode?>(stringResource(R.string.notify_all_tabs), modes, all, icon = Icons.Outlined.Notifications) { m ->
+                    if (m != null) update { it.copy(notifyTabs = InboxGroup.entries.associate { g -> g.kind to m }) }
+                }
+                InboxGroup.entries.forEach { g ->
+                    ChoiceRow(stringResource(g.label), modes, s.notifyFor(g.kind), icon = CategoryUi.groupIcon(g)) { m ->
+                        update { it.copy(notifyTabs = it.notifyTabs + (g.kind to m)) }
+                    }
                 }
             }
             SwitchRow(stringResource(R.string.suspected_spam), null, s.notifySpam) { v -> update { it.copy(notifySpam = v) } }
@@ -270,7 +274,7 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.notificationItems(
     }
     item {
         Text(
-            stringResource(R.string.notify_tabs_hint),
+            stringResource(if (s.sortingOn) R.string.notify_tabs_hint else R.string.notify_needs_sorting),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
         )

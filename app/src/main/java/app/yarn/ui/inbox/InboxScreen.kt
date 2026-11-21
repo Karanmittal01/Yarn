@@ -180,6 +180,8 @@ fun InboxScreen(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    var crashNote by remember { mutableStateOf<app.yarn.ui.common.Feedback.Note?>(null) }
+    crashNote?.let { note -> app.yarn.ui.common.FeedbackChooser(note) { crashNote = null } }
     val plan by remember(context) { (context.applicationContext as app.yarn.YarnApplication).container.licence.access }.collectAsStateWithLifecycle()
     val shareTitle = stringResource(R.string.share_conversation)
     var confirmDelete by remember { mutableStateOf<Set<Long>?>(null) }
@@ -294,7 +296,7 @@ fun InboxScreen(
                     TrialBanner(plan, onOpen = { onNavigate(InboxDestination.Plan) })
                     crash?.let { report ->
                         CrashBanner(
-                            onSend = { shareFeedback(context, report); vm.dismissCrash() },
+                            onSend = { crashNote = app.yarn.ui.common.Feedback.feedback(context, report); vm.dismissCrash() },
                             onDismiss = vm::dismissCrash,
                         )
                     }
@@ -462,16 +464,6 @@ private fun CrashBanner(onSend: () -> Unit, onDismiss: () -> Unit) {
             }
         }
     }
-}
-
-/** Opens the share sheet with a feedback note and Yarn's error log (no message content). */
-internal fun shareFeedback(context: android.content.Context, log: String) {
-    val body = context.getString(R.string.feedback_body) + "\n\n\n---\n" +
-        "Yarn ${app.yarn.BuildConfig.VERSION_NAME} (${app.yarn.BuildConfig.VERSION_CODE}) · Android ${android.os.Build.VERSION.RELEASE} · ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n\n" + log
-    val send = Intent(Intent.ACTION_SEND).setType("text/plain")
-        .putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.feedback_subject))
-        .putExtra(Intent.EXTRA_TEXT, body.take(60_000))
-    runCatching { context.startActivity(Intent.createChooser(send, context.getString(R.string.help_feedback))) }
 }
 
 @Composable

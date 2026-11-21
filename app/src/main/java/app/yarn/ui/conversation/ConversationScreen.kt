@@ -182,6 +182,11 @@ fun ConversationScreen(
         val address = conv.addresses.firstOrNull()
         participants[address]?.photoUri ?: app.yarn.ui.common.BrandLogos.uri(context, address)
     } else null
+    // A business with no logo yet: its name and sender ID can be sent to the developer in a tap.
+    val logoMissing = !conv.isGroup && photo == null &&
+        conv.addresses.firstOrNull()?.let { app.yarn.intelligence.SenderInfo(it).isBusinessLike } == true
+    var logoNote by remember { mutableStateOf<app.yarn.ui.common.Feedback.Note?>(null) }
+    logoNote?.let { note -> app.yarn.ui.common.FeedbackChooser(note, stringResource(R.string.logo_request_sub)) { logoNote = null } }
 
     Box(Modifier.fillMaxSize().background(app.yarn.ui.theme.chatBackdrop())) {
     Scaffold(
@@ -278,6 +283,10 @@ fun ConversationScreen(
                                 DropdownMenuItem(text = { Text(if (conv.pinned) stringResource(R.string.unpin) else stringResource(R.string.pin)) }, onClick = { menu = false; vm.pin(!conv.pinned) })
                                 DropdownMenuItem(text = { Text(if (conv.muted) stringResource(R.string.unmute) else stringResource(R.string.mute_notifications)) }, onClick = { menu = false; vm.mute(!conv.muted) })
                                 DropdownMenuItem(text = { Text(stringResource(R.string.move_to_category)) }, onClick = { menu = false; pickCategory = emptySet() })
+                                if (logoMissing) DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.logo_request)) },
+                                    onClick = { menu = false; logoNote = app.yarn.ui.common.Feedback.logoRequest(context, conv.title, conv.addresses.first()) },
+                                )
                                 if (conv.isGroup) DropdownMenuItem(text = { Text(stringResource(R.string.rename_group)) }, onClick = { menu = false; rename = true })
                                 HorizontalDivider()
                                 DropdownMenuItem(text = { Text(if (conv.spam) stringResource(R.string.not_spam) else stringResource(R.string.report_spam)) }, onClick = { menu = false; vm.markSpam(!conv.spam) })

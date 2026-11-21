@@ -441,7 +441,7 @@
     <string name="smart_features_sub">Sorting, replies and translation</string>
     <string name="organise">Organise</string>
     <string name="smart_sorting">Smart sorting</string>
-    <string name="smart_sorting_sub">Files every message into its tab, spam included</string>
+    <string name="smart_sorting_sub">Files every message into its tab. Off: one simple list</string>
     <string name="assist">Assist</string>
     <string name="smart_replies">Smart replies</string>
     <string name="smart_replies_sub">Quick reply suggestions in chats</string>
@@ -881,4 +881,14 @@
         <item quantity="other">Your free trial ends in %d days</item>
     </plurals>
     <string name="plan_banner_sub">Subscribe to keep your inbox sorted and safe after the trial.</string>
+    <string name="notify_needs_sorting">Every message notifies the normal way. Turn on Smart sorting to choose how each tab tells you.</string>
+    <string name="feedback_title">Send feedback</string>
+    <string name="feedback_sub">It goes straight to the person who builds Yarn.</string>
+    <string name="feedback_whatsapp">WhatsApp</string>
+    <string name="feedback_email">Email</string>
+    <string name="feedback_other">Other apps</string>
+    <string name="logo_request">Request a logo</string>
+    <string name="logo_request_sub">Only this sender\'s name and ID are sent, never your messages.</string>
+    <string name="logo_request_subject">Logo request: %1$s</string>
+    <string name="logo_request_text">Hi! Please add a logo for %1$s (sender ID %2$s) in Yarn.</string>
 </resources>

@@ -1,5 +1,6 @@
 package app.yarn.ui.inbox
 
+import app.yarn.data.prefs.sortingOn
 import androidx.lifecycle.ViewModel
 import app.yarn.safeScope
 import androidx.lifecycle.viewModelScope
@@ -123,14 +124,18 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     /** Only groups that actually contain messages are offered as filters. */
     private val spamTab = combine(c.db.conversations().spamCount(), c.db.conversations().unreadSpam()) { total, unread -> total to unread }
 
-    val chips: StateFlow<List<InboxChip>> = combine(c.db.conversations().totalsByCategory(), c.db.conversations().sectionCategories(), spamTab, _filter) { totals, sections, spam, current ->
+    val chips: StateFlow<List<InboxChip>> = combine(
+        c.db.conversations().totalsByCategory(), c.db.conversations().sectionCategories(), spamTab, _filter,
+        c.settings.settings.map { it.sortingOn }.distinctUntilChanged(),
+    ) { totals, sections, spam, current, sorting ->
         val unreadAll = totals.sumOf { it.unread }
         // A chat counts once per section it has messages in, and as unread there only if that part is unread.
         val bySection = sections.groupBy { Category.fromName(it.category)?.let(InboxGroup::of) }
         buildList {
             add(InboxChip(R.string.chip_all, InboxFilter()))
             if (unreadAll > 0 || current.view == InboxView.UNREAD) add(InboxChip(R.string.filter_unread, InboxFilter(InboxView.UNREAD), unread = unreadAll))
-            InboxGroup.entries.forEach { g ->
+            // With sorting off there are no tabs: one list, plus Unread and Spam.
+            if (sorting) InboxGroup.entries.forEach { g ->
                 val rows = bySection[g].orEmpty()
                 val unread = rows.filter { it.unread > 0 }.map { it.conversationId }.toSet().size
                 if (rows.isNotEmpty() || current == g.filter) add(InboxChip(g.label, g.filter, g, unread))
@@ -205,6 +210,15 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     val events: SharedFlow<UndoEvent> = _events
 
     fun setFilter(f: InboxFilter) { _filter.value = f; clearSelection() }
+
+    init {
+        // Sorting turned off while a tab was open: back to the one list.
+        safeScope.launch {
+            c.settings.settings.map { it.sortingOn }.distinctUntilChanged().collect { on ->
+                if (!on && _filter.value.view == InboxView.CATEGORY) setFilter(InboxFilter())
+            }
+        }
+    }
 
     fun toggle(id: Long) {
         _selection.value = _selection.value.let { if (id in it) it - id else it + id }

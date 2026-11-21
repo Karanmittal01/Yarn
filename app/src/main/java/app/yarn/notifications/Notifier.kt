@@ -1,5 +1,6 @@
 package app.yarn.notifications
 
+import app.yarn.data.prefs.sortingOn
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
@@ -133,9 +134,11 @@ class Notifier(
         val latest = unread.last()
         val category = Category.fromName(latest.category) ?: Category.PERSONAL
         // Each tab rings, stays quiet or stays off as the user chose in Settings → Notifications.
+        // With sorting off there are no tabs, so every message notifies the normal way.
         val group = category.group
         val channel = when {
             conversation.spam || group == null -> if (s.notifySpam) CH_SPAM else return
+            !s.sortingOn -> CH_MESSAGES
             else -> when (s.notifyFor(group)) {
                 NotifyMode.OFF -> return
                 NotifyMode.SILENT -> CH_QUIET

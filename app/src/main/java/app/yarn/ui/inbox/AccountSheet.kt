@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Sms
+import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -176,6 +177,7 @@ fun AccountSheetContent(
             .padding(horizontal = 16.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            IconButton(onClick = onFeedback) { Icon(Icons.Outlined.Feedback, stringResource(R.string.feedback_title), Modifier.size(22.dp)) }
             IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, stringResource(R.string.close), Modifier.size(24.dp)) }
         }
         // Who you are: compact, and a tap away from changing.

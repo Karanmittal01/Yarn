@@ -42,6 +42,9 @@ const val BIN_OFF = 0
 /** How a message from tab [group] should notify. */
 fun AppSettings.notifyFor(group: CategoryGroup): NotifyMode = notifyTabs[group] ?: DEFAULT_NOTIFY.getValue(group)
 
+/** Messages are filed into tabs only while both Smart features and Smart sorting are on. */
+val AppSettings.sortingOn: Boolean get() = aiEnabled && autoCategorize
+
 data class AppSettings(
     val onboardingDone: Boolean = false,
     /** Your name and picture as set in Yarn; blank falls back to your "Me" card in Contacts. */

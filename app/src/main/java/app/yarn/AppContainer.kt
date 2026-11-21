@@ -1,5 +1,8 @@
 package app.yarn
 
+import app.yarn.data.prefs.sortingOn
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import app.yarn.ai.SmartSorter
 import app.yarn.backup.GoogleDrive
 import app.yarn.work.GoogleBackupWorker
@@ -102,6 +105,14 @@ class AppContainer(val app: Application) {
     fun start() {
         notifier.createChannels()
         licence.start()
+        // Sorting turned back on: file everything again, including what arrived while it was off.
+        scope.launch {
+            var was: Boolean? = null
+            settings.settings.map { it.sortingOn }.distinctUntilChanged().collect { on ->
+                if (was == false && on) ReanalyzeWorker.enqueue(app)
+                was = on
+            }
+        }
         refreshPlatformState()
         MaintenanceWorker.schedule(app)
         scope.launch {

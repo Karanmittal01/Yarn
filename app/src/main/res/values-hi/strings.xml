@@ -439,7 +439,7 @@
     <string name="smart_features_sub">छंटाई, जवाब और अनुवाद</string>
     <string name="organise">व्यवस्थित करें</string>
     <string name="smart_sorting">स्मार्ट छंटाई</string>
-    <string name="smart_sorting_sub">हर मैसेज को उसके टैब में रखता है, स्पैम भी</string>
+    <string name="smart_sorting_sub">हर मैसेज को उसके टैब में रखता है। बंद होने पर: एक ही सूची</string>
     <string name="assist">मदद</string>
     <string name="smart_replies">स्मार्ट जवाब</string>
     <string name="smart_replies_sub">चैट में झटपट जवाब के सुझाव</string>
@@ -879,4 +879,14 @@
         <item quantity="other">आपका फ़्री ट्रायल %d दिन में खत्म होगा</item>
     </plurals>
     <string name="plan_banner_sub">ट्रायल के बाद भी अपना इनबॉक्स व्यवस्थित और सुरक्षित रखने के लिए सदस्यता लें।</string>
+    <string name="notify_needs_sorting">हर मैसेज की सूचना सामान्य तरीके से आती है। हर टैब के लिए अलग चुनने के लिए स्मार्ट सॉर्टिंग चालू करें।</string>
+    <string name="feedback_title">फ़ीडबैक भेजें</string>
+    <string name="feedback_sub">यह सीधे Yarn बनाने वाले तक पहुंचता है।</string>
+    <string name="feedback_whatsapp">WhatsApp</string>
+    <string name="feedback_email">ईमेल</string>
+    <string name="feedback_other">दूसरे ऐप</string>
+    <string name="logo_request">लोगो का अनुरोध करें</string>
+    <string name="logo_request_sub">सिर्फ़ इस भेजने वाले का नाम और ID भेजा जाता है, आपके मैसेज कभी नहीं।</string>
+    <string name="logo_request_subject">लोगो अनुरोध: %1$s</string>
+    <string name="logo_request_text">नमस्ते! कृपया Yarn में %1$s (सेंडर ID %2$s) का लोगो जोड़ें।</string>
 </resources>

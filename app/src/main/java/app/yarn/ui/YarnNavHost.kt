@@ -124,6 +124,8 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
             val items by inboxVm.items.collectAsStateWithLifecycle()
             val context = androidx.compose.ui.platform.LocalContext.current
             val plan by androidx.compose.runtime.remember { context.container.licence.access }.collectAsStateWithLifecycle()
+            var feedback by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<app.yarn.ui.common.Feedback.Note?>(null) }
+            feedback?.let { note -> app.yarn.ui.common.FeedbackChooser(note) { feedback = null } }
             ProfileScreen(
                 me = me, sims = sims,
                 hasUnread = items.orEmpty().any { it.conversation.unreadCount > 0 },
@@ -131,7 +133,7 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
                 // Back to the inbox, where "Undo" shows.
                 onMarkAllRead = { inboxVm.markAllRead(); nav.popBackStack() },
                 onNavigate = { d -> navigateTo(nav, d) },
-                onFeedback = { app.yarn.ui.inbox.shareFeedback(context, app.yarn.CrashLog.all()) },
+                onFeedback = { feedback = app.yarn.ui.common.Feedback.feedback(context, app.yarn.CrashLog.all()) },
                 onSaveProfile = inboxVm::saveProfile,
                 onClose = { nav.popBackStack() },
                 plan = plan,

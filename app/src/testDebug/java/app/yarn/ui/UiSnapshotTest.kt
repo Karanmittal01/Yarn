@@ -520,6 +520,10 @@ class UiSnapshotTest {
             app.yarn.ui.inbox.AccountSheetContent(storeMe, listOf(storeJio), true, app.yarn.data.prefs.AppSettings(), {}, {}, {}, {}, {}, plan = app.yarn.billing.Access.Trial(3))
         }
     }
+    // Sorting off: no tabs, so notifications have no per-tab choices.
+    @Test fun notificationsSortingOff() = shot(false, "74_notifications_sorting_off") {
+        app.yarn.ui.settings.SettingsScaffold("Notifications", {}) { notificationItems(myNotify.copy(autoCategorize = false), {}, {}) }
+    }
     @Test fun planBanner() = shot(true, "73_inbox_trial_banner_dark") {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 24.dp)) {
             app.yarn.ui.inbox.TrialBanner(app.yarn.billing.Access.Trial(2)) {}
