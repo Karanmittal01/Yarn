@@ -10,6 +10,7 @@ on:
       - 'distribution/store/**'
       - 'tools/store/**'
       - '.github/workflows/store-listing.yml'
+      - '.github/workflows/play-products.yml'
   pull_request:
   workflow_dispatch:
 

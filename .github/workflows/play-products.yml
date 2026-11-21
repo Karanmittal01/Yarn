@@ -1,0 +1,36 @@
+name: Play products
+
+# Creates Yarn's yearly subscription and the testers' lifetime unlock in Play Console.
+# Run by hand; it leaves anything that already exists as it is.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Only check access and show what would be created
+        type: boolean
+        default: true
+
+concurrency:
+  group: play-products
+  cancel-in-progress: false
+
+jobs:
+  products:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install the Play API client
+        run: pip install google-api-python-client==2.149.0 google-auth==2.35.0
+
+      - name: Create the products
+        if: ${{ env.PLAY_JSON != '' }}
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          DRY_RUN: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: python tools/store/products.py $DRY_RUN
