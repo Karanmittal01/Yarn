@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The launcher icon is labelled "Messages" (app_name). Android shows the app's own name,
+         brand_name ("Yarn - AI Messaging"), in Settings, search and the default-app chooser, and
+         this shortcut carries the other words people search for. -->
+    <string name="shortcut_yarn" translatable="false">Yarn</string>
+    <string name="shortcut_yarn_long" translatable="false">Yarn smart AI messaging</string>
+</resources>

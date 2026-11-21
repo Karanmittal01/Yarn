@@ -11,4 +11,16 @@
             android:targetPackage="app.yarn.messages"
             android:targetClass="app.yarn.MainActivity" />
     </shortcut>
+    <!-- Named after the app, so launchers that search shortcuts find Yarn by its name. -->
+    <shortcut
+        android:shortcutId="open_yarn"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_yarn"
+        android:shortcutLongLabel="@string/shortcut_yarn_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="app.yarn.messages"
+            android:targetClass="app.yarn.MainActivity" />
+    </shortcut>
 </shortcuts>
