@@ -867,7 +867,7 @@
     <string name="plan_messages_safe">Your messages stay on your phone either way.</string>
     <string name="plan_unavailable">Couldn\'t reach Google Play. Check your connection and try again.</string>
     <string name="plan_failed">The payment didn\'t go through. Please try again.</string>
-    <string name="plan_nothing_found">No purchase found for this Google account.</string>
+    <string name="plan_nothing_found">No purchase found for the Google account in your Play Store. If you bought or redeemed with another account, switch to it in the Play Store and try again.</string>
     <string name="plan_row_trial">Subscribe to Yarn</string>
     <plurals name="plan_days_left">
         <item quantity="one">%d day left</item>
@@ -891,4 +891,5 @@
     <string name="logo_request_sub">Only this sender\'s name and ID are sent, never your messages.</string>
     <string name="logo_request_subject">Logo request: %1$s</string>
     <string name="logo_request_text">Hi! Please add a logo for %1$s (sender ID %2$s) in Yarn.</string>
+    <string name="plan_redeem_steps">Google Play\'s payment sheet opens next. Tap the payment method, choose \"Redeem code\" and enter your code. You won\'t be charged.</string>
 </resources>

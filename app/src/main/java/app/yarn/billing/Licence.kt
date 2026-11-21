@@ -62,6 +62,7 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
 
     private val lock = Mutex()
     private var details: ProductDetails? = null
+    private var lifetime: ProductDetails? = null
     private var offerToken: String? = null
     private val client: BillingClient by lazy {
         BillingClient.newBuilder(context)
@@ -107,9 +108,26 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
         val d = details
         val token = offerToken
         if (!ready || d == null || token == null) return Result.UNAVAILABLE
-        val params = BillingFlowParams.newBuilder()
-            .setProductDetailsParamsList(listOf(BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(d).setOfferToken(token).build()))
-            .build()
+        return launch(activity, d, token)
+    }
+
+    /**
+     * Redeems a tester's code inside Google's payment sheet for the lifetime unlock (its payment
+     * method menu has "Redeem code"). The purchase comes straight back to Yarn, so it unlocks at once,
+     * with no browser and no waiting for the Play Store to catch up.
+     */
+    suspend fun redeem(activity: Activity): Result {
+        if (BuildConfig.DEBUG) return Result.UNAVAILABLE
+        val ready = lock.withLock { connect() && loadLifetime() }
+        val d = lifetime
+        if (!ready || d == null) return Result.UNAVAILABLE
+        return launch(activity, d, d.oneTimePurchaseOfferDetailsList?.firstOrNull()?.offerToken)
+    }
+
+    private suspend fun launch(activity: Activity, product: ProductDetails, offerToken: String?): Result {
+        val item = BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(product)
+        if (offerToken != null) item.setOfferToken(offerToken)
+        val params = BillingFlowParams.newBuilder().setProductDetailsParamsList(listOf(item.build())).build()
         val r = withContext(Dispatchers.Main) { client.launchBillingFlow(activity, params) }
         return when (r.responseCode) {
             BillingResponseCode.OK -> Result.STARTED
@@ -209,6 +227,22 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
             putString(K_CURRENCY, price.currency)
         }
         return true
+    }
+
+    /** The testers' lifetime unlock, only ever opened to redeem a code. */
+    private suspend fun loadLifetime(): Boolean {
+        if (lifetime != null) return true
+        val params = QueryProductDetailsParams.newBuilder()
+            .setProductList(listOf(QueryProductDetailsParams.Product.newBuilder().setProductId(Plan.LIFETIME).setProductType(ProductType.INAPP).build()))
+            .build()
+        lifetime = withTimeoutOrNull(15_000) {
+            suspendCancellableCoroutine<ProductDetails?> { cont ->
+                client.queryProductDetailsAsync(params) { result, list ->
+                    if (cont.isActive) cont.resume(if (result.responseCode == BillingResponseCode.OK) list.productDetailsList.firstOrNull() else null)
+                }
+            }
+        }
+        return lifetime != null
     }
 
     private suspend fun query(type: String): List<Purchase>? = withTimeoutOrNull(15_000) {

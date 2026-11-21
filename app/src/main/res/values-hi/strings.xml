@@ -865,7 +865,7 @@
     <string name="plan_messages_safe">दोनों ही तरह से आपके मैसेज आपके फ़ोन पर रहते हैं।</string>
     <string name="plan_unavailable">Google Play से कनेक्ट नहीं हो सका। इंटरनेट जांचें और फिर कोशिश करें।</string>
     <string name="plan_failed">भुगतान पूरा नहीं हुआ। कृपया फिर कोशिश करें।</string>
-    <string name="plan_nothing_found">इस Google खाते पर कोई खरीदारी नहीं मिली।</string>
+    <string name="plan_nothing_found">आपके Play Store के Google खाते पर कोई खरीदारी नहीं मिली। अगर आपने किसी दूसरे खाते से खरीदा या रिडीम किया है, तो Play Store में उस खाते पर जाएं और फिर कोशिश करें।</string>
     <string name="plan_row_trial">Yarn की सदस्यता लें</string>
     <plurals name="plan_days_left">
         <item quantity="one">%d दिन बाकी</item>
@@ -889,4 +889,5 @@
     <string name="logo_request_sub">सिर्फ़ इस भेजने वाले का नाम और ID भेजा जाता है, आपके मैसेज कभी नहीं।</string>
     <string name="logo_request_subject">लोगो अनुरोध: %1$s</string>
     <string name="logo_request_text">नमस्ते! कृपया Yarn में %1$s (सेंडर ID %2$s) का लोगो जोड़ें।</string>
+    <string name="plan_redeem_steps">आगे Google Play की पेमेंट शीट खुलेगी। पेमेंट का तरीका टैप करें, \"कोड रिडीम करें\" चुनें और अपना कोड डालें। आपसे कोई पैसा नहीं लिया जाएगा।</string>
 </resources>

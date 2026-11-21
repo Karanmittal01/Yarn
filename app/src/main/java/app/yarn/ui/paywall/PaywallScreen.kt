@@ -77,6 +77,7 @@ fun PaywallScreen(onBack: (() -> Unit)?) {
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf<Int?>(null) }
+    var redeemHelp by remember { mutableStateOf(false) }
     LaunchedEffect(licence) {
         licence.events.collect { busy = false; note = R.string.plan_failed }
     }
@@ -107,10 +108,27 @@ fun PaywallScreen(onBack: (() -> Unit)?) {
                 }
             }
         },
-        onRedeem = { if (!open(Licence.redeemIntent())) open(Licence.redeemOnWeb()) },
+        onRedeem = { redeemHelp = true },
         onManage = { open(Licence.manageIntent(context)) },
         onOtherApp = { open(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)) },
         onBack = onBack,
+    )
+    if (redeemHelp) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { redeemHelp = false },
+        title = { Text(stringResource(R.string.plan_redeem)) },
+        text = { Text(stringResource(R.string.plan_redeem_steps)) },
+        confirmButton = {
+            TextButton(onClick = {
+                redeemHelp = false
+                val activity = context.findActivity() ?: return@TextButton
+                scope.launch {
+                    note = null
+                    // Google's sheet is the sure way; the Play Store's own page is the fallback.
+                    if (licence.redeem(activity) != Licence.Result.STARTED && !open(Licence.redeemIntent())) open(Licence.redeemOnWeb())
+                }
+            }) { Text(stringResource(R.string.continue_)) }
+        },
+        dismissButton = { TextButton(onClick = { redeemHelp = false }) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
