@@ -962,6 +962,7 @@ NEW += [
     ("Shipfast", "shipfast.in", ["SHPFAS", "SHPFST"]),
     ("Hoi", "hoi.in", ["HOIYTC"]),
     ("Pay with Rewards", "paywithrewards.com", ["PAYRWD"]),
+    ("Maximize", "maximize.money", ["MAXMZE", "MAXIMZ"]),
 ]
 ALIASES += [
     ("UIDAI (Aadhaar)", ["ADHAAR"]),

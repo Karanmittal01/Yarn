@@ -497,6 +497,12 @@ class UiSnapshotTest {
         item(3, "HDFC Bank", "Congratulations! We approved your HDFC Bank Credit Card (App No. D26K12345678A0B1).", "UPDATES", 0, "VD-HDFCBK-S", true, InboxGroup.UPDATES),
     )
     @Test fun inboxNeu() = shot(true, "64_inbox_tata_neu_dark") { InboxMock(neuInbox) }
+    private val maximizeInbox get() = withLogos(
+        item(1, "Maximize", "<#> 1234 is your OTP to login to your Maximize account.", "OTP", 0, "JD-MAXMZE-S", true, InboxGroup.OTP, "1234"),
+        item(2, "Maximize", "Your gift card purchase details are: Amount: 152.00, GC#: 6000000000000000", "UPDATES", 0, "JD-MAXMZE-S", true, InboxGroup.UPDATES),
+        item(3, "Kotak Bank", "Sent Rs.15.58 from Kotak Bank A/c X1234 to MAXIMIZE PAY SOLUTIO on 21-11-26.", "BANKING", 0, "AD-KOTAKB-S", true, InboxGroup.TRANSACTIONS),
+    )
+    @Test fun inboxMaximize() = shot(true, "65_inbox_maximize_dark") { InboxMock(maximizeInbox, storeMe) }
 
     // Notification icons: before (square tile) and after (cut round), with the phone's app badge in the corner.
     @Test fun notificationIcons() {

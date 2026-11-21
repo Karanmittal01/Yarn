@@ -238,6 +238,10 @@ pick(W, "routematic")
 # Pay with Rewards (PAYRWD): the logo the user sent, cropped to the tile with the star coin.
 pick("user", "paywithrewards")
 TUNE["paywithrewards"] = {"ops": [("crop", 0.28, 0.14, 0.72, 0.575)], "inner": 0.44, "cap": 0.74}
+# Maximize (MAXMZE), gift cards and rewards: the white mark from its site icon on its green, not the
+# festive Play icon with string lights.
+pick(W, "maximize")
+TUNE["maximize"] = {"ops": [("crop", 0.12, 0.12, 0.88, 0.88)]}
 # Pine Labs: its "pine labs" wordmark rather than the EMI World app icon. Qwikcilver (QWKCLR) is Pine Labs'
 # gift-card business now; its own site is gone, so it shows Pine Labs' logo.
 pick(K, "pinelabs")

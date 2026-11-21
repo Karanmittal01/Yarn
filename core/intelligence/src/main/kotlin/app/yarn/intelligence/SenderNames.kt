@@ -1138,6 +1138,8 @@ object SenderNames {
         Brand("SHPFST", "Shipfast"),
         Brand("HOIYTC", "Hoi"),
         Brand("PAYRWD", "Pay with Rewards"),
+        Brand("MAXMZE", "Maximize"),
+        Brand("MAXIMZ", "Maximize"),
         Brand("XPBEES", "XpressBees"),
         Brand("SLCBNK", "slice"),
         Brand("PHEASY", "PharmEasy"),
