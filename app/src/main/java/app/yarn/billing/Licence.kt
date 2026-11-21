@@ -246,7 +246,10 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
             Uri.parse("https://play.google.com/store/account/subscriptions?sku=${Plan.SUBSCRIPTION}&package=${context.packageName}"),
         )
 
-        /** Google Play's page for redeeming a promo code. */
-        fun redeemIntent(): Intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/redeem"))
+        /** Redeeming a promo code: in the Play Store app, where codes for Yarn's products work. */
+        fun redeemIntent(): Intent = redeemOnWeb().setPackage("com.android.vending")
+
+        /** The same page in a browser, for phones without the Play Store app. */
+        fun redeemOnWeb(): Intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/redeem"))
     }
 }

@@ -80,7 +80,7 @@ fun PaywallScreen(onBack: (() -> Unit)?) {
     LaunchedEffect(licence) {
         licence.events.collect { busy = false; note = R.string.plan_failed }
     }
-    fun open(intent: Intent) = runCatching { context.startActivity(intent) }
+    fun open(intent: Intent) = runCatching { context.startActivity(intent) }.isSuccess
     PaywallContent(
         access = access, price = price, busy = busy, note = note?.let { stringResource(it) },
         onSubscribe = {
@@ -107,7 +107,7 @@ fun PaywallScreen(onBack: (() -> Unit)?) {
                 }
             }
         },
-        onRedeem = { open(Licence.redeemIntent()) },
+        onRedeem = { if (!open(Licence.redeemIntent())) open(Licence.redeemOnWeb()) },
         onManage = { open(Licence.manageIntent(context)) },
         onOtherApp = { open(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)) },
         onBack = onBack,
