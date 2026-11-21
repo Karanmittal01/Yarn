@@ -867,7 +867,7 @@
     <string name="plan_messages_safe">Your messages stay on your phone either way.</string>
     <string name="plan_unavailable">Couldn\'t reach Google Play. Check your connection and try again.</string>
     <string name="plan_failed">The payment didn\'t go through. Please try again.</string>
-    <string name="plan_nothing_found">No purchase found for the Google account in your Play Store. If you bought or redeemed with another account, switch to it in the Play Store and try again.</string>
+    <string name="plan_nothing_found">No purchase found for the Google account Yarn uses on this phone (the one shown when you tap Subscribe). Codes redeemed on another account don\'t carry over: use Redeem code here instead.</string>
     <string name="plan_row_trial">Subscribe to Yarn</string>
     <plurals name="plan_days_left">
         <item quantity="one">%d day left</item>

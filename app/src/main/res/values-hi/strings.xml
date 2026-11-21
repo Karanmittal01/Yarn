@@ -865,7 +865,7 @@
     <string name="plan_messages_safe">दोनों ही तरह से आपके मैसेज आपके फ़ोन पर रहते हैं।</string>
     <string name="plan_unavailable">Google Play से कनेक्ट नहीं हो सका। इंटरनेट जांचें और फिर कोशिश करें।</string>
     <string name="plan_failed">भुगतान पूरा नहीं हुआ। कृपया फिर कोशिश करें।</string>
-    <string name="plan_nothing_found">आपके Play Store के Google खाते पर कोई खरीदारी नहीं मिली। अगर आपने किसी दूसरे खाते से खरीदा या रिडीम किया है, तो Play Store में उस खाते पर जाएं और फिर कोशिश करें।</string>
+    <string name="plan_nothing_found">इस फ़ोन पर Yarn जिस Google खाते से चलता है (सदस्यता लें दबाने पर दिखने वाला खाता), उस पर कोई खरीदारी नहीं मिली। दूसरे खाते पर रिडीम किए कोड यहां नहीं आते: इसके बजाय यहीं \"कोड रिडीम करें\" इस्तेमाल करें।</string>
     <string name="plan_row_trial">Yarn की सदस्यता लें</string>
     <plurals name="plan_days_left">
         <item quantity="one">%d दिन बाकी</item>
