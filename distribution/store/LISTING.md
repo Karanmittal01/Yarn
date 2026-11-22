@@ -114,10 +114,14 @@ Yarn works with SMS and MMS. Android does not allow third-party apps to use RCS 
 - Do you provide a way for users to request that their data is deleted? **Yes** (turn off backup and delete Yarn's hidden app data in Google Drive; uninstalling deletes on-device data)
 - Data types collected (only when the user turns on Google Drive backup):
   - **Messages → SMS or MMS**: Collected, not shared, optional, purpose **App functionality** (backup and restore)
-  - **Photos and videos**: Collected, not shared, optional, purpose **App functionality** (only if "Include photos & videos" is on)
+  - **Photos and videos**: Collected, not shared, optional, purpose **App functionality** (your profile photo, and message photos/videos only if "Include photos & videos" is on)
+  - **Personal info → Name**: Collected, not shared, optional, purpose **App functionality** (the profile name, so it comes back on a new phone)
   - **Personal info → Email address**: Collected, not shared, optional, purpose **App functionality / Account management** (shows the backup account)
+  - **App activity → Other user-generated content**: Collected, not shared, optional, purpose **App functionality** (chat drafts and settings in the backup)
   - **Messages → SMS or MMS** also go to Google Translate, but only the one message the user taps Translate on, and only when the phone can't translate it offline ("Translate online when needed", on by default, can be turned off). This is user-initiated, so it is not "shared"; it is processed ephemerally.
 - Messages, contacts and everything else processed on the phone are not "collected", because they never leave the device.
+- **Purchases** go through Google Play Billing: Google collects the payment details, not Yarn, so nothing extra is declared for them.
+- **Feedback** (WhatsApp or email) is sent by the user from their own app, so it isn't collected by Yarn either.
 
 **Sensitive permissions → SMS and Call Log permissions**
 - Core functionality: **Default SMS handler**

@@ -6,6 +6,7 @@ the one source. Run by .github/workflows/store-listing.yml with the Play service
 PLAY_JSON. --dry-run checks access and prints what would change without saving anything.
 """
 import glob
+import hashlib
 import json
 import os
 import re
@@ -66,6 +67,13 @@ def main():
             print(f"  {key}: {'unchanged' if same else 'will change'}")
         old = edits.images().list(packageName=PACKAGE, editId=edit, language=language, imageType="phoneScreenshots").execute()
         print(f"  phone screenshots: {len(old.get('images', []))} now, {len(shots)} new")
+        same_text = all((current.get(key) or "").strip() == text[key] for key in LIMITS)
+        same_shots = [i.get("sha256") for i in old.get("images", [])] == [hashlib.sha256(open(p, "rb").read()).hexdigest() for p in shots]
+        if same_text and same_shots:
+            # Nothing to change: don't send the listing back to Google for review.
+            print("Listing already up to date.")
+            edits.delete(packageName=PACKAGE, editId=edit).execute()
+            return
         if dry_run:
             print("Dry run: nothing saved.")
             edits.delete(packageName=PACKAGE, editId=edit).execute()
@@ -74,14 +82,16 @@ def main():
         body = {"language": language, "title": text["title"], "shortDescription": text["shortDescription"], "fullDescription": text["fullDescription"]}
         if current.get("video"):
             body["video"] = current["video"]
-        edits.listings().update(packageName=PACKAGE, editId=edit, language=language, body=body).execute()
-        edits.images().deleteall(packageName=PACKAGE, editId=edit, language=language, imageType="phoneScreenshots").execute()
-        for path in shots:
-            edits.images().upload(
-                packageName=PACKAGE, editId=edit, language=language, imageType="phoneScreenshots",
-                media_body=MediaFileUpload(path, mimetype="image/png"),
-            ).execute()
-            print(f"  uploaded {os.path.basename(path)}")
+        if not same_text:
+            edits.listings().update(packageName=PACKAGE, editId=edit, language=language, body=body).execute()
+        if not same_shots:
+            edits.images().deleteall(packageName=PACKAGE, editId=edit, language=language, imageType="phoneScreenshots").execute()
+            for path in shots:
+                edits.images().upload(
+                    packageName=PACKAGE, editId=edit, language=language, imageType="phoneScreenshots",
+                    media_body=MediaFileUpload(path, mimetype="image/png"),
+                ).execute()
+                print(f"  uploaded {os.path.basename(path)}")
         try:
             edits.commit(packageName=PACKAGE, editId=edit).execute()
             print("Listing saved and sent for review.")
