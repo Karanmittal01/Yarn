@@ -608,7 +608,15 @@ class UiSnapshotTest {
     }
 
     @Test fun onboardingWelcome() = onboarding(0, false, "20_onboarding_welcome")
-    @Test fun onboardingClean() = onboarding(3, true, "21_onboarding_auto_clean_dark")
+    @Test fun onboardingClean() = onboarding(5, true, "21_onboarding_auto_clean_dark")
+    private fun onboardingPage(step: Int, dark: Boolean, name: String, backup: app.yarn.ui.onboarding.OnboardingBackup = app.yarn.ui.onboarding.OnboardingBackup(), you: String = "") = shot(dark, name) {
+        app.yarn.ui.onboarding.OnboardingContent(step, true, "", {}, app.yarn.ui.onboarding.AutoCleanChoice(), {}, {}, {}, {}, {}, backup = backup, name = you)
+    }
+    @Test fun onboardingBackup() = onboardingPage(3, false, "75_onboarding_backup")
+    @Test fun onboardingBackupFound() = onboardingPage(3, true, "76_onboarding_backup_found_dark",
+        app.yarn.ui.onboarding.OnboardingBackup("asha.verma@gmail.com", app.yarn.backup.DriveBackup("x", now - 2 * 86_400_000L, 48_000_000, 12306)))
+    @Test fun onboardingYou() = onboardingPage(4, false, "77_onboarding_your_name", you = "Asha Verma")
+    @Test fun onboardingYouEmpty() = onboardingPage(4, true, "78_onboarding_your_name_empty_dark")
 
     // ---- Hindi ---------------------------------------------------------------------------
 

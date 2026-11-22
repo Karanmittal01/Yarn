@@ -890,4 +890,18 @@
     <string name="logo_request_subject">लोगो अनुरोध: %1$s</string>
     <string name="logo_request_text">नमस्ते! कृपया Yarn में %1$s (सेंडर ID %2$s) का लोगो जोड़ें।</string>
     <string name="plan_redeem_steps">आगे Google Play की पेमेंट शीट खुलेगी। पेमेंट का तरीका टैप करें, \"कोड रिडीम करें\" चुनें और अपना कोड डालें। आपसे कोई पैसा नहीं लिया जाएगा।</string>
+    <string name="ob_backup">Google Drive पर बैकअप</string>
+    <string name="ob_backup_body">अपने मैसेज, सेटिंग और प्रोफ़ाइल अपनी Google Drive में सुरक्षित रखें, और नए फ़ोन पर वापस पाएं।</string>
+    <string name="ob_choose_account">Google खाता चुनें</string>
+    <string name="ob_start_fresh">नए सिरे से शुरू करें</string>
+    <string name="ob_backup_messages">मैसेज और फ़ोटो</string>
+    <string name="ob_backup_messages_body">हर दिन Wi-Fi पर चार्ज होते समय बैकअप होता है।</string>
+    <string name="ob_backup_you">आपकी सेटिंग और प्रोफ़ाइल</string>
+    <string name="ob_backup_you_body">आपका नाम, फ़ोटो और हर पसंद आपके साथ वापस आती है।</string>
+    <string name="ob_backup_private">सिर्फ़ Yarn इसे खोल सकता है</string>
+    <string name="ob_backup_private_body">एन्क्रिप्टेड, आपकी अपनी Drive के निजी फ़ोल्डर में। Yarn के कोई सर्वर नहीं हैं।</string>
+    <string name="ob_backup_on">%1$s पर रोज़ बैकअप हो रहा है</string>
+    <string name="ob_you">आपका नाम क्या है?</string>
+    <string name="ob_you_body">Yarn इसे आपकी प्रोफ़ाइल पर दिखाता है। फ़ोटो लगाना ज़रूरी नहीं है।</string>
+    <string name="ob_add_photo">फ़ोटो जोड़ें</string>
 </resources>

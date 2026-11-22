@@ -892,4 +892,18 @@
     <string name="logo_request_subject">Logo request: %1$s</string>
     <string name="logo_request_text">Hi! Please add a logo for %1$s (sender ID %2$s) in Yarn.</string>
     <string name="plan_redeem_steps">Google Play\'s payment sheet opens next. Tap the payment method, choose \"Redeem code\" and enter your code. You won\'t be charged.</string>
+    <string name="ob_backup">Back up to Google Drive</string>
+    <string name="ob_backup_body">Keep your messages, settings and profile safe in your own Google Drive, and bring them back on a new phone.</string>
+    <string name="ob_choose_account">Choose Google account</string>
+    <string name="ob_start_fresh">Start fresh</string>
+    <string name="ob_backup_messages">Messages and photos</string>
+    <string name="ob_backup_messages_body">Backed up every day on Wi-Fi while charging.</string>
+    <string name="ob_backup_you">Your settings and profile</string>
+    <string name="ob_backup_you_body">Your name, photo and every choice come back with you.</string>
+    <string name="ob_backup_private">Only Yarn can open it</string>
+    <string name="ob_backup_private_body">Encrypted, in a private folder of your own Drive. Yarn has no servers.</string>
+    <string name="ob_backup_on">Backing up daily to %1$s</string>
+    <string name="ob_you">What\'s your name?</string>
+    <string name="ob_you_body">Yarn shows it on your profile. A photo is optional.</string>
+    <string name="ob_add_photo">Add a photo</string>
 </resources>
