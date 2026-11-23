@@ -830,6 +830,13 @@ class UiSnapshotTest {
             )
         }
     }
+    // Yarn Pro: a chat in another accent and wallpaper, and the Pro page with its early-bird prices.
+    @Test @Config(qualifiers = "w411dp-h740dp-xxhdpi") fun store9Look() = shot(false, "store_9_look") {
+        Themed(false, app.yarn.ui.theme.Accent.VIOLET, app.yarn.ui.theme.Wallpaper.SUNSET) { StoreChat() }
+    }
+    @Test @Config(qualifiers = "w411dp-h760dp-xxhdpi") fun store10Pro() = shot(false, "store_10_pro") {
+        Paywall(app.yarn.billing.Access.Trial(30), back = false)
+    }
     @Test fun store8Private() = shot(true, "store_8_private") {
         app.yarn.ui.settings.SettingsScaffold("Smart features", {}) { smartFeatureItems(app.yarn.data.prefs.AppSettings(), {}, {}, {}) }
     }

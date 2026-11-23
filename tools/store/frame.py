@@ -26,10 +26,10 @@ SCREENS = [
     ("store_2_otp", "Codes never get lost", "One-tap copy for every OTP"),
     ("store_3_chat", "Chats that understand you", "Translation, smart replies and dual SIM"),
     ("store_4_spam", "Scams stay out", "Fake prizes, KYC and loan scams go to Spam"),
-    ("store_5_profile", "Everything one tap away", "Your profile, SIMs and settings in one menu"),
-    ("store_6_bin", "Deleted by mistake?", "Search the recycle bin and restore in a tap"),
+    ("store_9_look", "Make it yours", "Accent colours and chat wallpapers with Yarn Pro"),
     ("store_7_backup", "Safe in your Google Drive", "Encrypted backup, restore on any phone"),
     ("store_8_private", "Private by design", "Sorting and smart features run on your phone"),
+    ("store_10_pro", "Free to use", "Yarn Pro free for 30 days, then \u20b9199 a year"),
 ]
 
 
