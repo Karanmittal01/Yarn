@@ -20,7 +20,13 @@ import java.util.UUID
  * copy, attachments included, until it is emptied by hand or after [app.yarn.data.prefs.AppSettings.binDays].
  * Restoring lives in [ConversationRepository.restoreFromBin], which can write to the system store.
  */
-class RecycleBin(private val context: Context, private val db: YarnDatabase, private val settings: SettingsRepository) {
+class RecycleBin(
+    private val context: Context,
+    private val db: YarnDatabase,
+    private val settings: SettingsRepository,
+    /** Yarn Free keeps the bin for up to 7 days; Pro, as long as chosen. */
+    private val pro: () -> Boolean = { true },
+) {
     val items: Flow<List<BinEntity>> = db.bin().observe()
     val count: Flow<Int> = db.bin().count()
 
@@ -70,7 +76,7 @@ class RecycleBin(private val context: Context, private val db: YarnDatabase, pri
 
     /** Empties out what has been in the bin longer than the user's chosen number of days. */
     suspend fun emptyExpired(now: Long = System.currentTimeMillis()): Int {
-        val days = settings.current().binDays
+        val days = app.yarn.data.prefs.binDaysFor(settings.current().binDays, pro())
         if (days <= 0) return 0
         val old = db.bin().olderThan(now - days * DAY_MS)
         drop(old)

@@ -97,6 +97,9 @@ fun Composer(
     onSchedule: (Long) -> Unit,
     onRewrite: (RewriteStyle) -> Unit,
     isGroupMms: Boolean,
+    /** AI rewrite and scheduled sending are part of Yarn Pro; without it they open [onPro]. */
+    pro: Boolean = true,
+    onPro: () -> Unit = {},
 ) {
     var attachMenu by remember { mutableStateOf(false) }
     var simMenu by remember { mutableStateOf(false) }
@@ -164,7 +167,7 @@ fun Composer(
                     ),
                     trailingIcon = if (text.isNotBlank()) ({
                         Box {
-                            IconButton(onClick = { aiMenu = true }) { Icon(Icons.Outlined.AutoAwesome, stringResource(R.string.rewrite_ai)) }
+                            IconButton(onClick = { if (pro) aiMenu = true else onPro() }) { Icon(Icons.Outlined.AutoAwesome, stringResource(R.string.rewrite_ai)) }
                             app.yarn.ui.common.YarnMenu(expanded = aiMenu, onDismissRequest = { aiMenu = false }) {
                                 listOf(
                                     RewriteStyle.REPHRASE to R.string.rw_rephrase, RewriteStyle.SHORTEN to R.string.rw_shorten, RewriteStyle.ELABORATE to R.string.rw_elaborate,
@@ -195,7 +198,7 @@ fun Composer(
                         .combinedClickable(
                             enabled = canSend || multiSim,
                             onClick = { if (canSend) onSend() },
-                            onLongClick = { if (multiSim) simMenu = true else schedule = true },
+                            onLongClick = { if (multiSim) simMenu = true else if (pro) schedule = true else onPro() },
                             onClickLabel = sendLabel, onLongClickLabel = longLabel,
                         )
                         .semantics { contentDescription = sendDesc },
@@ -227,7 +230,8 @@ fun Composer(
                         DropdownMenuItem(
                             text = { Text(scheduleLabel, style = MaterialTheme.typography.bodyLarge) },
                             leadingIcon = { Icon(Icons.Outlined.Schedule, null) },
-                            onClick = { simMenu = false; schedule = true },
+                            trailingIcon = if (pro) null else ({ app.yarn.ui.paywall.ProBadge() }),
+                            onClick = { simMenu = false; if (pro) schedule = true else onPro() },
                             modifier = Modifier.heightIn(min = 52.dp),
                         )
                     }

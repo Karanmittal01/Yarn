@@ -38,6 +38,8 @@ class IntelligenceEngine(
     private val settings: SettingsRepository,
     private val contacts: ContactsRepository,
     scope: CoroutineScope,
+    /** Spam filtering and scam warnings are part of Yarn Pro. */
+    private val pro: () -> Boolean = { true },
 ) {
     @Volatile private var analyzer = MessageAnalyzer()
     @Volatile private var current = AppSettings()
@@ -112,6 +114,7 @@ class IntelligenceEngine(
         if (!s.autoCategorize) {
             result = result.copy(classification = Classification(basicCategory(sender), 0f, emptyList(), Classification.Source.RULES))
         }
+        if (!pro()) result = result.copy(spam = SpamAssessment(SpamVerdict.CLEAN, 0f, emptyList()))
         return result
     }
 

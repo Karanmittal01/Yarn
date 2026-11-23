@@ -35,8 +35,8 @@ import app.yarn.BuildConfig
 import app.yarn.R
 
 /**
- * Feedback and logo requests go straight to the developer, on WhatsApp or by email. The number
- * and address are set in res/values/support.xml; a blank one hides that choice.
+ * Feedback goes straight to the developer, on WhatsApp or by email. The number and address are
+ * set in res/values/support.xml; a blank one hides that choice. Logo requests: see [LogoRequests].
  */
 object Feedback {
     /** Something ready to send: a subject (for email), the text, and Yarn's error log when it helps. */
@@ -56,13 +56,6 @@ object Feedback {
         subject = context.getString(R.string.feedback_subject),
         text = context.getString(R.string.feedback_body) + "\n\n\n— " + device(),
         log = log?.takeIf { it.isNotBlank() },
-    )
-
-    /** Only the sender's name and ID: never the messages. */
-    fun logoRequest(context: Context, name: String, senderId: String): Note = Note(
-        title = context.getString(R.string.logo_request),
-        subject = context.getString(R.string.logo_request_subject, name),
-        text = context.getString(R.string.logo_request_text, name, senderId.uppercase()) + "\n\n— " + device(),
     )
 
     fun whatsApp(context: Context, note: Note): Boolean {

@@ -157,7 +157,7 @@ fun BinScreen(vm: BinViewModel, onBack: () -> Unit) {
         if (selection.isNotEmpty()) vm.clearSelection() else vm.setQuery("")
     }
     BinContent(
-        items = if (query.isEmpty()) all else shown, binDays = settings.binDays, selection = selection, snackbar = snackbar,
+        items = if (query.isEmpty()) all else shown, binDays = app.yarn.data.prefs.binDaysFor(settings.binDays, app.yarn.ui.settings.rememberPro()), selection = selection, snackbar = snackbar,
         onToggle = vm::toggle, onRestore = vm::restore, onDeleteForever = vm::deleteForever,
         onRestoreAll = vm::restoreAll, onEmpty = vm::empty, onBack = onBack,
         query = query, onQuery = vm::setQuery, total = all?.size ?: 0, onSelectAll = vm::selectAll,
@@ -419,8 +419,11 @@ private fun BinRow(b: BinEntity, selected: Boolean, now: Long, query: String = "
 
 /** The line delete dialogs end with: where deleted messages go, and for how long. */
 @Composable
-fun binNote(binDays: Int): String = when {
-    binDays == BIN_OFF -> stringResource(R.string.final_delete_note)
-    binDays == BIN_NEVER_EMPTY -> stringResource(R.string.to_bin_forever)
-    else -> pluralStringResource(R.plurals.to_bin_note, binDays, binDays)
+fun binNote(chosen: Int): String {
+    val binDays = app.yarn.data.prefs.binDaysFor(chosen, app.yarn.ui.settings.rememberPro())
+    return when {
+        binDays == BIN_OFF -> stringResource(R.string.final_delete_note)
+        binDays == BIN_NEVER_EMPTY -> stringResource(R.string.to_bin_forever)
+        else -> pluralStringResource(R.plurals.to_bin_note, binDays, binDays)
+    }
 }

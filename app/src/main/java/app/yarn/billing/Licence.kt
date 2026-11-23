@@ -19,6 +19,9 @@ import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
+import com.google.android.gms.auth.blockstore.Blockstore
+import com.google.android.gms.auth.blockstore.RetrieveBytesRequest
+import com.google.android.gms.auth.blockstore.StoreBytesData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -33,37 +36,48 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
 /**
- * Yarn's trial and subscription, through Google Play Billing. There is no Yarn server: Google Play
- * is asked on every start, and the answer is kept on the phone so Yarn also works offline.
+ * Yarn Pro, through Google Play Billing: a 30-day reverse trial, then yearly or lifetime. There is
+ * no Yarn server. Google Play is asked on every start and the answer is kept on the phone, so Yarn
+ * also works offline. The trial's start is remembered on the phone, in Google's Block Store (which
+ * survives reinstalling) and, once backup is on, in the user's own Google Drive.
  */
 class Licence(private val context: Context, private val scope: CoroutineScope) : PurchasesUpdatedListener {
 
-    /** The yearly price as Google Play sells it here, e.g. "₹199". */
-    data class Price(val formatted: String, val micros: Long, val currency: String) {
+    /** A price as Google Play sells it here, e.g. "₹199". */
+    data class Price(val formatted: String, val micros: Long, val currency: String, val plan: ProPlan = ProPlan.YEARLY) {
         /** The regular price, struck through while the early-bird price is lower. */
-        val regular: String? get() = Plan.regularPrice(currency, micros)?.let { "₹" + it / 1_000_000 }
+        val regular: String?
+            get() = Plan.regularPrice(currency, micros, if (plan == ProPlan.LIFETIME) Plan.REGULAR_LIFETIME_INR_MICROS else Plan.REGULAR_YEARLY_INR_MICROS)
+                ?.let { "₹" + java.text.NumberFormat.getIntegerInstance(java.util.Locale("en", "IN")).format(it / 1_000_000) }
     }
+
+    data class Prices(val yearly: Price? = null, val lifetime: Price? = null)
 
     enum class Result { STARTED, UNAVAILABLE, FAILED }
     enum class Event { FAILED }
 
     private val prefs = context.getSharedPreferences("licence", Context.MODE_PRIVATE)
-    private val _access = MutableStateFlow(if (BuildConfig.DEBUG) Access.Unlocked() else compute(cachedOwned()))
+    private val _access = MutableStateFlow<Access>(if (BuildConfig.DEBUG) Access.Pro() else compute(cachedOwned()))
     val access: StateFlow<Access> = _access.asStateFlow()
-    private val _price = MutableStateFlow(cachedPrice())
-    val price: StateFlow<Price?> = _price.asStateFlow()
+    private val _prices = MutableStateFlow(cachedPrices())
+    val prices: StateFlow<Prices> = _prices.asStateFlow()
     private val _events = MutableSharedFlow<Event>(extraBufferCapacity = 4)
     val events: SharedFlow<Event> = _events.asSharedFlow()
 
+    /** Set when something asks for Pro (a locked tab or feature): the app shows the Pro page. */
+    private val _askPro = MutableStateFlow(false)
+    val askPro: StateFlow<Boolean> = _askPro.asStateFlow()
+
     private val lock = Mutex()
-    private var details: ProductDetails? = null
+    private var yearly: ProductDetails? = null
+    private var yearlyOffer: String? = null
     private var lifetime: ProductDetails? = null
-    private var offerToken: String? = null
     private val client: BillingClient by lazy {
         BillingClient.newBuilder(context)
             .setListener(this)
@@ -72,12 +86,25 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
             .build()
     }
 
+    /** Pro right now: during the trial or once bought. */
+    val isPro: Boolean get() = _access.value.isPro
+
+    /** Opens the Pro page, e.g. from a locked feature. */
+    fun requestPro() { _askPro.value = true }
+    fun proShown() { _askPro.value = false }
+
+    /** The page that says Pro ended is shown once, the first time Yarn opens on the free plan. */
+    val downgradeSeen: Boolean get() = prefs.getBoolean(K_DOWNGRADE_SEEN, false)
+    fun markDowngradeSeen() = prefs.edit { putBoolean(K_DOWNGRADE_SEEN, true) }
+
     fun start() {
-        // Builds from Android Studio aren't from Google Play, so they can't be bought; they stay open.
+        // Builds from Android Studio aren't from Google Play, so they can't be bought; they stay Pro.
         if (BuildConfig.DEBUG) return
-        if (!prefs.contains(K_TRIAL)) prefs.edit { putLong(K_TRIAL, now()) }
         tick()
-        scope.launch { refresh() }
+        scope.launch {
+            anchorTrial()
+            refresh()
+        }
         // The trial counts down in days and ends at a set time, even while Yarn stays open.
         scope.launch {
             while (isActive) {
@@ -92,7 +119,7 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
         if (BuildConfig.DEBUG) return true
         return lock.withLock {
             if (!connect()) return@withLock false.also { tick() }
-            loadProduct()
+            loadProducts()
             val subs = query(ProductType.SUBS)
             val inApp = query(ProductType.INAPP)
             if (subs == null || inApp == null) return@withLock false.also { tick() }
@@ -101,28 +128,28 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
         }
     }
 
-    /** Opens Google Play's payment sheet for the yearly plan. */
-    suspend fun buy(activity: Activity): Result {
+    /** Opens Google Play's payment sheet for [plan]. */
+    suspend fun buy(activity: Activity, plan: ProPlan): Result {
         if (BuildConfig.DEBUG) return Result.UNAVAILABLE
-        val ready = lock.withLock { connect() && loadProduct() }
-        val d = details
-        val token = offerToken
-        if (!ready || d == null || token == null) return Result.UNAVAILABLE
-        return launch(activity, d, token)
+        val ready = lock.withLock { connect() && loadProducts() }
+        if (!ready) return Result.UNAVAILABLE
+        return when (plan) {
+            ProPlan.YEARLY -> {
+                val d = yearly ?: return Result.UNAVAILABLE
+                launch(activity, d, yearlyOffer ?: return Result.UNAVAILABLE)
+            }
+            ProPlan.LIFETIME -> {
+                val d = lifetime ?: return Result.UNAVAILABLE
+                launch(activity, d, d.oneTimePurchaseOfferDetailsList?.firstOrNull()?.offerToken)
+            }
+        }
     }
 
     /**
      * Redeems a tester's code inside Google's payment sheet for the lifetime unlock (its payment
-     * method menu has "Redeem code"). The purchase comes straight back to Yarn, so it unlocks at once,
-     * with no browser and no waiting for the Play Store to catch up.
+     * method menu has "Redeem code"). The purchase comes straight back to Yarn, so Pro unlocks at once.
      */
-    suspend fun redeem(activity: Activity): Result {
-        if (BuildConfig.DEBUG) return Result.UNAVAILABLE
-        val ready = lock.withLock { connect() && loadLifetime() }
-        val d = lifetime
-        if (!ready || d == null) return Result.UNAVAILABLE
-        return launch(activity, d, d.oneTimePurchaseOfferDetailsList?.firstOrNull()?.offerToken)
-    }
+    suspend fun redeem(activity: Activity): Result = buy(activity, ProPlan.LIFETIME)
 
     private suspend fun launch(activity: Activity, product: ProductDetails, offerToken: String?): Result {
         val item = BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(product)
@@ -149,6 +176,50 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
         if (!BuildConfig.DEBUG) _access.value = compute(cachedOwned())
     }
 
+    // ---- The trial's start, remembered in three places ---------------------------------------
+
+    /** Brings in the start Block Store kept (it survives reinstalling) and records it everywhere. */
+    private suspend fun anchorTrial() {
+        val kept = withTimeoutOrNull(10_000) { runCatching { readBlockStore() }.getOrNull() }
+        val start = Plan.earliest(storedTrialStart(), kept) ?: now()
+        setTrialStart(start)
+        if (kept != start) runCatching { writeBlockStore(start) }
+    }
+
+    /** Called with a Google Drive token (setup, backup): the account's own record of the trial. */
+    suspend fun anchorTrialInDrive(drive: app.yarn.backup.GoogleDrive, token: String) {
+        if (BuildConfig.DEBUG) return
+        val remote = runCatching { drive.trialStart(token) }.getOrNull()
+        val start = Plan.earliest(storedTrialStart(), remote) ?: now()
+        if (start != storedTrialStart()) {
+            setTrialStart(start)
+            runCatching { writeBlockStore(start) }
+        }
+        if (remote != start) runCatching { drive.saveTrialStart(token, start) }
+    }
+
+    private fun storedTrialStart(): Long? = prefs.getLong(K_TRIAL, 0).takeIf { it > 0 }
+
+    private fun setTrialStart(start: Long) {
+        prefs.edit { putLong(K_TRIAL, start) }
+        tick()
+    }
+
+    private suspend fun readBlockStore(): Long? {
+        val response = Blockstore.getClient(context)
+            .retrieveBytes(RetrieveBytesRequest.Builder().setKeys(listOf(BLOCKSTORE_KEY)).build())
+            .await()
+        return response.blockstoreDataMap[BLOCKSTORE_KEY]?.bytes?.decodeToString()?.trim()?.toLongOrNull()
+    }
+
+    private suspend fun writeBlockStore(start: Long) {
+        Blockstore.getClient(context).storeBytes(
+            StoreBytesData.Builder().setKey(BLOCKSTORE_KEY).setBytes(start.toString().toByteArray()).setShouldBackupToCloud(true).build(),
+        ).await()
+    }
+
+    // ---- Purchases ----------------------------------------------------------------------------
+
     private fun apply(purchases: List<Purchase>) {
         val owned = Plan.owned(purchases.map { it.toPlay() })
         prefs.edit {
@@ -162,7 +233,8 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
         }
     }
 
-    private fun compute(owned: Owned): Access = Plan.access(prefs.getLong(K_TRIAL, now()), now(), owned)
+    // Until the trial's start is known for sure, it counts from now: Pro, never locked out by mistake.
+    private fun compute(owned: Owned): Access = Plan.access(storedTrialStart() ?: now(), now(), owned)
 
     private fun cachedOwned() = Owned(
         unlocked = prefs.getBoolean(K_UNLOCKED, false),
@@ -170,9 +242,18 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
         pending = prefs.getBoolean(K_PENDING, false),
     )
 
-    private fun cachedPrice(): Price? {
-        val formatted = prefs.getString(K_PRICE, null) ?: return null
-        return Price(formatted, prefs.getLong(K_PRICE_MICROS, 0), prefs.getString(K_CURRENCY, null).orEmpty())
+    private fun cachedPrices(): Prices {
+        fun read(prefix: String, plan: ProPlan): Price? {
+            val formatted = prefs.getString("${prefix}_price", null) ?: return null
+            return Price(formatted, prefs.getLong("${prefix}_micros", 0), prefs.getString("${prefix}_currency", null).orEmpty(), plan)
+        }
+        return Prices(read("yearly", ProPlan.YEARLY), read("lifetime", ProPlan.LIFETIME))
+    }
+
+    private fun savePrice(prefix: String, price: Price) = prefs.edit {
+        putString("${prefix}_price", price.formatted)
+        putLong("${prefix}_micros", price.micros)
+        putString("${prefix}_currency", price.currency)
     }
 
     /** The phone's clock, but never earlier than Yarn has already seen: turning it back doesn't extend the trial. */
@@ -200,49 +281,48 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
         } ?: false
     }
 
-    /** Loads the yearly plan and its price once. */
-    private suspend fun loadProduct(): Boolean {
-        if (details != null && offerToken != null) return true
-        val params = QueryProductDetailsParams.newBuilder()
-            .setProductList(listOf(QueryProductDetailsParams.Product.newBuilder().setProductId(Plan.SUBSCRIPTION).setProductType(ProductType.SUBS).build()))
-            .build()
-        val found = withTimeoutOrNull(15_000) {
-            suspendCancellableCoroutine<ProductDetails?> { cont ->
-                client.queryProductDetailsAsync(params) { result, list ->
-                    if (cont.isActive) cont.resume(if (result.responseCode == BillingResponseCode.OK) list.productDetailsList.firstOrNull() else null)
+    /** Loads both plans and their prices; true when the yearly plan (the main one) is ready. */
+    private suspend fun loadProducts(): Boolean {
+        if (yearly == null || yearlyOffer == null) {
+            queryProduct(Plan.SUBSCRIPTION, ProductType.SUBS)?.let { found ->
+                // The plain yearly plan: no special offers, so everyone sees the same price.
+                val offer = found.subscriptionOfferDetails.orEmpty().filter { it.basePlanId == Plan.BASE_PLAN }
+                    .let { offers -> offers.firstOrNull { it.offerId == null } ?: offers.firstOrNull() }
+                val phase = offer?.pricingPhases?.pricingPhaseList?.lastOrNull()
+                if (offer != null && phase != null) {
+                    yearly = found
+                    yearlyOffer = offer.offerToken
+                    val price = Price(phase.formattedPrice, phase.priceAmountMicros, phase.priceCurrencyCode, ProPlan.YEARLY)
+                    _prices.value = _prices.value.copy(yearly = price)
+                    savePrice("yearly", price)
                 }
             }
-        } ?: return false
-        // The plain yearly plan: no special offers, so everyone sees the same price.
-        val offer = found.subscriptionOfferDetails.orEmpty().filter { it.basePlanId == Plan.BASE_PLAN }
-            .let { offers -> offers.firstOrNull { it.offerId == null } ?: offers.firstOrNull() } ?: return false
-        val phase = offer.pricingPhases.pricingPhaseList.lastOrNull() ?: return false
-        details = found
-        offerToken = offer.offerToken
-        val price = Price(phase.formattedPrice, phase.priceAmountMicros, phase.priceCurrencyCode)
-        _price.value = price
-        prefs.edit {
-            putString(K_PRICE, price.formatted)
-            putLong(K_PRICE_MICROS, price.micros)
-            putString(K_CURRENCY, price.currency)
         }
-        return true
+        if (lifetime == null) {
+            queryProduct(Plan.LIFETIME, ProductType.INAPP)?.let { found ->
+                val offer = found.oneTimePurchaseOfferDetailsList?.firstOrNull() ?: found.oneTimePurchaseOfferDetails
+                lifetime = found
+                if (offer != null) {
+                    val price = Price(offer.formattedPrice, offer.priceAmountMicros, offer.priceCurrencyCode, ProPlan.LIFETIME)
+                    _prices.value = _prices.value.copy(lifetime = price)
+                    savePrice("lifetime", price)
+                }
+            }
+        }
+        return yearly != null && yearlyOffer != null
     }
 
-    /** The testers' lifetime unlock, only ever opened to redeem a code. */
-    private suspend fun loadLifetime(): Boolean {
-        if (lifetime != null) return true
+    private suspend fun queryProduct(id: String, type: String): ProductDetails? {
         val params = QueryProductDetailsParams.newBuilder()
-            .setProductList(listOf(QueryProductDetailsParams.Product.newBuilder().setProductId(Plan.LIFETIME).setProductType(ProductType.INAPP).build()))
+            .setProductList(listOf(QueryProductDetailsParams.Product.newBuilder().setProductId(id).setProductType(type).build()))
             .build()
-        lifetime = withTimeoutOrNull(15_000) {
+        return withTimeoutOrNull(15_000) {
             suspendCancellableCoroutine<ProductDetails?> { cont ->
                 client.queryProductDetailsAsync(params) { result, list ->
                     if (cont.isActive) cont.resume(if (result.responseCode == BillingResponseCode.OK) list.productDetailsList.firstOrNull() else null)
                 }
             }
         }
-        return lifetime != null
     }
 
     private suspend fun query(type: String): List<Purchase>? = withTimeoutOrNull(15_000) {
@@ -265,14 +345,14 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
     )
 
     companion object {
-        private const val K_TRIAL = "trial_start"
+        /** A new key for the 30-day Pro trial: everyone, existing users included, starts it fresh. */
+        private const val K_TRIAL = "pro_trial_start"
+        private const val BLOCKSTORE_KEY = "yarn_pro_trial_start"
         private const val K_SEEN = "clock_seen"
         private const val K_UNLOCKED = "unlocked"
         private const val K_LIFETIME = "lifetime"
         private const val K_PENDING = "pending"
-        private const val K_PRICE = "price"
-        private const val K_PRICE_MICROS = "price_micros"
-        private const val K_CURRENCY = "price_currency"
+        private const val K_DOWNGRADE_SEEN = "downgrade_seen"
 
         /** Google Play's page for managing or cancelling the subscription. */
         fun manageIntent(context: Context): Intent = Intent(
@@ -280,7 +360,7 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
             Uri.parse("https://play.google.com/store/account/subscriptions?sku=${Plan.SUBSCRIPTION}&package=${context.packageName}"),
         )
 
-        /** Redeeming a promo code: in the Play Store app, where codes for Yarn's products work. */
+        /** Redeeming a promo code in the Play Store app. */
         fun redeemIntent(): Intent = redeemOnWeb().setPackage("com.android.vending")
 
         /** The same page in a browser, for phones without the Play Store app. */

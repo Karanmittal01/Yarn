@@ -213,7 +213,7 @@ fun MessageBubble(
             modifier = Modifier
                 .widthIn(max = if (showTranslate) 276.dp else 300.dp)
                 .clip(shape)
-                .then(if (gradient) Modifier.background(app.yarn.ui.theme.Brand.bubble, shape) else Modifier)
+                .then(if (gradient) Modifier.background(app.yarn.ui.theme.bubbleBrush(), shape) else Modifier)
                 .combinedClickable(onClick = { callbacks.onClick(item) }, onLongClick = { callbacks.onLongClick(item) }, onLongClickLabel = selectMessageLabel)
                 .semantics(mergeDescendants = false) { contentDescription = a11y },
         ) {

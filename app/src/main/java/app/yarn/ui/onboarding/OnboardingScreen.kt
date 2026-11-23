@@ -166,6 +166,7 @@ fun OnboardingScreen(onDone: (AutoCleanChoice?) -> Unit) {
             try {
                 val token = c.drive.token(email)
                 c.settings.update { it.copy(googleAccount = email, autoBackup = true) }
+                c.licence.anchorTrialInDrive(c.drive, token)
                 app.yarn.work.GoogleBackupWorker.schedule(context, true)
                 account = email
                 found = c.drive.latest(token)

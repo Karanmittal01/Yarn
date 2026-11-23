@@ -18,10 +18,12 @@ class SmartSorter(
     private val nano: GeminiNanoService,
     private val settings: SettingsRepository,
     private val engine: IntelligenceEngine,
+    /** Gemini Nano's sorting is part of Yarn Pro. */
+    private val pro: () -> Boolean = { true },
 ) {
     suspend fun isAvailable(): Boolean {
         val s = settings.current()
-        return s.aiEnabled && s.autoCategorize && nano.state() == EngineState.AVAILABLE
+        return pro() && s.aiEnabled && s.autoCategorize && nano.state() == EngineState.AVAILABLE
     }
 
     /** Sorts recent low-confidence messages. Returns how many were updated. */

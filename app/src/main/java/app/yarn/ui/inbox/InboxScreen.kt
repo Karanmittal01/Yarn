@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -126,6 +127,7 @@ import app.yarn.ui.common.CategoryUi
 import app.yarn.ui.common.ConfirmDialog
 import app.yarn.ui.common.Format
 import app.yarn.ui.common.YarnLogo
+import app.yarn.ui.common.container
 import app.yarn.ui.common.YarnMenu
 import app.yarn.ui.common.YarnMenuDivider
 import app.yarn.ui.common.YarnMenuItem
@@ -180,6 +182,10 @@ fun InboxScreen(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    var logoFor by remember { mutableStateOf<InboxItem?>(null) }
+    logoFor?.let { item ->
+        app.yarn.ui.common.LogoRequestDialog(item.conversation.title, item.conversation.addresses.firstOrNull().orEmpty()) { logoFor = null }
+    }
     var crashNote by remember { mutableStateOf<app.yarn.ui.common.Feedback.Note?>(null) }
     crashNote?.let { note -> app.yarn.ui.common.FeedbackChooser(note) { crashNote = null } }
     val plan by remember(context) { (context.applicationContext as app.yarn.YarnApplication).container.licence.access }.collectAsStateWithLifecycle()
@@ -255,7 +261,9 @@ fun InboxScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         items(chips, key = { it.label }) { chip ->
-                            GroupChip(chip, selected = chip.filter == filter) { vm.setFilter(chip.filter) }
+                            GroupChip(chip, selected = !chip.pro && chip.filter == filter) {
+                                if (chip.pro) context.container.licence.requestPro() else vm.setFilter(chip.filter)
+                            }
                         }
                     }
                 } else {
@@ -336,6 +344,7 @@ fun InboxScreen(
                                 onClick = { if (selecting) vm.toggle(id) else onOpen(id, section) },
                                 onLongClick = { vm.toggle(id) },
                                 onCopyCode = vm::copyCode,
+                                onRequestLogo = if (selecting) null else { it -> logoFor = it },
                             )
                         }
                         }
@@ -441,7 +450,7 @@ internal fun TrialBanner(plan: app.yarn.billing.Access, onOpen: () -> Unit) {
             Text(stringResource(R.string.plan_banner_sub), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(top = 2.dp, end = 10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 androidx.compose.material3.TextButton(onClick = { later = true }) { Text(stringResource(R.string.later)) }
-                androidx.compose.material3.TextButton(onClick = onOpen) { Text(stringResource(R.string.plan_subscribe)) }
+                androidx.compose.material3.TextButton(onClick = onOpen) { Text(stringResource(R.string.pro_keep)) }
             }
         }
     }
@@ -488,7 +497,15 @@ internal fun GroupChip(chip: InboxChip, selected: Boolean, onClick: () -> Unit) 
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (chip.pro) {
+            Icon(Icons.Outlined.AutoAwesome, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(6.dp))
+        }
         Text(label, style = MaterialTheme.typography.labelLarge, color = fg, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium)
+        if (chip.pro) {
+            Spacer(Modifier.width(6.dp))
+            app.yarn.ui.paywall.ProBadge()
+        }
         if (chip.unread > 0) {
             Spacer(Modifier.width(6.dp))
             Text(
@@ -567,6 +584,8 @@ fun ConversationRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onCopyCode: (String) -> Unit = {},
+    /** Set while not selecting: a long press on a business's empty picture asks for its logo (Pro). */
+    onRequestLogo: ((InboxItem) -> Unit)? = null,
 ) {
     val c = item.conversation
     val context = LocalContext.current
@@ -620,7 +639,14 @@ fun ConversationRow(
             .semantics(mergeDescendants = true) { contentDescription = a11y; stateDescription = if (selected) selectedDesc else "" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) {
+        val askLogo = if (item.logoMissing && !selected) onRequestLogo else null
+        Box(
+            Modifier.size(46.dp).then(
+                if (askLogo != null) Modifier.clip(CircleShape).combinedClickable(onClick = onClick, onLongClick = { askLogo(item) }, onLongClickLabel = stringResource(R.string.logo_request))
+                else Modifier,
+            ),
+            contentAlignment = Alignment.Center,
+        ) {
             if (selected) {
                 Box(Modifier.size(46.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
                     Icon(Icons.Filled.Check, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onPrimary)

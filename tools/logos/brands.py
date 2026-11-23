@@ -965,6 +965,7 @@ NEW += [
     ("Maximize", "maximize.money", ["MAXMZE", "MAXIMZ"]),
     # Requested from Yarn's "Request a logo" (Nov 2026).
     ("MFine", "mfine.co", ["HMFINE", "MFINE"]),
+    ("Apollo Pharmacy", "apollopharmacy.in", ["APLPHR"]),
 ]
 ALIASES += [
     ("UIDAI (Aadhaar)", ["ADHAAR"]),

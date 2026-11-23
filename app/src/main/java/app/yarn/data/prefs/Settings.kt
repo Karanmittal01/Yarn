@@ -39,6 +39,15 @@ const val BIN_NEVER_EMPTY = -1
 /** [AppSettings.binDays]: don't use the bin; deleting is immediate and final. */
 const val BIN_OFF = 0
 
+/** How long the bin keeps messages: Yarn Free keeps them up to 7 days; Pro, 30 days or forever. */
+fun binDaysFor(binDays: Int, pro: Boolean): Int = when {
+    pro || binDays == BIN_OFF -> binDays
+    binDays in 1..FREE_BIN_DAYS -> binDays
+    else -> FREE_BIN_DAYS
+}
+
+const val FREE_BIN_DAYS = 7
+
 /** How a message from tab [group] should notify. */
 fun AppSettings.notifyFor(group: CategoryGroup): NotifyMode = notifyTabs[group] ?: DEFAULT_NOTIFY.getValue(group)
 
@@ -52,6 +61,10 @@ data class AppSettings(
     val profilePhoto: String = "",
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = false,
+    /** Yarn Pro: the accent colour (an [app.yarn.ui.theme.Accent] name); blank is Yarn blue. */
+    val accent: String = "",
+    /** Yarn Pro: the backdrop behind chats (an [app.yarn.ui.theme.Wallpaper] name); blank is the default wash. */
+    val chatWallpaper: String = "",
     /** Ask the network to confirm delivery, so sent messages can show "Delivered". */
     val deliveryReports: Boolean = true,
     val groupMms: Boolean = true,
@@ -116,6 +129,8 @@ class SettingsRepository(private val context: Context) {
         val profilePhoto = stringPreferencesKey("profile_photo")
         val theme = stringPreferencesKey("theme")
         val dynamicColor = booleanPreferencesKey("dynamic_color")
+        val accent = stringPreferencesKey("accent")
+        val chatWallpaper = stringPreferencesKey("chat_wallpaper")
         // A new key: delivery reports used to default to off, and everyone should now get them.
         val deliveryReports = booleanPreferencesKey("delivery_reports_on")
         val groupMms = booleanPreferencesKey("group_mms")
@@ -176,6 +191,8 @@ class SettingsRepository(private val context: Context) {
             p[K.profilePhoto] = s.profilePhoto
             p[K.theme] = s.theme.name
             p[K.dynamicColor] = s.dynamicColor
+            p[K.accent] = s.accent
+            p[K.chatWallpaper] = s.chatWallpaper
             p[K.deliveryReports] = s.deliveryReports
             p[K.groupMms] = s.groupMms
             p[K.autoDownloadMms] = s.autoDownloadMms
@@ -238,6 +255,8 @@ class SettingsRepository(private val context: Context) {
         profilePhoto = p[K.profilePhoto] ?: d.profilePhoto,
         theme = p[K.theme]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: d.theme,
         dynamicColor = p[K.dynamicColor] ?: d.dynamicColor,
+        accent = p[K.accent] ?: d.accent,
+        chatWallpaper = p[K.chatWallpaper] ?: d.chatWallpaper,
         deliveryReports = p[K.deliveryReports] ?: d.deliveryReports,
         groupMms = p[K.groupMms] ?: d.groupMms,
         autoDownloadMms = p[K.autoDownloadMms] ?: d.autoDownloadMms,

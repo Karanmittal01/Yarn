@@ -40,6 +40,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
+import app.yarn.ui.theme.chatWallpaper
 
 /** Renders key UI pieces to PNGs in build/ui-snapshots for visual review (no device needed). */
 @RunWith(RobolectricTestRunner::class)
@@ -82,7 +83,7 @@ class UiSnapshotTest {
     }
 
     @androidx.compose.runtime.Composable
-    private fun InboxMock(rows: List<InboxItem> = inbox, me: app.yarn.data.contacts.ContactInfo? = karan) {
+    private fun InboxMock(rows: List<InboxItem> = inbox, me: app.yarn.data.contacts.ContactInfo? = karan, chips: List<app.yarn.ui.inbox.InboxChip> = this.chips) {
         val header = app.yarn.ui.inbox.inboxHeaderColor()
         androidx.compose.material3.Scaffold(
             containerColor = header,
@@ -392,7 +393,7 @@ class UiSnapshotTest {
             msg(7, "Perfect, see you at 7", true, 1, 12, D),
             msg(8, "I'll book the tickets 🎬", true, 1, 11, D),
         ).map { it.message }
-        Column(Modifier.fillMaxSize().background(app.yarn.ui.theme.chatBackdrop()).padding(top = 28.dp)) {
+        Column(Modifier.fillMaxSize().chatWallpaper().padding(top = 28.dp)) {
             thread.forEachIndexed { i, m ->
                 val position = app.yarn.ui.conversation.runPosition(thread.getOrNull(i - 1), m, thread.getOrNull(i + 1))
                 app.yarn.ui.conversation.MessageBubble(
@@ -504,22 +505,75 @@ class UiSnapshotTest {
     )
     @Test fun inboxMaximize() = shot(true, "65_inbox_maximize_dark") { InboxMock(maximizeInbox, storeMe) }
 
-    // ---- Yarn's plan: a 5-day trial, then a yearly subscription ---------------------------------
-    private val earlyBird = app.yarn.billing.Licence.Price("₹199", 199_000_000, "INR")
+    // ---- Yarn Pro: a 30-day trial, then Free; Pro yearly or for life ---------------------------
+    private val earlyBird = app.yarn.billing.Licence.Prices(
+        app.yarn.billing.Licence.Price("₹199", 199_000_000, "INR", app.yarn.billing.ProPlan.YEARLY),
+        app.yarn.billing.Licence.Price("₹999", 999_000_000, "INR", app.yarn.billing.ProPlan.LIFETIME),
+    )
     @androidx.compose.runtime.Composable
-    private fun Paywall(access: app.yarn.billing.Access, note: String? = null, back: Boolean = false) =
-        app.yarn.ui.paywall.PaywallContent(access, earlyBird, false, note, {}, {}, {}, {}, {}, if (back) ({}) else null)
-    @Test fun planExpired() = shot(false, "66_plan_trial_ended_light") { Paywall(app.yarn.billing.Access.Expired) }
-    @Test fun planExpiredDark() = shot(true, "67_plan_trial_ended_dark") { Paywall(app.yarn.billing.Access.Expired) }
-    @Test fun planTrial() = shot(true, "68_plan_trial_3_days_dark") { Paywall(app.yarn.billing.Access.Trial(3), back = true) }
-    @Test fun planPending() = shot(false, "69_plan_payment_pending") { Paywall(app.yarn.billing.Access.Pending) }
-    @Test fun planSubscribed() = shot(false, "70_plan_subscribed") { Paywall(app.yarn.billing.Access.Unlocked(), back = true) }
-    @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun planHindi() = shot(true, "71_plan_trial_ended_hindi") { Paywall(app.yarn.billing.Access.Expired) }
-    @Test fun planProfileRow() = shot(false, "72_profile_trial_row") {
+    private fun Paywall(access: app.yarn.billing.Access, plan: app.yarn.billing.ProPlan = app.yarn.billing.ProPlan.YEARLY, note: String? = null, back: Boolean = true) =
+        app.yarn.ui.paywall.PaywallContent(access, earlyBird, plan, {}, false, note, {}, {}, {}, {}, if (back) ({}) else null)
+    @Test fun planExpired() = shot(false, "66_pro_free_light") { Paywall(app.yarn.billing.Access.Free()) }
+    @Test fun planExpiredDark() = shot(true, "67_pro_free_dark") { Paywall(app.yarn.billing.Access.Free()) }
+    @Test fun planTrial() = shot(true, "68_pro_trial_12_days_dark") { Paywall(app.yarn.billing.Access.Trial(12)) }
+    @Test fun planLifetime() = shot(false, "68b_pro_trial_lifetime_light") { Paywall(app.yarn.billing.Access.Trial(12), app.yarn.billing.ProPlan.LIFETIME) }
+    @Test fun planPending() = shot(false, "69_pro_payment_pending") { Paywall(app.yarn.billing.Access.Free(pending = true)) }
+    @Test fun planSubscribed() = shot(false, "70_pro_subscribed") { Paywall(app.yarn.billing.Access.Pro()) }
+    @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun planHindi() = shot(true, "71_pro_free_hindi") { Paywall(app.yarn.billing.Access.Free()) }
+    @Test fun planProfileRow() = shot(false, "72_profile_pro_trial_row") {
         androidx.compose.material3.Surface(color = app.yarn.ui.settings.settingsPageColor(), contentColor = MaterialTheme.colorScheme.onSurface) {
-            app.yarn.ui.inbox.AccountSheetContent(storeMe, listOf(storeJio), true, app.yarn.data.prefs.AppSettings(), {}, {}, {}, {}, {}, plan = app.yarn.billing.Access.Trial(3))
+            app.yarn.ui.inbox.AccountSheetContent(storeMe, listOf(storeJio), true, app.yarn.data.prefs.AppSettings(), {}, {}, {}, {}, {}, plan = app.yarn.billing.Access.Trial(12))
         }
     }
+    // Yarn Free: All and OTP, a "More tabs" chip that opens Pro, and initials instead of logos.
+    private val freeChips = listOf(
+        app.yarn.ui.inbox.InboxChip(app.yarn.R.string.chip_all, app.yarn.data.repo.InboxFilter(), unread = 4),
+        app.yarn.ui.inbox.InboxChip(InboxGroup.OTP.label, InboxGroup.OTP.filter, InboxGroup.OTP, 1),
+        app.yarn.ui.inbox.InboxChip(app.yarn.R.string.chip_pro_tabs, app.yarn.data.repo.InboxFilter(), pro = true),
+    )
+    @Test fun inboxFree() = shot(true, "75_inbox_free_dark") { InboxMock(inbox, chips = freeChips) }
+    @Test fun inboxFreeLight() = shot(false, "76_inbox_free_light") { InboxMock(inbox, chips = freeChips) }
+    private val apolloInbox get() = withLogos(
+        item(1, "Apollo Pharmacy", "Dear Customer, Thank you for your purchase @ Apollo Pharmacy. Click here to download your bill for Rs.266.80", "SHOPPING", 1, "CP-APLPHR-S", true, InboxGroup.SHOPPING),
+        item(2, "MFine", "Your consultation with Dr. Rao is confirmed for 6:30 PM today.", "UPDATES", 0, "JD-HMFINE-S", true, InboxGroup.UPDATES),
+        item(3, "NEWBRD", "Your order #A1234 has been shipped and will arrive tomorrow.", "SHOPPING", 0, "VM-NEWBRD-S", true, InboxGroup.SHOPPING),
+    ).map { it.copy(logoMissing = it.photoUri == null) }
+    @Test fun inboxApollo() = shot(true, "77_inbox_apollo_pharmacy_dark") { InboxMock(apolloInbox) }
+    // Appearance: Pro's accent colours and chat wallpapers, and how Yarn Free sees them.
+    @androidx.compose.runtime.Composable
+    private fun LookMock(pro: Boolean, accent: app.yarn.ui.theme.Accent, wallpaper: app.yarn.ui.theme.Wallpaper) =
+        androidx.compose.runtime.CompositionLocalProvider(app.yarn.ui.settings.LocalPro provides pro) {
+            app.yarn.ui.settings.SettingsScaffold("Appearance", {}) {
+                item { app.yarn.ui.settings.SectionHeader("Colours") }
+                item { app.yarn.ui.settings.AccentPicker(accent, pro) {} }
+                item { app.yarn.ui.settings.WallpaperPicker(wallpaper, pro) {} }
+            }
+        }
+    @Test fun lookPro() = shot(false, "78_appearance_pro_light") { LookMock(true, app.yarn.ui.theme.Accent.VIOLET, app.yarn.ui.theme.Wallpaper.SUNSET) }
+    @Test fun lookProDark() = shot(true, "79_appearance_pro_dark") { LookMock(true, app.yarn.ui.theme.Accent.TEAL, app.yarn.ui.theme.Wallpaper.DOTS) }
+    @Test fun lookFree() = shot(true, "80_appearance_free_dark") { LookMock(false, app.yarn.ui.theme.Accent.YARN, app.yarn.ui.theme.Wallpaper.DEFAULT) }
+    // A chat in another accent and wallpaper.
+    @androidx.compose.runtime.Composable
+    private fun Themed(dark: Boolean, accent: app.yarn.ui.theme.Accent, wallpaper: app.yarn.ui.theme.Wallpaper, content: @androidx.compose.runtime.Composable () -> Unit) =
+        MaterialTheme(colorScheme = accent.applyTo(MaterialTheme.colorScheme, dark), typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
+            androidx.compose.runtime.CompositionLocalProvider(app.yarn.ui.theme.LocalAccent provides accent, app.yarn.ui.theme.LocalWallpaper provides wallpaper, content = content)
+        }
+    @Test fun chatVioletSunset() = shot(false, "81_chat_violet_sunset_light") { Themed(false, app.yarn.ui.theme.Accent.VIOLET, app.yarn.ui.theme.Wallpaper.SUNSET) { RunsMock() } }
+    @Test fun chatTealDots() = shot(true, "82_chat_teal_dots_dark") { Themed(true, app.yarn.ui.theme.Accent.TEAL, app.yarn.ui.theme.Wallpaper.DOTS) { RunsMock() } }
+    @Test fun chatPinkSky() = shot(true, "83_chat_pink_sky_dark") { Themed(true, app.yarn.ui.theme.Accent.PINK, app.yarn.ui.theme.Wallpaper.SKY) { RunsMock() } }
+    // Yarn Free: Pro's settings carry a PRO tag and open Yarn Pro.
+    @Test fun notificationsFree() = shot(false, "84_notifications_free") {
+        androidx.compose.runtime.CompositionLocalProvider(app.yarn.ui.settings.LocalPro provides false) {
+            app.yarn.ui.settings.SettingsScaffold("Notifications", {}) { notificationItems(myNotify, {}, {}) }
+        }
+    }
+
+    @Test fun cleanupFree() = shot(false, "85_cleanup_free") {
+        androidx.compose.runtime.CompositionLocalProvider(app.yarn.ui.settings.LocalPro provides false) {
+            app.yarn.ui.cleaner.CleanerContent(app.yarn.ui.cleaner.CleanerState(scanning = false, found = found), app.yarn.ui.cleaner.AutoClean(0, 0, 0, 30), false, false, true, {}, {}, {}, {}, {}, {})
+        }
+    }
+
     // Sorting off: no tabs, so notifications have no per-tab choices.
     @Test fun notificationsSortingOff() = shot(false, "74_notifications_sorting_off") {
         app.yarn.ui.settings.SettingsScaffold("Notifications", {}) { notificationItems(myNotify.copy(autoCategorize = false), {}, {}) }

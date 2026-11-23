@@ -214,6 +214,7 @@ fun BackupScreen(vm: SettingsViewModel, onBack: () -> Unit) {
 
     fun connect(email: String) = runWithGoogle(email) { token ->
         c.settings.update { it.copy(googleAccount = email) }
+        c.licence.anchorTrialInDrive(c.drive, token)
         GoogleBackupWorker.schedule(context, s.autoBackup)
         refreshLatest(token)
         // Coming from another phone: offer to bring the messages back straight away.
@@ -364,7 +365,8 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.backupItems(
         item { SectionHeader(stringResource(R.string.settings)) }
         item {
             SettingsGroup {
-                SwitchRow(stringResource(R.string.back_up_daily), stringResource(R.string.back_up_daily_sub), s.autoBackup, icon = Icons.Outlined.Schedule, tint = androidx.compose.ui.graphics.Color(0xFF34C759)) { v -> onAutoBackup(v) }
+                if (rememberPro()) SwitchRow(stringResource(R.string.back_up_daily), stringResource(R.string.back_up_daily_sub), s.autoBackup, icon = Icons.Outlined.Schedule, tint = androidx.compose.ui.graphics.Color(0xFF34C759)) { v -> onAutoBackup(v) }
+                else ProLockedRow(stringResource(R.string.back_up_daily), stringResource(R.string.pro_f_backup), Icons.Outlined.Schedule)
                 SwitchRow(stringResource(R.string.include_media), checked = s.backupMedia, icon = Icons.Outlined.Image, tint = androidx.compose.ui.graphics.Color(0xFFFF9500)) { v -> onMedia(v) }
             }
         }

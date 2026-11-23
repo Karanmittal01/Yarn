@@ -233,6 +233,7 @@ fun CleanerContent(
     binCount: Int = 0,
     onOpenBin: () -> Unit = {},
 ) {
+    val pro = app.yarn.ui.settings.rememberPro()
     val page = settingsPageColor()
     Scaffold(
         containerColor = page,
@@ -259,7 +260,11 @@ fun CleanerContent(
             // Clean now: its own button, right under what it will clean.
             item { CleanBar(state, isDefault, onClean, onSetDefault) }
             item { SectionHeader(stringResource(R.string.clean_automatically)) }
-            item {
+            if (!pro) item {
+                SettingsGroup {
+                    app.yarn.ui.settings.ProLockedRow(stringResource(R.string.clean_automatically), stringResource(R.string.pro_f_clean), Icons.Outlined.AutoDelete)
+                }
+            } else item {
                 SettingsGroup {
                     ChoiceRow(
                         stringResource(R.string.verification_codes), listOf(0 to stringResource(R.string.keep), 10 to pluralStringResource(R.plurals.delete_after_minutes, 10, 10), 60 to pluralStringResource(R.plurals.delete_after_hours, 1, 1), 240 to pluralStringResource(R.plurals.delete_after_hours, 4, 4), 1440 to pluralStringResource(R.plurals.delete_after_days, 1, 1), 10080 to pluralStringResource(R.plurals.delete_after_days, 7, 7)),
@@ -285,15 +290,16 @@ fun CleanerContent(
                     )
                     ChoiceRow(
                         stringResource(R.string.empty_bin_auto),
-                        listOf(
+                        listOfNotNull(
                             1 to pluralStringResource(R.plurals.bin_after_days, 1, 1),
                             7 to pluralStringResource(R.plurals.bin_after_days, 7, 7),
-                            30 to pluralStringResource(R.plurals.bin_after_days, 30, 30),
-                            BIN_NEVER_EMPTY to stringResource(R.string.bin_never),
+                            if (pro) 30 to pluralStringResource(R.plurals.bin_after_days, 30, 30) else null,
+                            if (pro) BIN_NEVER_EMPTY to stringResource(R.string.bin_never) else null,
                             BIN_OFF to stringResource(R.string.bin_off),
                         ),
-                        auto.binDays, icon = Icons.Outlined.AutoDelete, tint = Color(0xFF8E8E93),
+                        app.yarn.data.prefs.binDaysFor(auto.binDays, pro), icon = Icons.Outlined.AutoDelete, tint = Color(0xFF8E8E93),
                     ) { v -> onAuto(auto.copy(binDays = v)) }
+                    if (!pro) app.yarn.ui.settings.ProLockedRow(stringResource(R.string.pro_f_bin))
                 }
             }
             // Settings: saved only with Apply, and it says so.

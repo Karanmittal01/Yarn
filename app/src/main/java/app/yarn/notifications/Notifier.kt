@@ -41,6 +41,8 @@ class Notifier(
     private val contacts: ContactsRepository,
     private val settings: SettingsRepository,
     private val sims: SimManager,
+    /** Choosing how each tab notifies is part of Yarn Pro. */
+    private val pro: () -> Boolean = { true },
 ) {
     private val nm = NotificationManagerCompat.from(context)
 
@@ -138,7 +140,7 @@ class Notifier(
         val group = category.group
         val channel = when {
             conversation.spam || group == null -> if (s.notifySpam) CH_SPAM else return
-            !s.sortingOn -> CH_MESSAGES
+            !s.sortingOn || !pro() -> CH_MESSAGES
             else -> when (s.notifyFor(group)) {
                 NotifyMode.OFF -> return
                 NotifyMode.SILENT -> CH_QUIET

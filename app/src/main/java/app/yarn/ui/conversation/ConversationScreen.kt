@@ -86,6 +86,7 @@ import app.yarn.ui.common.CategoryUi
 import app.yarn.ui.common.ConfirmDialog
 import app.yarn.ui.common.Format
 import app.yarn.ui.common.container
+import app.yarn.ui.theme.chatWallpaper
 import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
@@ -182,13 +183,14 @@ fun ConversationScreen(
         val address = conv.addresses.firstOrNull()
         participants[address]?.photoUri ?: app.yarn.ui.common.BrandLogos.uri(context, address)
     } else null
-    // A business with no logo yet: its name and sender ID can be sent to the developer in a tap.
-    val logoMissing = !conv.isGroup && photo == null &&
-        conv.addresses.firstOrNull()?.let { app.yarn.intelligence.SenderInfo(it).isBusinessLike } == true
-    var logoNote by remember { mutableStateOf<app.yarn.ui.common.Feedback.Note?>(null) }
-    logoNote?.let { note -> app.yarn.ui.common.FeedbackChooser(note, stringResource(R.string.logo_request_sub)) { logoNote = null } }
+    // With Pro, a business with no logo yet: its name and sender ID go to the developer in a tap.
+    val pro by context.container.licence.access.collectAsStateWithLifecycle()
+    val logoMissing = pro.isPro && !conv.isGroup && participants[conv.addresses.firstOrNull()]?.photoUri == null &&
+        app.yarn.ui.common.BrandLogos.isMissing(context, conv.addresses.firstOrNull())
+    var askLogo by remember { mutableStateOf(false) }
+    if (askLogo) app.yarn.ui.common.LogoRequestDialog(conv.title, conv.addresses.first()) { askLogo = false }
 
-    Box(Modifier.fillMaxSize().background(app.yarn.ui.theme.chatBackdrop())) {
+    Box(Modifier.fillMaxSize().chatWallpaper()) {
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -279,13 +281,17 @@ fun ConversationScreen(
                         Box {
                             IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.more_options)) }
                             app.yarn.ui.common.YarnMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                                DropdownMenuItem(text = { Text(stringResource(R.string.summarise)) }, onClick = { menu = false; vm.summarize() })
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.summarise)) },
+                                    trailingIcon = if (pro.isPro) null else ({ app.yarn.ui.paywall.ProBadge() }),
+                                    onClick = { menu = false; if (pro.isPro) vm.summarize() else context.container.licence.requestPro() },
+                                )
                                 DropdownMenuItem(text = { Text(if (conv.pinned) stringResource(R.string.unpin) else stringResource(R.string.pin)) }, onClick = { menu = false; vm.pin(!conv.pinned) })
                                 DropdownMenuItem(text = { Text(if (conv.muted) stringResource(R.string.unmute) else stringResource(R.string.mute_notifications)) }, onClick = { menu = false; vm.mute(!conv.muted) })
                                 DropdownMenuItem(text = { Text(stringResource(R.string.move_to_category)) }, onClick = { menu = false; pickCategory = emptySet() })
                                 if (logoMissing) DropdownMenuItem(
                                     text = { Text(stringResource(R.string.logo_request)) },
-                                    onClick = { menu = false; logoNote = app.yarn.ui.common.Feedback.logoRequest(context, conv.title, conv.addresses.first()) },
+                                    onClick = { menu = false; askLogo = true },
                                 )
                                 if (conv.isGroup) DropdownMenuItem(text = { Text(stringResource(R.string.rename_group)) }, onClick = { menu = false; rename = true })
                                 HorizontalDivider()
@@ -315,6 +321,7 @@ fun ConversationScreen(
                         sims = sims, subId = subId, onSim = vm::setSim,
                         smartReplies = if (settings.smartReplies) smart.first else emptyList(), onSmartReply = vm::sendQuickReply,
                         onSend = { vm.send() }, onSchedule = { vm.send(it) }, onRewrite = vm::rewrite,
+                        pro = pro.isPro, onPro = context.container.licence::requestPro,
                         isGroupMms = conv.isGroup && settings.groupMms,
                     )
                 }
@@ -322,7 +329,8 @@ fun ConversationScreen(
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            scam?.let { warning -> ScamBanner(warning, onNotSpam = { vm.markSpam(false) }, onBlock = { vm.block() }) }
+            // Scam warnings are part of Yarn Pro; a chat reported by hand still says so.
+            scam?.takeIf { pro.isPro || conv.spam }?.let { warning -> ScamBanner(warning, onNotSpam = { vm.markSpam(false) }, onBlock = { vm.block() }) }
             section?.let { SectionBar(it, onShowAll = vm::showWholeChat) }
             // The newest message you sent spells out its status ("Sent", "Delivered").
             val latestSentId = (0 until minOf(items.itemCount, 40)).firstNotNullOfOrNull { i -> items.peek(i)?.message?.takeIf { it.outgoing }?.id }

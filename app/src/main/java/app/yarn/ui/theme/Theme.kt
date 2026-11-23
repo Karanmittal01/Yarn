@@ -31,8 +31,6 @@ object Brand {
     val Deep = Color(0xFF0A2DA8)
     val Cyan = Color(0xFF7EEBFB)
 
-    /** Gradient used for the user's own message bubbles and accents. */
-    val bubble = Brush.linearGradient(listOf(Color(0xFF2B86FF), Color(0xFF1252E0)))
     val logo = Brush.linearGradient(listOf(Sky, Blue, Deep))
 }
 
@@ -126,34 +124,39 @@ private val YarnTypography = Typography(
 val LocalDarkTheme = staticCompositionLocalOf { false }
 
 @Composable
-fun YarnTheme(mode: ThemeMode = ThemeMode.SYSTEM, dynamicColor: Boolean = false, textScale: Float = 1f, content: @Composable () -> Unit) {
+fun YarnTheme(
+    mode: ThemeMode = ThemeMode.SYSTEM,
+    dynamicColor: Boolean = false,
+    textScale: Float = 1f,
+    accent: Accent = Accent.YARN,
+    wallpaper: Wallpaper = Wallpaper.DEFAULT,
+    content: @Composable () -> Unit,
+) {
     val dark = when (mode) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
     }
     val context = LocalContext.current
+    // A chosen accent wins over the phone's wallpaper colours.
     val colors = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        dark -> DarkColors
-        else -> LightColors
+        accent == Accent.YARN && dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        else -> accent.applyTo(if (dark) DarkColors else LightColors, dark)
     }
     // Yarn's text size setting multiplies the phone's own font size.
     val density = androidx.compose.ui.platform.LocalDensity.current
     val scaled = androidx.compose.ui.unit.Density(density.density, density.fontScale * textScale)
-    androidx.compose.runtime.CompositionLocalProvider(LocalDarkTheme provides dark, androidx.compose.ui.platform.LocalDensity provides scaled) {
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalDarkTheme provides dark, androidx.compose.ui.platform.LocalDensity provides scaled,
+        LocalAccent provides accent, LocalWallpaper provides wallpaper,
+    ) {
         MaterialTheme(colorScheme = colors, shapes = YarnShapes, typography = YarnTypography, content = content)
     }
 }
 
 /**
- * The wash behind a conversation: a barely-there gradient instead of flat white or black,
- * cool blue at the top easing into a faint violet at the bottom.
+ * The wash behind a conversation: by default a barely-there gradient instead of flat white or
+ * black, cool blue at the top easing into a faint violet at the bottom. Pro can choose another.
  */
 @Composable
-fun chatBackdrop(): Brush =
-    if (LocalDarkTheme.current) {
-        Brush.verticalGradient(listOf(Color(0xFF161A23), Color(0xFF101217), Color(0xFF0D0C12)))
-    } else {
-        Brush.verticalGradient(listOf(Color(0xFFEFF4FE), Color(0xFFF7F8FD), Color(0xFFFBF8FE)))
-    }
+fun chatBackdrop(): Brush = LocalWallpaper.current.brush(LocalDarkTheme.current)

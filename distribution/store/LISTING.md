@@ -27,12 +27,12 @@ AI SMS app that sorts OTPs, bank alerts, orders and offers, and stops scams.
 ```
 Yarn is a fast, private SMS and MMS app with on-device AI that keeps your inbox calm.
 
-TRY IT FREE, THEN ONE SIMPLE PRICE
-Use everything free for 5 days. After that, keep Yarn with a yearly subscription: ₹199 a year at the early-bird price (regular price ₹499). It renews every year until you cancel, and you can cancel anytime in Google Play. No ads, ever.
+FREE TO USE. YARN PRO FREE FOR 30 DAYS.
+Yarn is free: texting, OTPs with one-tap Copy, translation, smart replies, app lock and Google Drive backup. Every new install also gets Yarn Pro free for 30 days. After that, Yarn stays free with the All and OTP tabs, or keep Pro for ₹199 a year or ₹999 once for life (early-bird prices; regular ₹499 a year and ₹2,999). The yearly plan renews until you cancel in Google Play. No ads, ever.
 
-YOUR INBOX, SORTED
+YOUR INBOX, SORTED (PRO)
 Every message is filed into Personal, OTP, Transactions, Shopping, Travel, Updates or Offers, so messages from people you care about are never buried under alerts and ads.
-• OTP: one-time codes in one place, with one-tap Copy and automatic clean-up of old codes
+• OTP: one-time codes in one place, with one-tap Copy (free)
 • Transactions: bank debits and credits, card spends, UPI, bills and investments
 • Shopping: orders, food and grocery deliveries, refunds and couriers
 • Travel: trains, flights, cabs and office pickups
@@ -40,29 +40,29 @@ Every message is filed into Personal, OTP, Transactions, Shopping, Travel, Updat
 • Offers: sales and marketing, kept out of your way
 
 BUILT FOR INDIA
-Yarn shows the names and logos of about 1,000 Indian banks, shops, apps, couriers, telecoms and government services instead of sender codes like VM-ABCDEF-S. It understands the -P, -S, -T and -G sender tags, so a sale from your grocery app lands in Offers while your order update lands in Shopping. Yarn is available in English and Hindi.
+Yarn names about 1,000 Indian banks, shops, apps, couriers, telecoms and government services instead of sender codes like VM-ABCDEF-S, and with Pro shows their logos. Missing a logo? Long-press the sender's picture to ask for it. Yarn understands the -P, -S, -T and -G sender tags and is available in English and Hindi.
 
-SPAM AND SCAM PROTECTION
+SPAM AND SCAM PROTECTION (PRO)
 Fake KYC alerts, prize scams, parcel-fee tricks, instant-loan bait and dangerous links are spotted and moved to Spam. Yarn warns you before you open a risky link. Nothing is ever deleted silently.
 
 ON-DEVICE AI
 • Smart replies suggested in every chat
 • Translate any message with one tap, including Hinglish
-• Summarise long chats and rewrite your message to sound shorter, friendlier or more professional, on phones with Gemini Nano or with a free model you add
+• Pro: summarise long chats and rewrite your message to sound shorter, friendlier or more professional, on phones with Gemini Nano or with a free model you add
 • Sorting learns from your corrections, on your phone only
 
 CHATS THAT JUST WORK
 • Delivered ticks you can rely on
 • Dual SIM: pick the SIM for every message
-• Scheduled sending, photos, videos and group messages
+• Photos, videos and group messages
 • Copy a code or mark a message as read straight from the notification
-• Choose how each tab notifies you, for example keep Offers silent
+• Pro: scheduled sending, and choose how each tab notifies you
 
-RECYCLE BIN
-Deleted messages wait in the recycle bin for 7 days, or as long as you choose. Search it and restore what you need in a tap.
+MAKE IT YOURS (PRO)
+Pick an accent colour for buttons and your message bubbles, and a wallpaper for your chats.
 
-EVERYTHING ONE TAP AWAY
-Tap your photo for starred, archived, spam and blocked chats, your SIMs and every setting, in one short menu.
+CLEAN-UP AND RECYCLE BIN
+Clear old codes and offers in a tap, or with Pro let Yarn do it automatically. Deleted messages wait in the recycle bin for 7 days, or with Pro for 30 days or forever.
 
 PRIVATE BY DESIGN
 • Messages are stored in an encrypted database on your phone
@@ -72,7 +72,7 @@ PRIVATE BY DESIGN
 • When your phone can't translate a message by itself, only that message is sent to Google Translate, and only when you tap Translate. You can turn this off.
 
 BACKUP TO YOUR GOOGLE DRIVE
-Optionally back up your messages, encrypted, to a private folder in your own Google Drive, and restore them on a new phone by signing in. Backups use your Google storage and are free.
+Back up your messages, encrypted, to a private folder in your own Google Drive whenever you like, or every day automatically with Pro, and restore them on a new phone by signing in. Backups use your Google storage.
 
 Yarn works with SMS and MMS. Android does not allow third-party apps to use RCS chat.
 ```
@@ -102,7 +102,7 @@ Yarn works with SMS and MMS. Android does not allow third-party apps to use RCS 
 - Violence, sexuality, language, controlled substances, gambling: **No** to all
 - Does the app allow users to interact or exchange content? **Yes** (it sends and receives SMS/MMS)
 - Does the app share the user's location with other users? **No**
-- Does the app allow users to purchase digital goods? **No**
+- Does the app allow users to purchase digital goods? **Yes** (Yarn Pro, through Google Play Billing)
 
 **Target audience:** 18 and over.
 
@@ -122,6 +122,8 @@ Yarn works with SMS and MMS. Android does not allow third-party apps to use RCS 
 - Messages, contacts and everything else processed on the phone are not "collected", because they never leave the device.
 - **Purchases** go through Google Play Billing: Google collects the payment details, not Yarn, so nothing extra is declared for them.
 - **Feedback** (WhatsApp or email) is sent by the user from their own app, so it isn't collected by Yarn either.
+- **Logo requests** (Pro): after the user confirms, Yarn itself texts the sender ID to the developer, which reveals the user's phone number. Declare **Personal info → Phone number**: Collected, not shared, optional, purpose **App functionality** (to receive logo requests). Not processed ephemerally.
+- The **trial's start date** is kept on the phone, in Google Block Store and (with backup on) in the user's own Drive app folder; none of it reaches the developer, so nothing is declared for it.
 
 **Sensitive permissions → SMS and Call Log permissions**
 - Core functionality: **Default SMS handler**

@@ -174,7 +174,8 @@ class MaintenanceWorker(context: Context, params: WorkerParameters) : CoroutineW
         val s = c.settings.current()
         val now = System.currentTimeMillis()
         // Auto-clean needs the SMS role, or deleted messages would linger in the system store.
-        if (s.initialImportDone && app.yarn.telephony.DefaultSmsApp.isDefault(applicationContext)) c.cleaner.autoClean(s, now)
+        // Automatic clean-up is part of Yarn Pro.
+        if (c.licence.isPro && s.initialImportDone && app.yarn.telephony.DefaultSmsApp.isDefault(applicationContext)) c.cleaner.autoClean(s, now)
         c.bin.emptyExpired(now)
         c.sender.processQueue()
         c.sync.sync()
@@ -204,7 +205,7 @@ class OtpCleanupWorker(context: Context, params: WorkerParameters) : CoroutineWo
         val c = applicationContext.container
         if (!app.yarn.telephony.DefaultSmsApp.isDefault(applicationContext)) return Result.success()
         val s = c.settings.current()
-        if (s.otpAutoDeleteMinutes <= 0) return Result.success()
+        if (s.otpAutoDeleteMinutes <= 0 || !c.licence.isPro) return Result.success()
         val ids = c.db.messages().junkIds(listOf("OTP"), System.currentTimeMillis() - s.otpAutoDeleteMinutes * 60_000L)
         if (ids.isNotEmpty()) {
             val chats = c.db.messages().getAll(ids).map { it.conversationId }.distinct()
@@ -234,6 +235,9 @@ class GoogleBackupWorker(context: Context, params: WorkerParameters) : Coroutine
         if (s.googleAccount == null || !s.autoBackup) return Result.success()
         // Only works silently when access was granted before; otherwise wait for the user.
         val token = runCatching { c.drive.token(s.googleAccount) }.getOrElse { return Result.success() }
+        c.licence.anchorTrialInDrive(c.drive, token)
+        // Automatic daily backup is part of Yarn Pro; backing up by hand stays free.
+        if (!c.licence.isPro) return Result.success()
         val result = c.backup.backupToGoogle(c.drive, token, s.backupMedia) ?: return if (runAttemptCount < 3) Result.retry() else Result.success()
         c.settings.update { it.copy(lastBackupAt = System.currentTimeMillis(), lastBackupBytes = result.first) }
         c.backup.reset()

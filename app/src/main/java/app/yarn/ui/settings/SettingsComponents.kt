@@ -30,6 +30,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.yarn.ui.common.container
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -104,6 +106,28 @@ fun IconTile(icon: ImageVector, @Suppress("UNUSED_PARAMETER") tint: Color) {
     Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f), modifier = Modifier.size(24.dp))
     }
+}
+
+/** Pro right now, following the licence. Previews and tests can set [LocalPro] instead. */
+@Composable
+fun rememberPro(): Boolean {
+    LocalPro.current?.let { return it }
+    // Previews run without Yarn's application: show everything.
+    val yarn = androidx.compose.ui.platform.LocalContext.current.applicationContext as? app.yarn.YarnApplication ?: return true
+    val access by yarn.container.licence.access.collectAsStateWithLifecycle()
+    return access.isPro
+}
+
+val LocalPro = androidx.compose.runtime.staticCompositionLocalOf<Boolean?> { null }
+
+/** A Pro feature on Yarn Free: a PRO tag, and a tap opens Yarn Pro. */
+@Composable
+fun ProLockedRow(title: String, summary: String? = null, icon: ImageVector? = null) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    SettingsRow(
+        title, Modifier.clickable { context.container.licence.requestPro() }, summary = summary, icon = icon,
+        trailing = { app.yarn.ui.paywall.ProBadge() },
+    )
 }
 
 /** Shared compact row layout used by every settings row. */

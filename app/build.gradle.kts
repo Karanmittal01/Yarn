@@ -118,6 +118,7 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.play.billing)
+    implementation(libs.play.services.blockstore)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

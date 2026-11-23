@@ -24,12 +24,26 @@ object BrandLogos {
             .getOrNull().orEmpty().also { available = it }
     }
 
+    /** Logos are part of Yarn Pro; without it, businesses show their initial like anyone else. */
+    @Volatile var enabled: Boolean = true
+
     /** "logo:hdfcbank" for a business sender with a bundled logo, else null. */
-    fun uri(context: Context, address: String?): String? {
+    fun uri(context: Context, address: String?): String? = if (enabled) find(context, address) else null
+
+    /** The bundled logo for [address], whether or not logos are shown. */
+    fun find(context: Context, address: String?): String? {
         if (address.isNullOrBlank()) return null
         val key = SenderNames.brandKey(address) ?: return null
         return if (key in names(context)) SCHEME + key else null
     }
+
+    /**
+     * A business sender ID (letters, like "CP-APLPHR-S") with no logo in Yarn yet: one its user can
+     * ask for. Number-only senders are skipped, since many brands share them.
+     */
+    fun isMissing(context: Context, address: String?): Boolean =
+        !address.isNullOrBlank() && '@' !in address && address.any { it.isLetter() } && address.none { it == ' ' } &&
+            SenderNames.isBusiness(address) && find(context, address) == null
 
     fun isLogo(uri: String?): Boolean = uri?.startsWith(SCHEME) == true
 

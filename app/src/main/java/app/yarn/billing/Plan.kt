@@ -1,35 +1,41 @@
 package app.yarn.billing
 
 /**
- * Yarn is paid: a free trial, then a yearly subscription. People who helped test it hold a
- * lifetime unlock, given only through Play promo codes. Pure rules, so they can be tested
- * without Google Play.
+ * Yarn is free; Yarn Pro adds the rest. Everyone gets Pro free for the first 30 days (a "reverse
+ * trial"), then keeps the free app unless they buy Pro: yearly, or once for life. Testers hold a
+ * lifetime unlock given through Play promo codes. Pure rules, so they can be tested without Play.
  */
 object Plan {
-    const val TRIAL_DAYS = 5
+    const val TRIAL_DAYS = 30
     const val DAY_MS = 86_400_000L
 
-    /** The subscription and its yearly base plan, as set up in Play Console. */
+    /** The yearly subscription and its base plan, as set up in Play Console. */
     const val SUBSCRIPTION = "yarn"
     const val BASE_PLAN = "yearly"
 
-    /** A one-time product that never shows in the app: testers get it free with a promo code. */
+    /** Pro for life: bought once, or given free with a promo code. */
     const val LIFETIME = "yarn_lifetime"
 
-    /** The regular yearly price in India. While Play charges less, the early-bird price shows it struck through. */
-    const val REGULAR_INR_MICROS = 499_000_000L
+    /** Regular prices in India. While Play charges less, the early-bird price is shown against them. */
+    const val REGULAR_YEARLY_INR_MICROS = 499_000_000L
+    const val REGULAR_LIFETIME_INR_MICROS = 2_999_000_000L
 
     fun trialEnds(trialStart: Long): Long = trialStart + TRIAL_DAYS * DAY_MS
 
     fun access(trialStart: Long, now: Long, owned: Owned): Access {
         val end = trialEnds(trialStart)
         return when {
-            owned.unlocked -> Access.Unlocked(owned.lifetime)
+            owned.unlocked -> Access.Pro(owned.lifetime)
             now < end -> Access.Trial(((end - now + DAY_MS - 1) / DAY_MS).toInt().coerceIn(1, TRIAL_DAYS), owned.pending)
-            owned.pending -> Access.Pending
-            else -> Access.Expired
+            else -> Access.Free(owned.pending)
         }
     }
+
+    /**
+     * The trial began at the earliest start any record remembers: this phone, Google's Block Store
+     * (kept across reinstalls) or the user's Google Drive. Reinstalling never starts a new trial.
+     */
+    fun earliest(vararg starts: Long?): Long? = starts.filterNotNull().filter { it > 0 }.minOrNull()
 
     /** What the purchases Google Play reports add up to. */
     fun owned(purchases: List<PlayPurchase>): Owned {
@@ -44,27 +50,27 @@ object Plan {
         )
     }
 
-    /** The early-bird price struck through against, or null once Play's price reaches it (or outside India). */
-    fun regularPrice(currency: String?, micros: Long?): Long? =
-        if (currency == "INR" && micros != null && micros in 1 until REGULAR_INR_MICROS) REGULAR_INR_MICROS else null
+    /** The regular price struck through next to Play's, or null once Play charges that much (or outside India). */
+    fun regularPrice(currency: String?, micros: Long?, regular: Long): Long? =
+        if (currency == "INR" && micros != null && micros in 1 until regular) regular else null
 }
 
-/** What someone may do with Yarn right now. */
+/** What someone has right now. */
 sealed interface Access {
-    /** The free trial is running; [daysLeft] counts today. A payment may already be on its way. */
+    /** The first 30 days: all of Pro, free. [daysLeft] counts today. A payment may already be on its way. */
     data class Trial(val daysLeft: Int, val pending: Boolean = false) : Access
 
-    /** Subscribed, or holding the testers' lifetime unlock. */
-    data class Unlocked(val lifetime: Boolean = false) : Access
+    /** Bought yearly or for life, or holding a tester's lifetime code. */
+    data class Pro(val lifetime: Boolean = false) : Access
 
-    /** The trial is over and Google Play is still confirming a payment (UPI can take a while). */
-    data object Pending : Access
+    /** After the trial: the free app. A payment may be on its way (UPI can take a while). */
+    data class Free(val pending: Boolean = false) : Access
 
-    /** The trial is over and nothing was bought. */
-    data object Expired : Access
-
-    val usable: Boolean get() = this is Trial || this is Unlocked
+    val isPro: Boolean get() = this is Trial || this is Pro
 }
+
+/** The two ways to buy Pro. */
+enum class ProPlan { YEARLY, LIFETIME }
 
 data class Owned(
     val unlocked: Boolean = false,

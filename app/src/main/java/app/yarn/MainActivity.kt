@@ -77,7 +77,13 @@ class MainActivity : FragmentActivity() {
                 if (s?.secureScreen == true) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
                 else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
             }
-            YarnTheme(mode = s?.theme ?: app.yarn.data.prefs.ThemeMode.SYSTEM, dynamicColor = s?.dynamicColor ?: false, textScale = s?.textScale ?: 1f) {
+            // Accent colours and chat wallpapers are Yarn Pro; without it Yarn keeps its own look.
+            val pro = access.isPro
+            YarnTheme(
+                mode = s?.theme ?: app.yarn.data.prefs.ThemeMode.SYSTEM, dynamicColor = s?.dynamicColor ?: false, textScale = s?.textScale ?: 1f,
+                accent = if (pro) app.yarn.ui.theme.Accent.of(s?.accent) else app.yarn.ui.theme.Accent.YARN,
+                wallpaper = if (pro) app.yarn.ui.theme.Wallpaper.of(s?.chatWallpaper) else app.yarn.ui.theme.Wallpaper.DEFAULT,
+            ) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     when {
                         s == null -> Unit
@@ -88,9 +94,21 @@ class MainActivity : FragmentActivity() {
                             }
                         })
                         locked && s.appLock -> LockScreen()
-                        // Trial over and not bought: Yarn keeps receiving messages, but opens on the plan.
-                        !access.usable -> app.yarn.ui.paywall.PaywallScreen(onBack = null)
-                        else -> YarnNavHost(externalNav) { externalNav.value = null }
+                        else -> {
+                            YarnNavHost(externalNav) { externalNav.value = null }
+                            // Yarn Pro: asked for by a locked feature, or once when the 30-day trial ends.
+                            val askPro by container.licence.askPro.collectAsStateWithLifecycle()
+                            var downgradeSeen by androidx.compose.runtime.remember { mutableStateOf(container.licence.downgradeSeen) }
+                            val trialJustEnded = access is app.yarn.billing.Access.Free && !downgradeSeen
+                            if (askPro || trialJustEnded) {
+                                val close = {
+                                    container.licence.proShown()
+                                    if (trialJustEnded) { container.licence.markDowngradeSeen(); downgradeSeen = true }
+                                }
+                                androidx.activity.compose.BackHandler(onBack = close)
+                                app.yarn.ui.paywall.PaywallScreen(onBack = close)
+                            }
+                        }
                     }
                     val updateReady by updates.readyToInstall.collectAsStateWithLifecycle()
                     var updateLater by androidx.compose.runtime.remember { mutableStateOf(false) }

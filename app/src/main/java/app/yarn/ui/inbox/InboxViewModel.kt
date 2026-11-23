@@ -47,9 +47,18 @@ data class InboxItem(
     val sim: SimInfo? = null,
     /** When [otpCode] arrived; older codes are shown quieter since they have probably expired. */
     val codeAt: Long = 0,
+    /** A business with no logo in Yarn yet; with Pro, a long press on its picture asks for one. */
+    val logoMissing: Boolean = false,
 )
 
-data class InboxChip(@androidx.annotation.StringRes val label: Int, val filter: InboxFilter, val group: InboxGroup? = null, val unread: Int = 0)
+/** A tab above the inbox. [pro] marks the one that offers Pro's other tabs to Yarn Free. */
+data class InboxChip(
+    @androidx.annotation.StringRes val label: Int,
+    val filter: InboxFilter,
+    val group: InboxGroup? = null,
+    val unread: Int = 0,
+    val pro: Boolean = false,
+)
 
 data class InboxStatus(
     val isDefault: Boolean = true,
@@ -81,9 +90,11 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
         .flatMapLatest { f -> c.conversations.observe(f).map { sectionOf(f) to it } }
         .combine(c.contacts.version) { list, _ -> list }
         .combine(freshCodes) { list, codes -> list to codes }
-        .combine(c.sims.sims) { (pair, codes), sims ->
+        .combine(c.sims.sims) { (pair, codes), sims -> Triple(pair, codes, sims) }
+        // Logos come and go with Pro.
+        .combine(c.licence.access.map { it.isPro }.distinctUntilChanged()) { (pair, codes, sims), pro ->
             val (section, list) = pair
-            list.map { toItem(it, sims, section, codes[it.id]) }
+            list.map { toItem(it, sims, section, codes[it.id], pro) }
         }
         .flowOn(Dispatchers.IO)
         .stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -91,7 +102,7 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     private fun codeIn(body: String, date: Long): String? =
         c.engine.extract(body, date).firstOrNull { it.type == EntityType.OTP }?.value
 
-    private fun toItem(c0: ConversationEntity, sims: List<SimInfo>, section: InboxGroup?, fresh: Pair<String, Long>?): InboxItem {
+    private fun toItem(c0: ConversationEntity, sims: List<SimInfo>, section: InboxGroup?, fresh: Pair<String, Long>?, pro: Boolean): InboxItem {
         val address = c0.addresses.firstOrNull().orEmpty()
         val category = Category.fromName(c0.category)
         val business = !c0.isGroup && SenderNames.isBusiness(address)
@@ -118,21 +129,36 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
             otpCode = code?.first,
             sim = if (sims.size > 1) sims.firstOrNull { it.subId == c0.lastSubId } else null,
             codeAt = code?.second ?: 0,
+            logoMissing = pro && business && app.yarn.ui.common.BrandLogos.isMissing(c.app, address),
         )
     }
 
     /** Only groups that actually contain messages are offered as filters. */
     private val spamTab = combine(c.db.conversations().spamCount(), c.db.conversations().unreadSpam()) { total, unread -> total to unread }
 
+    /** Whether tabs are on (sorting) and which ones: Yarn Free has All and OTP; Pro has them all. */
+    private val tabs = combine(
+        c.settings.settings.map { it.sortingOn }, c.licence.access.map { it.isPro },
+    ) { sorting, pro -> sorting to pro }.distinctUntilChanged()
+
     val chips: StateFlow<List<InboxChip>> = combine(
-        c.db.conversations().totalsByCategory(), c.db.conversations().sectionCategories(), spamTab, _filter,
-        c.settings.settings.map { it.sortingOn }.distinctUntilChanged(),
-    ) { totals, sections, spam, current, sorting ->
+        c.db.conversations().totalsByCategory(), c.db.conversations().sectionCategories(), spamTab, _filter, tabs,
+    ) { totals, sections, spam, current, (sorting, pro) ->
         val unreadAll = totals.sumOf { it.unread }
         // A chat counts once per section it has messages in, and as unread there only if that part is unread.
         val bySection = sections.groupBy { Category.fromName(it.category)?.let(InboxGroup::of) }
         buildList {
             add(InboxChip(R.string.chip_all, InboxFilter()))
+            if (!pro) {
+                // Yarn Free: All and OTP, and a way to Pro's other tabs.
+                if (sorting) {
+                    val rows = bySection[InboxGroup.OTP].orEmpty()
+                    val unread = rows.filter { it.unread > 0 }.map { it.conversationId }.toSet().size
+                    add(InboxChip(InboxGroup.OTP.label, InboxGroup.OTP.filter, InboxGroup.OTP, unread))
+                    add(InboxChip(R.string.chip_pro_tabs, InboxFilter(), pro = true))
+                }
+                return@buildList
+            }
             if (unreadAll > 0 || current.view == InboxView.UNREAD) add(InboxChip(R.string.filter_unread, InboxFilter(InboxView.UNREAD), unread = unreadAll))
             // With sorting off there are no tabs: one list, plus Unread and Spam.
             if (sorting) InboxGroup.entries.forEach { g ->
@@ -212,10 +238,14 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     fun setFilter(f: InboxFilter) { _filter.value = f; clearSelection() }
 
     init {
-        // Sorting turned off while a tab was open: back to the one list.
+        // Sorting turned off, or Pro ended, while a tab was open: back to the one list.
         safeScope.launch {
-            c.settings.settings.map { it.sortingOn }.distinctUntilChanged().collect { on ->
-                if (!on && _filter.value.view == InboxView.CATEGORY) setFilter(InboxFilter())
+            tabs.collect { (on, pro) ->
+                val f = _filter.value
+                val tab = f.view == InboxView.CATEGORY
+                // Only the main inbox's tabs: the Spam page in the menu stays open on Yarn Free.
+                val notFree = initial.view == InboxView.ALL && (f.view == InboxView.UNREAD || f.view == InboxView.SPAM || (tab && f != InboxGroup.OTP.filter))
+                if ((!on && tab) || (!pro && notFree)) setFilter(InboxFilter())
             }
         }
     }

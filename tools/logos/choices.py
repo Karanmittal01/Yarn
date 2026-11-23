@@ -240,6 +240,10 @@ pick("user", "paywithrewards")
 TUNE["paywithrewards"] = {"ops": [("crop", 0.28, 0.14, 0.72, 0.575)], "inner": 0.44, "cap": 0.74}
 # MFine (HMFINE), online doctor consultations: the white heartbeat bubble on its teal.
 pick(P, "mfine")
+# Apollo Pharmacy (APLPHR), its stores' bills: not the Apollo 24|7 app icon (that's "apollo") but the green
+# "Apollo Pharmacy" mark from its staff app Vishwam, cut above that app's own name.
+pick("vishwam", "apollopharmacy")
+TUNE["apollopharmacy"] = {"ops": [("crop", 0.0, 0.06, 1.0, 0.725)], "inner": 0.46, "cap": 0.78}
 
 # Maximize (MAXMZE), gift cards and rewards: the white mark from its site icon on its green, not the
 # festive Play icon with string lights.

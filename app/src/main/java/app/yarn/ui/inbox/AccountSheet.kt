@@ -212,13 +212,14 @@ fun AccountSheetContent(
             Icon(Icons.Outlined.Edit, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.height(8.dp))
-        // Yarn's plan: the trial's days left, or the subscription.
-        val planRow: Pair<String, String>? = when (plan) {
-            is app.yarn.billing.Access.Trial -> stringResource(R.string.plan_row_trial) to
+        // Yarn Pro: the trial's days left, how it was bought, or an invitation once on the free plan.
+        val planRow: Pair<String, String?>? = when (plan) {
+            is app.yarn.billing.Access.Trial -> stringResource(R.string.pro_row_title) to
                 androidx.compose.ui.res.pluralStringResource(R.plurals.plan_days_left, plan.daysLeft, plan.daysLeft)
-            is app.yarn.billing.Access.Unlocked -> stringResource(R.string.plan_row_title) to
+            is app.yarn.billing.Access.Pro -> stringResource(R.string.pro_row_title) to
                 stringResource(if (plan.lifetime) R.string.plan_lifetime else R.string.plan_active)
-            else -> null
+            is app.yarn.billing.Access.Free -> stringResource(R.string.pro_get) to null
+            null -> null
         }
         planRow?.let { (title, value) ->
             SheetGroup(card) { SheetItem(Icons.Outlined.WorkspacePremium, title, value = value) { onNavigate(InboxDestination.Plan) } }
@@ -243,7 +244,7 @@ fun AccountSheetContent(
             SheetItem(Icons.Outlined.Lock, stringResource(R.string.privacy_security)) { open(SettingsPage.PRIVACY) }
             SheetItem(
                 Icons.Outlined.CleaningServices, stringResource(R.string.clean_up),
-                value = if (app.yarn.data.repo.Cleaner.isAutoCleanOn(settings)) stringResource(R.string.auto) else null,
+                value = if (app.yarn.data.repo.Cleaner.isAutoCleanOn(settings) && app.yarn.ui.settings.rememberPro()) stringResource(R.string.auto) else null,
             ) { open(SettingsPage.CLEANUP) }
         }
         Spacer(Modifier.height(8.dp))

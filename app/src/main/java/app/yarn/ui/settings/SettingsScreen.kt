@@ -162,7 +162,7 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.settingsHubItems(
         SettingsGroup {
             NavRow(Icons.Outlined.AutoAwesome, stringResource(R.string.smart_features), if (s.aiEnabled) stringResource(R.string.on) else stringResource(R.string.off), Color(0xFF1466F0)) { onOpen(SettingsPage.AI) }
             NavRow(Icons.Outlined.Lock, stringResource(R.string.privacy_security), null, Color(0xFF0FA3B1)) { onOpen(SettingsPage.PRIVACY) }
-            NavRow(Icons.Outlined.CleaningServices, stringResource(R.string.clean_up), if (app.yarn.data.repo.Cleaner.isAutoCleanOn(s)) stringResource(R.string.auto) else null, Color(0xFF00A86B)) { onOpen(SettingsPage.CLEANUP) }
+            NavRow(Icons.Outlined.CleaningServices, stringResource(R.string.clean_up), if (app.yarn.data.repo.Cleaner.isAutoCleanOn(s) && rememberPro()) stringResource(R.string.auto) else null, Color(0xFF00A86B)) { onOpen(SettingsPage.CLEANUP) }
             NavRow(Icons.Outlined.Block, stringResource(R.string.blocked), null, Color(0xFF8E8E93)) { onOpen(SettingsPage.BLOCKED) }
         }
     }
@@ -210,8 +210,28 @@ fun AppearanceScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             SettingsGroup {
                 ChoiceRow(stringResource(R.string.theme), listOf(ThemeMode.SYSTEM to stringResource(R.string.system_default), ThemeMode.LIGHT to stringResource(R.string.theme_light), ThemeMode.DARK to stringResource(R.string.theme_dark)), s.theme) { v -> vm.update { it.copy(theme = v) } }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    SwitchRow(stringResource(R.string.wallpaper_colours), stringResource(R.string.wallpaper_colours_sub), s.dynamicColor) { v -> vm.update { it.copy(dynamicColor = v) } }
+                    // The phone's colours replace a chosen accent, and choosing an accent turns them off.
+                    SwitchRow(stringResource(R.string.wallpaper_colours), stringResource(R.string.wallpaper_colours_sub), s.dynamicColor) { v ->
+                        vm.update { it.copy(dynamicColor = v, accent = if (v) "" else it.accent) }
+                    }
                 }
+            }
+        }
+        // Yarn Pro: accent colours and chat wallpapers. Yarn Free sees them, and a tap opens Pro.
+        item {
+            val pro = rememberPro()
+            val accent = if (pro && !s.dynamicColor) app.yarn.ui.theme.Accent.of(s.accent) else app.yarn.ui.theme.Accent.YARN
+            AccentPicker(accent, pro) { a ->
+                if (!pro) vm.c.licence.requestPro()
+                else vm.update { it.copy(accent = if (a == app.yarn.ui.theme.Accent.YARN) "" else a.name, dynamicColor = false) }
+            }
+        }
+        item {
+            val pro = rememberPro()
+            val wallpaper = if (pro) app.yarn.ui.theme.Wallpaper.of(s.chatWallpaper) else app.yarn.ui.theme.Wallpaper.DEFAULT
+            WallpaperPicker(wallpaper, pro) { w ->
+                if (!pro && w != app.yarn.ui.theme.Wallpaper.DEFAULT) vm.c.licence.requestPro()
+                else if (pro) vm.update { it.copy(chatWallpaper = if (w == app.yarn.ui.theme.Wallpaper.DEFAULT) "" else w.name) }
             }
         }
         item { SectionHeader(stringResource(R.string.text_size)) }
@@ -250,6 +270,7 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.notificationItems(
     }
     item { SectionHeader(stringResource(R.string.which_notify)) }
     item {
+        val pro = rememberPro()
         SettingsGroup {
             val modes = listOf(
                 NotifyMode.SOUND to stringResource(R.string.notify_mode_sound),
@@ -257,7 +278,10 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.notificationItems(
                 NotifyMode.OFF to stringResource(R.string.notify_mode_off),
             )
             // Tabs exist only while sorting is on; without them every message notifies the normal way.
-            if (s.sortingOn) {
+            // Choosing per tab is part of Yarn Pro.
+            if (s.sortingOn && !pro) {
+                ProLockedRow(stringResource(R.string.notify_each_tab), stringResource(R.string.pro_f_notify), Icons.Outlined.Notifications)
+            } else if (s.sortingOn) {
                 // Sets every tab at once; shows a value only while all tabs agree.
                 val all = InboxGroup.entries.map { s.notifyFor(it.kind) }.distinct().singleOrNull()
                 ChoiceRow<NotifyMode?>(stringResource(R.string.notify_all_tabs), modes, all, icon = Icons.Outlined.Notifications) { m ->

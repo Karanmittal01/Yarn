@@ -81,6 +81,18 @@ class GoogleDrive(private val context: Context) {
         key.trim().toCharArray()
     }
 
+    /** When this Google account's Yarn Pro trial began, as kept in its private Yarn folder; null if never. */
+    suspend fun trialStart(token: String): Long? = withContext(Dispatchers.IO) {
+        val file = find(token, TRIAL_NAME).firstOrNull() ?: return@withContext null
+        request("GET", "$API/files/${file.getString("id")}?alt=media", token).trim().toLongOrNull()
+    }
+
+    /** Records when the trial began, so a new phone or a reinstall with this account doesn't restart it. */
+    suspend fun saveTrialStart(token: String, start: Long) = withContext(Dispatchers.IO) {
+        find(token, TRIAL_NAME).forEach { request("DELETE", "$API/files/${it.getString("id")}", token) }
+        uploadBytes(token, TRIAL_NAME, start.toString().toByteArray(), "text/plain", emptyMap())
+    }
+
     suspend fun latest(token: String): DriveBackup? = withContext(Dispatchers.IO) {
         find(token, BACKUP_NAME).firstOrNull()?.let { f ->
             DriveBackup(
@@ -211,5 +223,6 @@ class GoogleDrive(private val context: Context) {
         const val GOOGLE_ACCOUNT_TYPE = "com.google"
         private const val BACKUP_NAME = "yarn-backup.yarnbak"
         private const val KEY_NAME = "yarn-backup-key"
+        private const val TRIAL_NAME = "yarn-pro-trial"
     }
 }

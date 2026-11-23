@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import app.yarn.data.prefs.AppSettings
 import app.yarn.data.prefs.sortingOn
+import app.yarn.ui.common.BrandLogos
 import app.yarn.ui.common.Feedback
+import app.yarn.ui.common.LogoRequests
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -18,11 +20,41 @@ class FeedbackTest {
 
     @Test
     fun aLogoRequestCarriesOnlyTheSendersNameAndId() {
-        val note = Feedback.logoRequest(context, "MYTNEU", "vm-mytneu-p")
-        assertThat(note.text).contains("MYTNEU")
-        assertThat(note.text).contains("VM-MYTNEU-P")
-        assertThat(note.subject).contains("MYTNEU")
-        assertThat(note.log).isNull()
+        val text = LogoRequests.text("Apollo Pharmacy", "cp-aplphr-s")
+        assertThat(text).startsWith("Yarn logo request: Apollo Pharmacy (CP-APLPHR-S).")
+        assertThat(text).endsWith("Yarn ${app.yarn.BuildConfig.VERSION_CODE}")
+        // Plain ASCII, so it goes as one ordinary text.
+        assertThat(text.all { it.code < 128 }).isTrue()
+        assertThat(text.length).isAtMost(160)
+        assertThat(LogoRequests.text("APLPHR", "CP-APLPHR-S")).startsWith("Yarn logo request: CP-APLPHR-S.")
+    }
+
+    @Test
+    fun aSenderIsRequestedOnceWhateverItsPrefixOrSuffix() {
+        assertThat(LogoRequests.key("CP-APLPHR-S")).isEqualTo("APLPHR")
+        assertThat(LogoRequests.key("jd-aplphr")).isEqualTo("APLPHR")
+        assertThat(LogoRequests.key("APLPHR")).isEqualTo("APLPHR")
+    }
+
+    @Test
+    fun onlyLetterSenderIdsWithoutALogoCanBeRequested() {
+        assertThat(BrandLogos.isMissing(context, "VM-NEWBRD-S")).isTrue()
+        assertThat(BrandLogos.isMissing(context, "CP-APLPHR-S")).isFalse()
+        assertThat(BrandLogos.isMissing(context, "59039149")).isFalse()
+        assertThat(BrandLogos.isMissing(context, "+919812345678")).isFalse()
+        assertThat(BrandLogos.isMissing(context, null)).isFalse()
+    }
+
+    @Test
+    fun logosAreHiddenWithoutPro() {
+        try {
+            BrandLogos.enabled = false
+            assertThat(BrandLogos.uri(context, "CP-APLPHR-S")).isNull()
+            assertThat(BrandLogos.find(context, "CP-APLPHR-S")).isEqualTo("logo:apollopharmacy")
+        } finally {
+            BrandLogos.enabled = true
+        }
+        assertThat(BrandLogos.uri(context, "CP-APLPHR-S")).isEqualTo("logo:apollopharmacy")
     }
 
     @Test

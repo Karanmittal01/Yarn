@@ -7,6 +7,7 @@ import app.yarn.ai.SmartSorter
 import app.yarn.backup.GoogleDrive
 import app.yarn.work.GoogleBackupWorker
 import app.yarn.billing.Licence
+import app.yarn.ui.common.BrandLogos
 import app.yarn.work.ReanalyzeWorker
 import android.app.Application
 import android.content.BroadcastReceiver
@@ -71,15 +72,15 @@ class AppContainer(val app: Application) {
     val sims = SimManager(app)
     val store = TelephonyStore(app)
 
-    val engine by lazy { IntelligenceEngine(db, settings, contacts, scope) }
-    val notifier by lazy { Notifier(app, db, contacts, settings, sims) }
-    val bin by lazy { RecycleBin(app, db, settings) }
+    val engine by lazy { IntelligenceEngine(db, settings, contacts, scope, pro = { licence.isPro }) }
+    val notifier by lazy { Notifier(app, db, contacts, settings, sims) { licence.isPro } }
+    val bin by lazy { RecycleBin(app, db, settings) { licence.isPro } }
     val conversations by lazy { ConversationRepository(app, db, store, contacts, engine, notifier, providerLock, scope, bin) }
     val sender by lazy { MessageSender(app, db, store, sims, settings, engine, notifier, providerLock, scope) }
     val language by lazy { LanguageService() }
     val translation by lazy { TranslationService(app, language) }
     val mlEntities by lazy { MlEntityService() }
-    val smartSorter by lazy { SmartSorter(db, nano, settings, engine) }
+    val smartSorter by lazy { SmartSorter(db, nano, settings, engine) { licence.isPro } }
     val licence by lazy { Licence(app, scope) }
     val incoming by lazy { IncomingProcessor(app, db, store, sims, settings, engine, mlEntities, smartSorter, conversations, sender, notifier, providerLock, scope) }
     val sync by lazy { TelephonySync(app, db, store, conversations, providerLock) }
@@ -104,7 +105,19 @@ class AppContainer(val app: Application) {
 
     fun start() {
         notifier.createChannels()
+        BrandLogos.enabled = licence.isPro
         licence.start()
+        // Pro started or ended (even while Yarn was closed): spam filtering changes, so file
+        // everything again. Logos follow at once.
+        scope.launch {
+            val prefs = app.getSharedPreferences("licence", android.content.Context.MODE_PRIVATE)
+            licence.access.map { it.isPro }.distinctUntilChanged().collect { pro ->
+                BrandLogos.enabled = pro
+                val filedAs = if (prefs.contains(K_FILED_AS_PRO)) prefs.getBoolean(K_FILED_AS_PRO, true) else null
+                if (filedAs != null && filedAs != pro) ReanalyzeWorker.enqueue(app)
+                prefs.edit().putBoolean(K_FILED_AS_PRO, pro).apply()
+            }
+        }
         // Sorting turned back on: file everything again, including what arrived while it was off.
         scope.launch {
             var was: Boolean? = null
@@ -212,3 +225,6 @@ class YarnApplication : Application() {
         const val RULES_VERSION = 12
     }
 }
+
+/** Whether messages were last filed with Pro's spam filtering, so a change while Yarn was closed is caught. */
+private const val K_FILED_AS_PRO = "filed_as_pro"
