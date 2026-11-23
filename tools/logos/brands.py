@@ -963,6 +963,8 @@ NEW += [
     ("Hoi", "hoi.in", ["HOIYTC"]),
     ("Pay with Rewards", "paywithrewards.com", ["PAYRWD"]),
     ("Maximize", "maximize.money", ["MAXMZE", "MAXIMZ"]),
+    # Requested from Yarn's "Request a logo" (Nov 2026).
+    ("MFine", "mfine.co", ["HMFINE", "MFINE"]),
 ]
 ALIASES += [
     ("UIDAI (Aadhaar)", ["ADHAAR"]),

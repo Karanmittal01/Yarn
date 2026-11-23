@@ -1140,6 +1140,7 @@ object SenderNames {
         Brand("PAYRWD", "Pay with Rewards"),
         Brand("MAXMZE", "Maximize"),
         Brand("MAXIMZ", "Maximize"),
+        Brand("HMFINE", "MFine"),
         Brand("XPBEES", "XpressBees"),
         Brand("SLCBNK", "slice"),
         Brand("PHEASY", "PharmEasy"),
@@ -1207,6 +1208,7 @@ object SenderNames {
         Brand("UMANG", "UMANG"),
         Brand("GYFTR", "GyFTR"),
         Brand("PLAYO", "Playo"),
+        Brand("MFINE", "MFine"),
         Brand("VDTH", "d2h"),
         Brand("ZEE5", "ZEE5"),
         // The original list, each with the category its messages usually are.
