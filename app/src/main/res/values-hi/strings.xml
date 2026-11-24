@@ -561,7 +561,7 @@
     <string name="search_contacts">अपने कॉन्टैक्ट खोजें</string>
     <string name="allow_contacts">नाम से लोगों को ढूंढने के लिए अनुमति दें। कॉन्टैक्ट आपके फ़ोन पर ही रहते हैं।</string>
     <string name="allow">अनुमति दें</string>
-    <string name="search_hint">मैसेज, लोग, नंबर खोजें</string>
+    <string name="search_hint">खोजें</string>
     <string name="clear">साफ़ करें</string>
     <string name="search_private">खोज पूरी तरह आपके फ़ोन पर ही होती है।</string>
     <string name="no_results">“%1$s” के लिए कुछ नहीं मिला</string>

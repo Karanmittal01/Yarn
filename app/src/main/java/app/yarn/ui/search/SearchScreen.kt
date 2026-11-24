@@ -87,7 +87,7 @@ fun SearchScreen(vm: SearchViewModel, onBack: () -> Unit, onOpen: (conversationI
                 title = {
                     TextField(
                         value = query, onValueChange = { vm.query.value = it }, singleLine = true,
-                        placeholder = { Text(stringResource(R.string.search_hint)) },
+                        placeholder = { Text(stringResource(R.string.search_hint), maxLines = 1) },
                         modifier = Modifier.fillMaxWidth().focusRequester(focus),
                         trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { vm.query.value = "" }) { Icon(Icons.Outlined.Close, stringResource(R.string.clear)) } },
                         colors = TextFieldDefaults.colors(

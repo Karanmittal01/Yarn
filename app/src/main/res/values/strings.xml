@@ -563,7 +563,7 @@
     <string name="search_contacts">Search your contacts</string>
     <string name="allow_contacts">Allow access to find people by name. Contacts stay on your phone.</string>
     <string name="allow">Allow</string>
-    <string name="search_hint">Search messages, people, numbers</string>
+    <string name="search_hint">Search</string>
     <string name="clear">Clear</string>
     <string name="search_private">Search runs entirely on your phone.</string>
     <string name="no_results">No results for “%1$s”</string>
