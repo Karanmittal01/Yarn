@@ -268,6 +268,15 @@ fun ScheduleDialog(onDismiss: () -> Unit, onPick: (Long) -> Unit) {
             at(1, 9).let { add(context.getString(R.string.tomorrow_at, timeOf(it)) to it) }
             at(1, 18).let { add(context.getString(R.string.tomorrow_at, timeOf(it)) to it) }
         }
+        // Android 12+ may not let Yarn set exact alarms (off by default on 14+); then a scheduled
+        // message can go minutes late. Say so, with a way to allow it, checked again on return.
+        fun exactAllowed() = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S ||
+            context.getSystemService(android.app.AlarmManager::class.java).canScheduleExactAlarms()
+        var exact by remember { mutableStateOf(exactAllowed()) }
+        androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+            exact = exactAllowed()
+            onPauseOrDispose {}
+        }
         AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(stringResource(R.string.schedule_message)) },
@@ -275,6 +284,19 @@ fun ScheduleDialog(onDismiss: () -> Unit, onPick: (Long) -> Unit) {
                 Column {
                     options.forEach { (label, t) -> TextButton(onClick = { onPick(t) }, modifier = Modifier.fillMaxWidth()) { Text(label, Modifier.fillMaxWidth()) } }
                     TextButton(onClick = { custom = true }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.pick_date_time), Modifier.fillMaxWidth()) }
+                    if (!exact && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        Text(
+                            stringResource(R.string.exact_alarm_note), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp),
+                        )
+                        TextButton(onClick = {
+                            runCatching {
+                                context.startActivity(
+                                    android.content.Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:${context.packageName}")),
+                                )
+                            }
+                        }) { Text(stringResource(R.string.exact_alarm_allow)) }
+                    }
                 }
             },
             confirmButton = {},

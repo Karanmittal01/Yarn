@@ -264,6 +264,18 @@ class TelephonyStore(private val context: Context) {
     fun existingSmsIds(): Set<Long> = ids(Telephony.Sms.CONTENT_URI)
     fun existingMmsIds(): Set<Long> = ids(Telephony.Mms.CONTENT_URI)
 
+    /** Which of [candidates] are still in the store (e.g. not deleted since they were read). */
+    fun stillThere(uri: Uri, candidates: Collection<Long>): Set<Long> {
+        val out = HashSet<Long>()
+        for (chunk in candidates.distinct().chunked(400)) {
+            val marks = chunk.joinToString(",") { "?" }
+            query(uri, arrayOf("_id"), "_id IN ($marks)", chunk.map { it.toString() }.toTypedArray())?.use { c ->
+                while (c.moveToNext()) out += c.getLong(0)
+            } ?: return candidates.toSet() // unreadable: assume nothing changed
+        }
+        return out
+    }
+
     private fun ids(uri: Uri): Set<Long> {
         val out = HashSet<Long>()
         query(uri, arrayOf("_id"))?.use { c -> while (c.moveToNext()) out += c.getLong(0) }

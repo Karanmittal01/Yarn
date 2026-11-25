@@ -293,7 +293,9 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.notificationItems(
                     }
                 }
             }
-            SwitchRow(stringResource(R.string.suspected_spam), null, s.notifySpam) { v -> update { it.copy(notifySpam = v) } }
+            // Spam is only filtered with Pro, so there's nothing to choose here on Yarn Free.
+            if (pro) SwitchRow(stringResource(R.string.suspected_spam), null, s.notifySpam) { v -> update { it.copy(notifySpam = v) } }
+            else ProLockedRow(stringResource(R.string.suspected_spam), stringResource(R.string.pro_f_spam))
         }
     }
     item {

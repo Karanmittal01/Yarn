@@ -45,7 +45,19 @@ class IntelligenceEngine(
     @Volatile private var current = AppSettings()
     private val reloadLock = Mutex()
 
+    /** The user's own keyword filters: a message containing one always goes to Spam, Pro or not. */
+    @Volatile private var keywordFilters: List<String>? = null
+
+    private fun keywords(rules: List<app.yarn.data.db.BlockRuleEntity>) =
+        rules.filter { it.type == app.yarn.data.db.BlockRuleEntity.KEYWORD }.map { it.value.lowercase() }.filter { it.isNotBlank() }
+
+    /** Loads the keyword filters before the first message is analysed (later changes arrive by themselves). */
+    suspend fun ensureFilters() {
+        if (keywordFilters == null) keywordFilters = keywords(db.blocks().all())
+    }
+
     init {
+        scope.launch { db.blocks().observe().collect { keywordFilters = keywords(it) } }
         scope.launch {
             var previous: AppSettings? = null
             settings.settings.collect { s ->
@@ -61,6 +73,7 @@ class IntelligenceEngine(
 
     /** Rebuilds the learned state from persisted corrections and sender rules. */
     suspend fun reload() = reloadLock.withLock {
+        keywordFilters = keywords(db.blocks().all())
         val s = settings.current()
         current = s
         val corrections = db.learning().corrections().map { c ->
@@ -104,9 +117,12 @@ class IntelligenceEngine(
         val sender = senderInfo(address)
         val s = current
         if (!s.aiEnabled) {
-            return Analysis(
-                Classification(basicCategory(sender), 0f, emptyList(), Classification.Source.RULES),
-                SpamAssessment(SpamVerdict.CLEAN, 0f, emptyList()), emptyList(), 0, false,
+            return filtered(
+                Analysis(
+                    Classification(basicCategory(sender), 0f, emptyList(), Classification.Source.RULES),
+                    SpamAssessment(SpamVerdict.CLEAN, 0f, emptyList()), emptyList(), 0, false,
+                ),
+                text, incoming,
             )
         }
         val raw = analyzer.analyze(MessageInput(text, sender, time, incoming, hasAttachments), context)
@@ -115,7 +131,16 @@ class IntelligenceEngine(
             result = result.copy(classification = Classification(basicCategory(sender), 0f, emptyList(), Classification.Source.RULES))
         }
         if (!pro()) result = result.copy(spam = SpamAssessment(SpamVerdict.CLEAN, 0f, emptyList()))
-        return result
+        return filtered(result, text, incoming)
+    }
+
+    /** Applies the user's keyword filters, so every re-sort keeps filtered messages in Spam. */
+    private fun filtered(a: Analysis, text: String, incoming: Boolean): Analysis {
+        val filters = keywordFilters
+        if (!incoming || filters.isNullOrEmpty()) return a
+        val lower = text.lowercase()
+        if (filters.none { lower.contains(it) }) return a
+        return a.copy(spam = SpamAssessment(SpamVerdict.SPAM, 1f, listOf(KEYWORD_REASON), a.spam.riskyUrls))
     }
 
     /** Whether the on-device model may re-file [m] under [group]: see [MessageAnalyzer.mayFileAs]. */
@@ -148,6 +173,7 @@ class IntelligenceEngine(
 
     /** Analyses and persists a stored message (entities included). */
     suspend fun analyzeAndStore(messageId: Long, context: PriorityContext = PriorityContext()): MessageEntity? {
+        ensureFilters()
         val m = db.messages().get(messageId) ?: return null
         val (updated, entities) = annotate(m, context)
         db.messages().update(updated)
@@ -211,6 +237,8 @@ class IntelligenceEngine(
 
     companion object {
         private const val TAG = "IntelligenceEngine"
+        /** Shown (translated) in the message's details; see ReasonText. */
+        const val KEYWORD_REASON = "Matched one of your block filters"
 
         fun Entity.toRow(messageId: Long, source: String) = ExtractedEntity(
             messageId = messageId, type = type.name, text = text, value = value, start = start, end = end,

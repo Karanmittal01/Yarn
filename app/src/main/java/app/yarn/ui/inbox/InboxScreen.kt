@@ -301,6 +301,8 @@ fun InboxScreen(
                 contentPadding = PaddingValues(top = 10.dp, bottom = padding.calculateBottomPadding() + 110.dp),
             ) {
                 item(key = "banners", contentType = "banners") {
+                    // Main inbox only: once, at the start of the trial, say what Pro brings and that it's free for now.
+                    if (filter.view == InboxView.ALL && onBack == null) ProWelcomeCard(plan, onOpen = { onNavigate(InboxDestination.Plan) })
                     TrialBanner(plan, onOpen = { onNavigate(InboxDestination.Plan) })
                     crash?.let { report ->
                         CrashBanner(
@@ -436,6 +438,39 @@ internal fun InboxHeader(
 }
 
 /** In the trial's last two days: a reminder, so the end never comes as a surprise. "Later" hides it until Yarn reopens. */
+/** Shown once when the 30-day Pro trial starts: what Pro adds, and that Yarn stays free after. */
+@Composable
+internal fun ProWelcomeCard(plan: app.yarn.billing.Access, onOpen: () -> Unit) {
+    val context = LocalContext.current
+    val licence = remember { (context.applicationContext as? app.yarn.YarnApplication)?.container?.licence }
+    var seen by remember { mutableStateOf(licence?.welcomeSeen ?: false) }
+    if (seen || plan !is app.yarn.billing.Access.Trial || plan.daysLeft <= 2) return
+    val dismiss = { licence?.markWelcomeSeen(); seen = true }
+    ProWelcome(plan.daysLeft, onOpen = { dismiss(); onOpen() }, onDismiss = dismiss)
+}
+
+@Composable
+internal fun ProWelcome(daysLeft: Int, onOpen: () -> Unit, onDismiss: () -> Unit) {
+    androidx.compose.material3.Card(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(22.dp),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+    ) {
+        Column(Modifier.padding(start = 18.dp, end = 8.dp, top = 14.dp, bottom = 4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.AutoAwesome, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                Spacer(Modifier.width(8.dp))
+                Text(pluralStringResource(R.plurals.pro_welcome_title, daysLeft, daysLeft), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
+            Text(stringResource(R.string.pro_welcome_sub), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(top = 4.dp, end = 10.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(R.string.got_it)) }
+                androidx.compose.material3.TextButton(onClick = onOpen) { Text(stringResource(R.string.pro_whats_included)) }
+            }
+        }
+    }
+}
+
 @Composable
 internal fun TrialBanner(plan: app.yarn.billing.Access, onOpen: () -> Unit) {
     var later by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }

@@ -149,7 +149,8 @@ fun YarnNavHost(external: StateFlow<ExternalNav?>, consume: () -> Unit) {
                 highlightMessageId = r.messageId.takeIf { it > 0 },
                 onBack = { nav.popBackStack() },
                 onForward = { nav.navigate(NewChatRoute()) },
-                onClosed = { nav.popBackStack() },
+                // Only while this chat is on top: closing twice must not leave the inbox too.
+                onClosed = { if (nav.currentBackStackEntry?.id == entry.id) nav.popBackStack() },
             )
         }
         composable<NewChatRoute> { entry ->

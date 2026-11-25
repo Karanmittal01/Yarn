@@ -86,10 +86,14 @@ internal fun LazyListScope.smartFeatureItems(
     }
     item { SectionHeader(stringResource(R.string.organise)) }
     item {
+        // Yarn Free sorts codes into the OTP tab; every other tab is Pro.
+        val pro = rememberPro()
         SettingsGroup {
-            SwitchRow(stringResource(R.string.smart_sorting), stringResource(R.string.smart_sorting_sub), s.autoCategorize, enabled = on, icon = Icons.Outlined.Category, tint = Color(0xFF7C5CFF)) { v ->
-                update { it.copy(autoCategorize = v) }
-            }
+            SwitchRow(
+                stringResource(R.string.smart_sorting), stringResource(if (pro) R.string.smart_sorting_sub else R.string.smart_sorting_free_sub),
+                s.autoCategorize, enabled = on, icon = Icons.Outlined.Category, tint = Color(0xFF7C5CFF),
+            ) { v -> update { it.copy(autoCategorize = v) } }
+            if (!pro) ProLockedRow(stringResource(R.string.pro_every_tab), stringResource(R.string.pro_f_tabs))
         }
     }
     item { SectionHeader(stringResource(R.string.assist)) }

@@ -173,6 +173,18 @@ fun ConversationScreen(
         if (listState.firstVisibleItemIndex <= 1 && highlight == null) listState.animateScrollToItem(0)
     }
 
+    // Opened from an old notification or shortcut, or its last message was just deleted: leave.
+    // (Not when the user deleted the chat here: that already closes it.)
+    var leaving by remember { mutableStateOf(false) }
+    val close = { leaving = true; onClosed() }
+    val gone by vm.gone.collectAsStateWithLifecycle()
+    LaunchedEffect(gone) {
+        if (gone && !leaving) {
+            leaving = true
+            android.widget.Toast.makeText(context, R.string.chat_gone, android.widget.Toast.LENGTH_SHORT).show()
+            onClosed()
+        }
+    }
     val conv = conversation
     if (conv == null) {
         Box(Modifier.fillMaxSize())
@@ -297,7 +309,7 @@ fun ConversationScreen(
                                 HorizontalDivider()
                                 DropdownMenuItem(text = { Text(if (conv.spam) stringResource(R.string.not_spam) else stringResource(R.string.report_spam)) }, onClick = { menu = false; vm.markSpam(!conv.spam) })
                                 DropdownMenuItem(text = { Text(if (conv.blocked) stringResource(R.string.unblock) else stringResource(R.string.block)) }, onClick = { menu = false; if (conv.blocked) vm.unblock() else vm.block() })
-                                DropdownMenuItem(text = { Text(stringResource(R.string.archive)) }, onClick = { menu = false; vm.archive(); onClosed() })
+                                DropdownMenuItem(text = { Text(stringResource(R.string.archive)) }, onClick = { menu = false; vm.archive(); close() })
                                 DropdownMenuItem(text = { Text(stringResource(R.string.delete_conversation)) }, onClick = { menu = false; confirmDelete = true })
                             }
                         }
@@ -393,7 +405,7 @@ fun ConversationScreen(
     if (confirmDelete) {
         ConfirmDialog(
             stringResource(R.string.delete_conversation_q), app.yarn.ui.bin.binNote(settings.binDays), stringResource(R.string.delete),
-            onConfirm = { vm.delete(onClosed) }, onDismiss = { confirmDelete = false }, destructive = true,
+            onConfirm = { vm.delete(close) }, onDismiss = { confirmDelete = false }, destructive = true,
         )
     }
     if (confirmDeleteMessages) {

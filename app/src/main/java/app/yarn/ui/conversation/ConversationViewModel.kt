@@ -93,6 +93,10 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     val conversation: StateFlow<ConversationEntity?> = c.db.conversations().observe(conversationId)
         .stateIn(safeScope, SharingStarted.Eagerly, null)
 
+    /** The chat doesn't exist (any more), e.g. opened from an old notification or shortcut. */
+    val gone: StateFlow<Boolean> = c.db.conversations().observe(conversationId).map { it == null }
+        .stateIn(safeScope, SharingStarted.Eagerly, false)
+
     private val _section = MutableStateFlow(openedFrom)
 
     /** The section being shown, or null for the whole chat. A chat the user moved to a category is always whole. */

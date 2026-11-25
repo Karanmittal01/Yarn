@@ -108,17 +108,38 @@ abstract class YarnDatabase : RoomDatabase() {
                 db.openHelper.writableDatabase
                 db
             } catch (e: Exception) {
+                // Messages come back from the phone's own store, but pins, the bin and what Yarn
+                // learned live only here: keep the file aside (it can be recovered by a later fix)
+                // and note it in the error log that "Send feedback" includes.
                 Log.w(TAG, "Encrypted database unreadable; recreating", e)
+                app.yarn.CrashLog.record(IllegalStateException("Database unreadable; kept as $NAME$KEPT_SUFFIX", e), fatal = false)
                 db.close()
-                context.deleteDatabase(NAME)
+                keepAside(context)
                 build(context, key)
             }
         }
 
+        private const val KEPT_SUFFIX = ".unreadable"
+
+        /** Moves the unreadable database out of the way (replacing an older kept copy) instead of deleting it. */
+        private fun keepAside(context: Context) {
+            val file = context.getDatabasePath(NAME)
+            for (suffix in listOf("", "-wal", "-shm")) {
+                val from = java.io.File(file.path + suffix)
+                val to = java.io.File(file.path + KEPT_SUFFIX + suffix)
+                to.delete()
+                if (from.exists() && !from.renameTo(to)) from.delete()
+            }
+            context.deleteDatabase(NAME)
+        }
+
+        /** Every upgrade step, in order; a test checks they reach the newest exported schema. */
+        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+
         private fun build(context: Context, key: ByteArray) =
             Room.databaseBuilder(context, YarnDatabase::class.java, NAME)
                 .openHelperFactory(SupportOpenHelperFactory(key))
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(*ALL_MIGRATIONS)
                 .fallbackToDestructiveMigrationOnDowngrade(true)
                 .build()
     }

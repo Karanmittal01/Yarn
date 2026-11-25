@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class SyncProgress(val running: Boolean = false, val imported: Int = 0)
 
@@ -39,79 +40,106 @@ class TelephonySync(
     /** Forget import cursors, e.g. after restoring a backup into the system store. */
     fun resetCursors() = cursors.edit().clear().apply()
 
+    /**
+     * Imports what's new in the system store. The store is read without holding [providerLock] and
+     * each batch is written under it, so an arriving message, a send or a delivery report waits for
+     * one batch at most, never for a whole first import of years of messages.
+     */
     suspend fun sync(): Int = syncLock.withLock {
         _progress.value = SyncProgress(true, 0)
         var imported = 0
         try {
-            providerLock.withLock {
-                val recipients = store.threadRecipients()
-                val touched = HashSet<Long>()
-                val buffer = ArrayList<MessageEntity>(BATCH)
-                val mmsAttachments = HashMap<Long, List<AttachmentEntity>>()
+            val recipients = store.threadRecipients()
+            val touched = HashSet<Long>()
 
-                suspend fun flush() {
-                    if (buffer.isEmpty()) return
-                    buffer.map { it.conversationId }.distinct().forEach { tid ->
-                        conversations.ensure(tid, recipients[tid] ?: buffer.first { it.conversationId == tid }.address.split(','))
-                    }
-                    val ids = db.messages().insertAll(buffer)
-                    val attachments = ArrayList<AttachmentEntity>()
-                    ids.forEachIndexed { i, id ->
-                        if (id <= 0) return@forEachIndexed
-                        val m = buffer[i]
-                        if (m.kind == MessageKind.MMS) {
-                            mmsAttachments[m.providerId]?.let { list -> attachments += list.map { it.copy(messageId = id) } }
+            /** Writes one batch (under the lock). Rows deleted since they were read are skipped. */
+            suspend fun write(entities: List<MessageEntity>, attachments: Map<Long, List<AttachmentEntity>>) {
+                if (entities.isEmpty()) return
+                val ids = db.messages().insertAll(entities)
+                val rows = ArrayList<AttachmentEntity>()
+                ids.forEachIndexed { i, id ->
+                    if (id <= 0) return@forEachIndexed
+                    val m = entities[i]
+                    if (m.kind == MessageKind.MMS) attachments[m.providerId]?.let { list -> rows += list.map { it.copy(messageId = id) } }
+                    imported++
+                }
+                if (rows.isNotEmpty()) db.messages().insertAttachments(rows)
+                touched += entities.map { it.conversationId }
+                _progress.value = SyncProgress(true, imported)
+            }
+
+            suspend fun ensureConversations(entities: List<MessageEntity>) {
+                entities.map { it.conversationId }.distinct().forEach { tid ->
+                    conversations.ensure(tid, recipients[tid] ?: entities.first { it.conversationId == tid }.address.split(','))
+                }
+            }
+
+            // Cursors are tracked separately from our own inserts so history is never skipped
+            // when new messages arrive before the first import finishes.
+            var lastSms = cursors.getLong(KEY_SMS, 0L)
+            val smsRows = ArrayList<ProviderSms>(BATCH)
+            suspend fun flushSms() {
+                if (smsRows.isEmpty()) return
+                providerLock.withLock {
+                    val alive = store.stillThere(Telephony.Sms.CONTENT_URI, smsRows.map { it.id })
+                    val entities = ArrayList<MessageEntity>(smsRows.size)
+                    for (row in smsRows) {
+                        if (row.id !in alive) continue
+                        if (row.type != Telephony.Sms.MESSAGE_TYPE_INBOX &&
+                            db.messages().byProviderId(MessageKind.SMS, row.id) == null &&
+                            db.messages().ownSendNear(row.threadId, row.body, row.date - DUPLICATE_WINDOW_MS, row.date + DUPLICATE_WINDOW_MS, row.id) != null
+                        ) {
+                            // The phone saved its own copy of a message Yarn sent: drop it, keep ours.
+                            store.deleteSms(row.id)
+                            continue
                         }
-                        imported++
+                        entities += row.toEntity()
                     }
-                    if (attachments.isNotEmpty()) db.messages().insertAttachments(attachments)
-                    touched += buffer.map { it.conversationId }
-                    buffer.clear()
-                    mmsAttachments.clear()
-                    _progress.value = SyncProgress(true, imported)
+                    ensureConversations(entities)
+                    write(entities, emptyMap())
                 }
-
-                // Cursors are tracked separately from our own inserts so history is never skipped
-                // when new messages arrive before the first import finishes.
-                var lastSms = cursors.getLong(KEY_SMS, 0L)
-                store.forEachSms(lastSms) { row ->
-                    lastSms = maxOf(lastSms, row.id)
-                    if (row.type != Telephony.Sms.MESSAGE_TYPE_INBOX &&
-                        db.messages().byProviderId(MessageKind.SMS, row.id) == null &&
-                        db.messages().ownSendNear(row.threadId, row.body, row.date - DUPLICATE_WINDOW_MS, row.date + DUPLICATE_WINDOW_MS, row.id) != null
-                    ) {
-                        // The phone saved its own copy of a message Yarn sent: drop it, keep ours.
-                        store.deleteSms(row.id)
-                        return@forEachSms
-                    }
-                    buffer += row.toEntity()
-                    if (buffer.size >= BATCH) { flush(); cursors.edit().putLong(KEY_SMS, lastSms).apply() }
-                }
-                flush()
+                lastSms = maxOf(lastSms, smsRows.maxOf { it.id })
                 cursors.edit().putLong(KEY_SMS, lastSms).apply()
+                smsRows.clear()
+            }
+            store.forEachSms(lastSms) { row ->
+                smsRows += row
+                if (smsRows.size >= BATCH) flushSms()
+            }
+            flushSms()
 
-                var lastMms = cursors.getLong(KEY_MMS, 0L)
-                val mmsRows = ArrayList<ProviderMms>()
-                store.forEachMms(lastMms) { mmsRows += it }
-                for (row in mmsRows) {
-                    lastMms = maxOf(lastMms, row.id)
-                    val entity = row.toEntity() ?: continue
-                    mmsAttachments[row.id] = row.parts
-                        .filter { !it.contentType.startsWith("text/") && !it.contentType.equals("application/smil", true) }
-                        .map { AttachmentEntity(messageId = 0, mimeType = it.contentType, uri = TelephonyStore.partUri(it.id).toString(), fileName = it.name) }
-                    buffer += entity
-                    if (buffer.size >= BATCH) flush()
+            var lastMms = cursors.getLong(KEY_MMS, 0L)
+            val mmsRows = ArrayList<ProviderMms>()
+            store.forEachMms(lastMms) { mmsRows += it }
+            for (batch in mmsRows.chunked(BATCH)) {
+                providerLock.withLock {
+                    val alive = store.stillThere(Telephony.Mms.CONTENT_URI, batch.map { it.id })
+                    val entities = ArrayList<MessageEntity>(batch.size)
+                    val attachments = HashMap<Long, List<AttachmentEntity>>()
+                    for (row in batch) {
+                        if (row.id !in alive) continue
+                        val entity = row.toEntity() ?: continue
+                        attachments[row.id] = row.parts
+                            .filter { !it.contentType.startsWith("text/") && !it.contentType.equals("application/smil", true) }
+                            .map { AttachmentEntity(messageId = 0, mimeType = it.contentType, uri = TelephonyStore.partUri(it.id).toString(), fileName = it.name) }
+                        entities += entity
+                    }
+                    ensureConversations(entities)
+                    write(entities, attachments)
                 }
-                flush()
+                lastMms = maxOf(lastMms, batch.maxOf { it.id })
                 cursors.edit().putLong(KEY_MMS, lastMms).apply()
-                // Clean up copies imported before this check existed.
-                for (dup in db.messages().duplicatesOfOwnSends()) {
+            }
+            // Clean up copies imported before this check existed.
+            val dups = db.messages().duplicatesOfOwnSends()
+            if (dups.isNotEmpty()) providerLock.withLock {
+                for (dup in dups) {
                     dup.providerId?.let { store.deleteSms(it) }
                     db.messages().delete(listOf(dup.id))
                     touched += dup.conversationId
                 }
-                touched.forEach { db.conversations().refresh(it) }
             }
+            touched.forEach { db.conversations().refresh(it) }
         } catch (e: SecurityException) {
             Log.w(TAG, "No permission to read messages", e)
         } catch (e: Exception) {
@@ -125,19 +153,29 @@ class TelephonySync(
     /**
      * Drops local rows whose provider copy was deleted by another app (e.g. a cleaner or restore
      * tool). Only runs when we can read the provider, and never touches unsent local messages.
+     * Our own rows are listed first, so a message that arrives while the store is being read is
+     * never mistaken for a deleted one; only the deleting is done under [providerLock].
      */
-    suspend fun reconcileDeletions() = providerLock.withLock {
+    suspend fun reconcileDeletions() {
+        val knownSms = db.messages().providerIds(MessageKind.SMS)
+        val knownMms = db.messages().providerIds(MessageKind.MMS)
         val sms = store.existingSmsIds()
         val mms = store.existingMmsIds()
-        if (sms.isEmpty() && mms.isEmpty()) return@withLock // unreadable provider: don't wipe anything
-        val goneSms = db.messages().providerIds(MessageKind.SMS).filter { it !in sms }
-        val goneMms = db.messages().providerIds(MessageKind.MMS).filter { it !in mms }
-        val ids = (goneSms.mapNotNull { db.messages().byProviderId(MessageKind.SMS, it) } + goneMms.mapNotNull { db.messages().byProviderId(MessageKind.MMS, it) })
-            .filter { !it.isPendingOutgoing }
-        if (ids.isNotEmpty()) {
-            db.messages().delete(ids.map { it.id })
-            ids.map { it.conversationId }.distinct().forEach { db.conversations().refresh(it) }
-            db.conversations().deleteEmpty()
+        if (sms.isEmpty() && mms.isEmpty()) return // unreadable provider: don't wipe anything
+        val goneSms = knownSms.filter { it !in sms }
+        val goneMms = knownMms.filter { it !in mms }
+        if (goneSms.isEmpty() && goneMms.isEmpty()) return
+        providerLock.withLock {
+            // Read again under the lock: only what is still missing goes.
+            val stillGoneSms = goneSms.toSet() - store.stillThere(Telephony.Sms.CONTENT_URI, goneSms)
+            val stillGoneMms = goneMms.toSet() - store.stillThere(Telephony.Mms.CONTENT_URI, goneMms)
+            val ids = (stillGoneSms.mapNotNull { db.messages().byProviderId(MessageKind.SMS, it) } + stillGoneMms.mapNotNull { db.messages().byProviderId(MessageKind.MMS, it) })
+                .filter { !it.isPendingOutgoing }
+            if (ids.isNotEmpty()) {
+                db.messages().delete(ids.map { it.id })
+                ids.map { it.conversationId }.distinct().forEach { db.conversations().refresh(it) }
+                db.conversations().deleteEmpty()
+            }
         }
     }
 
@@ -181,5 +219,19 @@ class TelephonySync(
         private const val KEY_SMS = "sms"
         private const val KEY_MMS = "mms"
         private const val DUPLICATE_WINDOW_MS = 180_000L
+    }
+}
+
+/**
+ * Runs [block] holding the lock if it can be had within [waitMs]; otherwise runs it anyway. For
+ * work that must never be lost or stall behind a long job, like storing an arriving message: the
+ * lock only orders it with an import, and the database's unique key stops duplicates either way.
+ */
+suspend fun <T> Mutex.withLockOrAfter(waitMs: Long, block: suspend () -> T): T {
+    val locked = withTimeoutOrNull(waitMs) { lock() } != null
+    try {
+        return block()
+    } finally {
+        if (locked) unlock()
     }
 }

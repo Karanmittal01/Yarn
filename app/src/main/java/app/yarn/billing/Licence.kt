@@ -93,6 +93,10 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
     fun requestPro() { _askPro.value = true }
     fun proShown() { _askPro.value = false }
 
+    /** The card that welcomes someone to their Pro trial is shown until they close it. */
+    val welcomeSeen: Boolean get() = prefs.getBoolean(K_WELCOME_SEEN, false)
+    fun markWelcomeSeen() = prefs.edit { putBoolean(K_WELCOME_SEEN, true) }
+
     /** The page that says Pro ended is shown once, the first time Yarn opens on the free plan. */
     val downgradeSeen: Boolean get() = prefs.getBoolean(K_DOWNGRADE_SEEN, false)
     fun markDowngradeSeen() = prefs.edit { putBoolean(K_DOWNGRADE_SEEN, true) }
@@ -353,6 +357,7 @@ class Licence(private val context: Context, private val scope: CoroutineScope) :
         private const val K_LIFETIME = "lifetime"
         private const val K_PENDING = "pending"
         private const val K_DOWNGRADE_SEEN = "downgrade_seen"
+        private const val K_WELCOME_SEEN = "pro_welcome_seen"
 
         /** Google Play's page for managing or cancelling the subscription. */
         fun manageIntent(context: Context): Intent = Intent(

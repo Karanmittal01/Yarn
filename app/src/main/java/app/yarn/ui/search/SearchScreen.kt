@@ -44,9 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import app.yarn.AppContainer
 import app.yarn.data.repo.ConversationRepository
-import app.yarn.intelligence.Category
 import app.yarn.ui.common.Avatar
-import app.yarn.ui.common.CategoryUi
 import app.yarn.ui.common.Format
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,11 +60,12 @@ import app.yarn.R
 @OptIn(FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SearchViewModel(private val c: AppContainer) : ViewModel() {
     val query = MutableStateFlow("")
-    val category = MutableStateFlow<Category?>(null)
+    /** The inbox tab to search in, by the same names as the inbox. */
+    val category = MutableStateFlow<app.yarn.data.repo.InboxGroup?>(null)
     val starredOnly = MutableStateFlow(false)
 
     val results: StateFlow<ConversationRepository.SearchResults?> = combine(query.debounce(200), category, starredOnly) { q, cat, starred -> Triple(q, cat, starred) }
-        .mapLatest { (q, cat, starred) -> if (q.isBlank()) null else c.conversations.search(q, setOfNotNull(cat), starred) }
+        .mapLatest { (q, cat, starred) -> if (q.isBlank()) null else c.conversations.search(q, cat?.categories.orEmpty(), starred) }
         .stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), null)
 }
 
@@ -100,13 +99,15 @@ fun SearchScreen(vm: SearchViewModel, onBack: () -> Unit, onOpen: (conversationI
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
+            val pro = app.yarn.ui.settings.rememberPro()
             LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item { FilterChip(selected = starred, onClick = { vm.starredOnly.value = !starred }, label = { Text(stringResource(R.string.starred)) }) }
-                items(Category.entries.filter { it != Category.SPAM }) { c ->
+                // The inbox's own tabs; Yarn Free has OTP, as in its inbox.
+                items(app.yarn.data.repo.InboxGroup.entries.filter { pro || it == app.yarn.data.repo.InboxGroup.OTP }) { g ->
                     FilterChip(
-                        selected = category == c,
-                        onClick = { vm.category.value = if (category == c) null else c },
-                        label = { Text(CategoryUi.label(c)) },
+                        selected = category == g,
+                        onClick = { vm.category.value = if (category == g) null else g },
+                        label = { Text(stringResource(g.label)) },
                     )
                 }
             }

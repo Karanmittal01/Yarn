@@ -257,7 +257,8 @@ class BackupManager(
             var skipped = 0
             var meta: BackupMeta? = null
             val pendingMms = ArrayList<BackupMessage>()
-            val media = HashMap<String, ByteArray>()
+            // Photos and videos wait on disk, not in memory: a backup with years of media would not fit.
+            val media = MediaFiles(File(context.cacheDir, "restore-media"))
             context.contentResolver.openInputStream(source).use { raw ->
                 requireNotNull(raw) { "Cannot read the chosen file" }
                 val zip = ZipInputStream(EncryptedStreams.decrypt(passphrase, raw))
@@ -276,14 +277,18 @@ class BackupManager(
                             }
                         }
                         entry.name == "meta.json" -> meta = json.decodeFromString(BackupMeta.serializer(), zip.readBytes().decodeToString())
-                        entry.name.startsWith("media/") || entry.name.startsWith("bin/") || entry.name == PROFILE_PHOTO -> media[entry.name] = zip.readBytes()
+                        entry.name.startsWith("media/") || entry.name.startsWith("bin/") || entry.name == PROFILE_PHOTO -> media.put(entry.name, zip)
                     }
                 }
             }
-            for (m in pendingMms) if (restoreMms(m, media)) restored++ else skipped++
-            _state.value = BackupState.Running(context.getString(R.string.bk_organising), 0, 0)
-            sync.sync()
-            meta?.let { applyMeta(it, media) }
+            try {
+                for (m in pendingMms) if (restoreMms(m, media)) restored++ else skipped++
+                _state.value = BackupState.Running(context.getString(R.string.bk_organising), 0, 0)
+                sync.sync()
+                meta?.let { applyMeta(it, media) }
+            } finally {
+                media.clear()
+            }
             _state.value = BackupState.Done(context.resources.getQuantityString(R.plurals.restored_n, restored, restored) + if (skipped > 0) context.getString(R.string.already_present_n, skipped) else "")
         } catch (e: app.yarn.crypto.BadPassphraseException) {
             _state.value = BackupState.Failed(context.getString(R.string.wrong_passphrase))
@@ -318,7 +323,7 @@ class BackupManager(
         )?.use { it.count > 0 } ?: false
     }.getOrDefault(false)
 
-    private suspend fun restoreMms(m: BackupMessage, media: Map<String, ByteArray>): Boolean = providerLock.withLock {
+    private suspend fun restoreMms(m: BackupMessage, media: MediaFiles): Boolean = providerLock.withLock {
         val exists = runCatching {
             context.contentResolver.query(Telephony.Mms.CONTENT_URI, arrayOf(Telephony.Mms._ID), "${Telephony.Mms.DATE} = ?", arrayOf((m.date / 1000).toString()), null)
                 ?.use { it.count > 0 } ?: false
@@ -338,7 +343,7 @@ class BackupManager(
         ) != null
     }
 
-    private suspend fun applyMeta(meta: BackupMeta, files: Map<String, ByteArray>) {
+    private suspend fun applyMeta(meta: BackupMeta, files: MediaFiles) {
         val current = db.conversations().all()
         for (bc in meta.conversations) {
             val match = current.firstOrNull { it.addresses.toSet() == bc.addresses.toSet() } ?: continue
@@ -366,7 +371,7 @@ class BackupManager(
     }
 
     /** Your settings, language, name and picture. The backup account and this phone's own state stay. */
-    private suspend fun applyYou(meta: BackupMeta, files: Map<String, ByteArray>) {
+    private suspend fun applyYou(meta: BackupMeta, files: MediaFiles) {
         val photo = meta.profilePhoto?.let { files[it] }
             ?.let { bytes -> runCatching { android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull() }
             ?.let { app.yarn.ui.inbox.ProfilePhoto.save(context, it) }
@@ -383,15 +388,15 @@ class BackupManager(
     }
 
     /** Puts deleted messages back in the recycle bin, skipping any that are already there. */
-    private suspend fun restoreBin(items: List<BackupBin>, files: Map<String, ByteArray>, chats: List<app.yarn.data.db.ConversationEntity>) {
+    private suspend fun restoreBin(items: List<BackupBin>, files: MediaFiles, chats: List<app.yarn.data.db.ConversationEntity>) {
         if (items.isEmpty()) return
         val have = db.bin().all().map { Triple(it.address, it.date, it.body) }.toSet()
         val dir = File(context.filesDir, "bin").apply { mkdirs() }
         val rows = items.filter { Triple(it.address, it.date, it.body) !in have }.map { b ->
             val attachments = b.media.mapNotNull { m ->
-                val bytes = files[m.entry] ?: return@mapNotNull null
+                val source = files.file(m.entry) ?: return@mapNotNull null
                 val target = File(dir, java.util.UUID.randomUUID().toString() + (m.name?.substringAfterLast('.', "")?.takeIf { it.isNotEmpty() && it.length <= 5 }?.let { ".$it" } ?: ""))
-                target.writeBytes(bytes)
+                source.copyTo(target, overwrite = true)
                 app.yarn.data.db.BinAttachment(m.mimeType, Uri.fromFile(target).toString(), m.name, target.length())
             }
             app.yarn.data.db.BinEntity(
@@ -415,4 +420,25 @@ class BackupManager(
     companion object {
         private const val PROFILE_PHOTO = "profile/photo.jpg"
     }
+}
+
+/** A backup's photos and videos, kept on disk while restoring; each is read only when it's put back. */
+private class MediaFiles(private val dir: File) {
+    private val files = HashMap<String, File>()
+
+    init {
+        dir.deleteRecursively()
+        dir.mkdirs()
+    }
+
+    /** Copies the current zip entry to disk (the stream stays open for the next entry). */
+    fun put(name: String, input: java.io.InputStream) {
+        val f = File(dir, files.size.toString())
+        f.outputStream().use { input.copyTo(it) }
+        files[name] = f
+    }
+
+    operator fun get(name: String): ByteArray? = files[name]?.readBytes()
+    fun file(name: String): File? = files[name]
+    fun clear() { dir.deleteRecursively() }
 }

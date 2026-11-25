@@ -284,7 +284,7 @@ class ConversationRepository(
         deleteLocalFiles(messages.map { it.id })
         providerLock.withLock { conversationIds.filter { it > 0 }.forEach { store.deleteThread(it) } }
         db.conversations().delete(conversationIds)
-        conversationIds.forEach { notifier.cancel(it) }
+        notifier.forget(conversationIds)
         return kept
     }
 

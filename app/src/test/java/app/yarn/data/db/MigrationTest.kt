@@ -67,4 +67,15 @@ class MigrationTest {
         assertThat(db.bin().all().single().title).isEqualTo("HDFC Bank")
         db.close()
     }
+
+    @Test
+    fun everyExportedSchemaHasAnUpgradePath() {
+        // A new database version exports a new schema file; without a matching migration, phones
+        // updating Yarn would lose pins, the bin and learned sorting.
+        val newest = File("schemas/app.yarn.data.db.YarnDatabase").list()!!.mapNotNull { it.removeSuffix(".json").toIntOrNull() }.max()
+        val steps = YarnDatabase.ALL_MIGRATIONS
+        assertThat(steps.first().startVersion).isEqualTo(1)
+        steps.toList().zipWithNext().forEach { (a, b) -> assertThat(b.startVersion).isEqualTo(a.endVersion) }
+        assertThat(steps.last().endVersion).isEqualTo(newest)
+    }
 }

@@ -29,6 +29,7 @@ import app.yarn.data.db.MessageEntity
 import app.yarn.data.db.YarnDatabase
 import app.yarn.data.prefs.SettingsRepository
 import app.yarn.data.prefs.NotifyMode
+import app.yarn.data.prefs.DEFAULT_NOTIFY
 import app.yarn.data.prefs.notifyFor
 import app.yarn.intelligence.Category
 import app.yarn.intelligence.group
@@ -140,8 +141,9 @@ class Notifier(
         val group = category.group
         val channel = when {
             conversation.spam || group == null -> if (s.notifySpam) CH_SPAM else return
-            !s.sortingOn || !pro() -> CH_MESSAGES
-            else -> when (s.notifyFor(group)) {
+            !s.sortingOn -> CH_MESSAGES
+            // Choosing per tab is Pro; Yarn Free keeps the calm defaults (offers off, updates quiet).
+            else -> when (if (pro()) s.notifyFor(group) else DEFAULT_NOTIFY.getValue(group)) {
                 NotifyMode.OFF -> return
                 NotifyMode.SILENT -> CH_QUIET
                 NotifyMode.SOUND -> if (category == Category.OTP) CH_OTP else CH_MESSAGES
@@ -193,8 +195,18 @@ class Notifier(
             .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ)
             .setShowsUserInterface(false)
             .build()
-        // Codes get the same two actions as other alerts (Mark read, Delete); Android adds its own
-        // "Copy" shortcut for one-time codes, so Yarn doesn't duplicate it.
+        // Samsung and Pixel phones add their own "Copy" button to one-time codes; elsewhere Yarn adds one.
+        val code = if (category == Category.OTP && !systemCopiesCodes) {
+            db.messages().entities(latest.id).firstOrNull { it.type == "OTP" }?.value?.takeIf { it.isNotBlank() }
+        } else null
+        if (code != null) {
+            builder.addAction(
+                NotificationCompat.Action.Builder(
+                    R.drawable.ic_copy, context.getString(R.string.copy_code_n, code),
+                    actionIntent(NotificationActionReceiver.ACTION_COPY_OTP, conversationId, { putExtra(NotificationActionReceiver.EXTRA_TEXT, code) }),
+                ).setShowsUserInterface(false).build(),
+            )
+        }
         run {
             if (latest.body.isNotBlank() && !conversation.spam && conversation.addresses.all { PhoneNumbers.isDialable(it) || PhoneNumbers.isEmail(it) }) {
                 val remoteInput = RemoteInput.Builder(NotificationActionReceiver.KEY_REPLY).setLabel(context.getString(R.string.reply)).build()
@@ -207,7 +219,9 @@ class Notifier(
                 )
             }
             builder.addAction(markRead)
-            builder.addAction(
+            // Delete is for alerts from businesses (codes, offers); one stray tap shouldn't remove a person's message.
+            val business = !conversation.isGroup && conversation.addresses.all { app.yarn.intelligence.SenderNames.isBusiness(it) }
+            if (business) builder.addAction(
                 NotificationCompat.Action.Builder(
                     R.drawable.ic_delete, context.getString(R.string.delete),
                     actionIntent(NotificationActionReceiver.ACTION_DELETE, conversationId, {
@@ -238,6 +252,13 @@ class Notifier(
     }
 
     fun cancel(conversationId: Long) = nm.cancel(conversationId.toInt())
+
+    /** Removes a deleted chat's shortcut (launcher long-press, share sheet) and its notification. */
+    fun forget(conversationIds: Collection<Long>) {
+        if (conversationIds.isEmpty()) return
+        conversationIds.forEach { cancel(it) }
+        runCatching { ShortcutManagerCompat.removeLongLivedShortcuts(context, conversationIds.map { "conversation_$it" }) }
+    }
 
     fun notifyFailed(message: MessageEntity, conversationTitle: String, reason: String) {
         if (!canPost()) return
@@ -313,5 +334,12 @@ class Notifier(
         private const val MMS_BASE = 2_000_000
         private const val FLASH_BASE = 3_000_000
         const val BACKGROUND_ID = 4_000_001
+
+        /**
+         * Whether the phone adds its own "Copy" button to notifications with a one-time code. Samsung's
+         * One UI and Google's Pixel software do; on other phones Yarn adds its own.
+         */
+        val systemCopiesCodes: Boolean =
+            android.os.Build.MANUFACTURER.equals("samsung", ignoreCase = true) || android.os.Build.MANUFACTURER.equals("Google", ignoreCase = true)
     }
 }

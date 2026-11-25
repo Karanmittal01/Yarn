@@ -33,6 +33,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import app.yarn.data.repo.withLockOrAfter
 import java.io.File
 import app.yarn.R
 
@@ -71,20 +72,26 @@ class IncomingProcessor(
         }
         val now = System.currentTimeMillis()
         val dateSent = first.timestampMillis.takeIf { it > 0 } ?: now
-        // Provider row and our row are written under one lock so a concurrent import can't duplicate it.
-        val (id, threadId) = providerLock.withLock {
+        // Provider row and our row are written together, normally under the lock so a concurrent
+        // import can't get between them. An arriving message never waits long for it, though: the
+        // broadcast only lives a few seconds, and a lost text is far worse than a held import.
+        val (id, threadId) = providerLock.withLockOrAfter(LOCK_WAIT_MS) {
             val inserted = store.insertIncomingSms(address, body, now, dateSent, subId, read = false)
             // Not the default SMS app (or provider unavailable): keep a local copy so nothing is lost.
             val threadId = inserted?.second ?: runCatching { store.threadIdFor(setOf(address)) }.getOrElse { -address.hashCode().toLong() }
             conversations.ensure(threadId, listOf(address))
-            db.messages().insert(
+            val row = db.messages().insert(
                 MessageEntity(
                     conversationId = threadId, kind = MessageKind.SMS, providerId = inserted?.first, address = address, body = body,
                     date = now, dateSent = dateSent, outgoing = false, status = MessageStatus.RECEIVED, subId = subId,
                     read = false, seen = false,
                 ),
-            ) to threadId
+            )
+            // An import that ran without the lock already copied it: use that row.
+            val id = if (row > 0) row else inserted?.first?.let { db.messages().byProviderId(MessageKind.SMS, it)?.id } ?: row
+            id to threadId
         }
+        if (id <= 0) return
         afterIncoming(id, threadId, forceSpam = block == ConversationRepository.Block.FILTER)
     }
 
@@ -93,7 +100,7 @@ class IncomingProcessor(
         val ctx = conversations.priorityContext(conversationId)
         val updated = engine.analyzeAndStore(messageId, ctx) ?: return
         if (forceSpam) {
-            db.messages().update(updated.copy(spamVerdict = "SPAM", spamReasons = "Matched one of your block filters"))
+            db.messages().update(updated.copy(spamVerdict = "SPAM", spamReasons = IntelligenceEngine.KEYWORD_REASON))
         }
         // Let Gemini Nano sort messages the rules weren't sure about, before notifying.
         kotlinx.coroutines.withTimeoutOrNull(3_000) { runCatching { smartSorter.sortOne(messageId) } }
@@ -142,7 +149,7 @@ class IncomingProcessor(
         if (db.messages().byContentLocation(n.contentLocation) != null) return // duplicate push
         val from = n.from ?: context.getString(R.string.unknown_sender)
         if (conversations.blockDecision(from, n.subject.orEmpty()) == ConversationRepository.Block.DROP) return
-        val threadId = runCatching { providerLock.withLock { store.threadIdFor(setOf(from)) } }.getOrElse { -from.hashCode().toLong() }
+        val threadId = runCatching { providerLock.withLockOrAfter(LOCK_WAIT_MS) { store.threadIdFor(setOf(from)) } }.getOrElse { -from.hashCode().toLong() }
         conversations.ensure(threadId, listOf(from))
         val now = System.currentTimeMillis()
         val id = db.messages().insert(
@@ -225,7 +232,7 @@ class IncomingProcessor(
         val parts = conf.parts.map(PartToStore::from)
 
         val text = conf.parts.filter { it.isText }.joinToString("\n") { it.text().trim() }.trim()
-        val threadId = providerLock.withLock {
+        val threadId = providerLock.withLockOrAfter(LOCK_WAIT_MS) {
             val threadId = runCatching { store.threadIdFor(participants.toSet()) }.getOrDefault(m.conversationId)
             val saved = store.persistMms(
                 box = Telephony.Mms.MESSAGE_BOX_INBOX, threadId = threadId, from = from, recipients = others,
@@ -243,6 +250,8 @@ class IncomingProcessor(
             }
             db.messages().deleteAttachments(messageId)
             if (attachments.isNotEmpty()) db.messages().insertAttachments(attachments)
+            // If an import copied the stored message first (it ran without the lock), keep this row.
+            saved?.id?.let { pid -> db.messages().byProviderId(MessageKind.MMS, pid)?.takeIf { it.id != messageId }?.let { db.messages().delete(listOf(it.id)) } }
             db.messages().update(
                 m.copy(
                     conversationId = threadId, providerId = saved?.id, address = from, body = text, subject = conf.subject,
@@ -294,5 +303,7 @@ class IncomingProcessor(
 
     companion object {
         private const val TAG = "IncomingProcessor"
+        /** How long an arriving message waits for an import's batch before going ahead anyway. */
+        private const val LOCK_WAIT_MS = 3_000L
     }
 }

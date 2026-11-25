@@ -936,4 +936,17 @@
     <string name="wallpaper_sunset">सूर्यास्त</string>
     <string name="wallpaper_lavender">लैवेंडर</string>
     <string name="wallpaper_dots">बिंदियां</string>
+    <string name="chat_gone">यह चैट अब मौजूद नहीं है</string>
+    <string name="exact_alarm_note">ठीक आपके चुने समय पर भेजने के लिए Yarn को अलार्म सेट करने दें। वरना मैसेज कुछ मिनट देर से जा सकता है।</string>
+    <string name="exact_alarm_allow">ठीक समय की अनुमति दें</string>
+    <string name="logo_request_sending">आपका अनुरोध भेजा जा रहा है…</string>
+    <string name="smart_sorting_free_sub">वन-टाइम कोड को उनके अपने OTP टैब में रखता है।</string>
+    <string name="pro_every_tab">हर टैब</string>
+    <plurals name="pro_welcome_title">
+        <item quantity="one">Yarn Pro %d दिन तक आपके लिए मुफ़्त</item>
+        <item quantity="other">Yarn Pro %d दिन तक आपके लिए मुफ़्त</item>
+    </plurals>
+    <string name="pro_welcome_sub">स्मार्ट टैब, स्पैम सुरक्षा, लोगो, अपने-आप बैकअप और भी बहुत कुछ। उसके बाद भी Yarn मुफ़्त रहेगा, All और OTP टैब के साथ।</string>
+    <string name="pro_whats_included">क्या-क्या मिलता है</string>
+    <string name="got_it">ठीक है</string>
 </resources>

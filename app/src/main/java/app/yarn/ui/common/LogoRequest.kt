@@ -1,7 +1,12 @@
 package app.yarn.ui.common
 
 import android.Manifest
+import android.app.Activity
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.compose.material3.AlertDialog
@@ -16,7 +21,10 @@ import app.yarn.BuildConfig
 import app.yarn.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.resume
 
 /**
  * Asking for a missing logo in one tap: Yarn texts the sender's name and ID to its developer from
@@ -59,13 +67,9 @@ object LogoRequests {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
             return@withContext Outcome.FAILED
         }
-        val ok = runCatching {
-            val sims = context.container.sims
-            val sms = sims.smsManager(sims.resolveSubId(-1))
-            val parts = sms.divideMessage(text(name, address))
-            if (parts.size == 1) sms.sendTextMessage("+$number", null, parts[0], null, null)
-            else sms.sendMultipartTextMessage("+$number", null, parts, null, null)
-        }.isSuccess
+        // Counted as sent only once the phone confirms it went out (no signal, no SIM or no balance
+        // all fail here), so a request that didn't go can be tried again.
+        val ok = withTimeoutOrNull(SENT_TIMEOUT_MS) { sendAndConfirm(context, "+$number", text(name, address)) } ?: false
         if (!ok) return@withContext Outcome.FAILED
         prefs.edit {
             putStringSet(K_SENT, sent + key)
@@ -74,6 +78,43 @@ object LogoRequests {
         Outcome.SENT
     }
 
+    /** Sends one text and waits for the radio's answer for every part: true when all went out. */
+    private suspend fun sendAndConfirm(context: Context, to: String, text: String): Boolean = suspendCancellableCoroutine { cont ->
+        val app = context.applicationContext
+        val action = "${app.packageName}.LOGO_REQUEST_SENT.${System.nanoTime()}"
+        var remaining = 0
+        var failed = false
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, intent: Intent) {
+                if (resultCode != Activity.RESULT_OK) failed = true
+                if (--remaining <= 0) {
+                    runCatching { app.unregisterReceiver(this) }
+                    if (cont.isActive) cont.resume(!failed)
+                }
+            }
+        }
+        ContextCompat.registerReceiver(app, receiver, IntentFilter(action), ContextCompat.RECEIVER_NOT_EXPORTED)
+        cont.invokeOnCancellation { runCatching { app.unregisterReceiver(receiver) } }
+        try {
+            val sims = app.container.sims
+            val sms = sims.smsManager(sims.resolveSubId(-1))
+            val parts = sms.divideMessage(text)
+            remaining = parts.size
+            val sent = ArrayList(parts.indices.map { i ->
+                PendingIntent.getBroadcast(
+                    app, i, Intent(action).setPackage(app.packageName),
+                    PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_MUTABLE,
+                )
+            })
+            if (parts.size == 1) sms.sendTextMessage(to, null, parts[0], sent[0], null)
+            else sms.sendMultipartTextMessage(to, null, parts, sent, null)
+        } catch (e: Exception) {
+            runCatching { app.unregisterReceiver(receiver) }
+            if (cont.isActive) cont.resume(false)
+        }
+    }
+
+    private const val SENT_TIMEOUT_MS = 60_000L
     private const val K_SENT = "sent"
     private const val K_TIMES = "times"
 }
@@ -102,6 +143,7 @@ fun LogoRequestDialog(name: String, address: String, onDismiss: () -> Unit) {
                 onDismiss()
                 // Yarn's own scope: the dialog is already gone when the text goes out.
                 val app = context.applicationContext
+                Toast.makeText(app, R.string.logo_request_sending, Toast.LENGTH_SHORT).show()
                 app.container.scope.launch(Dispatchers.Main) {
                     val note = when (LogoRequests.send(app, name, address)) {
                         LogoRequests.Outcome.SENT -> R.string.logo_requested

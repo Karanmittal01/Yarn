@@ -90,6 +90,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     override suspend fun doWork(): Result {
         val c = applicationContext.container
         c.sync.sync()
+        c.engine.ensureFilters()
         var processed = 0
         val toSort = c.db.messages().unanalyzedCount()
         while (!isStopped) {

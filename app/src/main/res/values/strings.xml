@@ -938,4 +938,17 @@
     <string name="wallpaper_sunset">Sunset</string>
     <string name="wallpaper_lavender">Lavender</string>
     <string name="wallpaper_dots">Dots</string>
+    <string name="chat_gone">This chat no longer exists</string>
+    <string name="exact_alarm_note">To send at exactly the time you pick, allow Yarn to set alarms. Otherwise it may go a few minutes late.</string>
+    <string name="exact_alarm_allow">Allow exact timing</string>
+    <string name="logo_request_sending">Sending your request…</string>
+    <string name="smart_sorting_free_sub">Puts one-time codes in their own OTP tab.</string>
+    <string name="pro_every_tab">Every tab</string>
+    <plurals name="pro_welcome_title">
+        <item quantity="one">Yarn Pro is yours free for %d day</item>
+        <item quantity="other">Yarn Pro is yours free for %d days</item>
+    </plurals>
+    <string name="pro_welcome_sub">Smart tabs, spam protection, logos, automatic backup and more. After that Yarn stays free, with the All and OTP tabs.</string>
+    <string name="pro_whats_included">What\'s included</string>
+    <string name="got_it">Got it</string>
 </resources>

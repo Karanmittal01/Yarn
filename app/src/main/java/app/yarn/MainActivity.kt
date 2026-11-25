@@ -51,8 +51,8 @@ class MainActivity : FragmentActivity() {
     private val container get() = (application as YarnApplication).container
     private val externalNav = MutableStateFlow<ExternalNav?>(null)
     private var locked by mutableStateOf(false)
-    private var backgroundedAt = 0L
-    private var settingsSnapshot = AppSettings()
+    /** Nothing is drawn until Yarn knows whether to show the lock screen, so the inbox never flashes. */
+    private var lockDecided by mutableStateOf(false)
     private lateinit var updates: InAppUpdates
 
     override fun attachBaseContext(newBase: android.content.Context) {
@@ -65,7 +65,13 @@ class MainActivity : FragmentActivity() {
         updates = InAppUpdates(this).also { it.register() }
         lifecycleScope.launch {
             settingsSnapshot = container.settings.current()
-            if (savedInstanceState == null && settingsSnapshot.appLock) locked = true
+            // A new process (first launch, or Android closed Yarn in the background) always asks again.
+            if (settingsSnapshot.appLock && !unlockedInThisProcess) locked = true else unlockedInThisProcess = true
+            relockIfAway(settingsSnapshot)
+            lockDecided = true
+            applyLockToRecents(settingsSnapshot.appLock)
+            // Kept current, so returning to Yarn can lock before its first frame.
+            container.settings.settings.collect { settingsSnapshot = it; applyLockToRecents(it.appLock) }
         }
         if (savedInstanceState == null) handleIntent(intent)
 
@@ -86,7 +92,7 @@ class MainActivity : FragmentActivity() {
             ) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     when {
-                        s == null -> Unit
+                        s == null || !lockDecided -> Unit
                         !s.onboardingDone -> OnboardingScreen(onDone = { clean ->
                             lifecycleScope.launch {
                                 container.settings.update { (clean?.applyTo(it) ?: it).copy(onboardingDone = true) }
@@ -112,7 +118,7 @@ class MainActivity : FragmentActivity() {
                     }
                     val updateReady by updates.readyToInstall.collectAsStateWithLifecycle()
                     var updateLater by androidx.compose.runtime.remember { mutableStateOf(false) }
-                    if (updateReady && !updateLater) {
+                    if (updateReady && !updateLater && s != null && s.onboardingDone && !(locked && s.appLock)) {
                         androidx.compose.material3.AlertDialog(
                             onDismissRequest = {},
                             title = { Text(stringResource(R.string.update_ready)) },
@@ -134,11 +140,21 @@ class MainActivity : FragmentActivity() {
 
     override fun onStart() {
         super.onStart()
-        lifecycleScope.launch {
-            settingsSnapshot = container.settings.current()
-            val s = settingsSnapshot
-            if (s.appLock && backgroundedAt > 0 && SystemClock.elapsedRealtime() - backgroundedAt >= s.lockTimeoutSeconds * 1000L) locked = true
+        // Decided right away from the settings already in memory, before Yarn draws again.
+        relockIfAway(settingsSnapshot)
+    }
+
+    /** Locks again once Yarn has been in the background longer than the chosen time. */
+    private fun relockIfAway(s: AppSettings) {
+        if (s.appLock && backgroundedAt > 0 && SystemClock.elapsedRealtime() - backgroundedAt >= s.lockTimeoutSeconds * 1000L) {
+            unlockedInThisProcess = false
+            locked = true
         }
+    }
+
+    /** With app lock on, the recent-apps screen shows a blank card instead of your messages. */
+    private fun applyLockToRecents(appLock: Boolean) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) setRecentsScreenshotEnabled(!appLock)
     }
 
     override fun onResume() {
@@ -185,6 +201,7 @@ class MainActivity : FragmentActivity() {
         val prompt = BiometricPrompt(this, ContextCompat.getMainExecutor(this), object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                 locked = false
+                unlockedInThisProcess = true
                 backgroundedAt = 0
             }
         })
@@ -236,6 +253,17 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    companion object {
+        /** Unlocked since this process started: rotating the screen doesn't ask again, a restart does. */
+        private var unlockedInThisProcess = false
+
+        /** When Yarn last went to the background, for app lock's timeout (kept across activities). */
+        private var backgroundedAt = 0L
+
+        /** The latest settings, kept for the whole process so a reopened screen can lock at once. */
+        private var settingsSnapshot = AppSettings()
     }
 
     /** sms:123?body=Hello is opaque, so parse the query by hand. */

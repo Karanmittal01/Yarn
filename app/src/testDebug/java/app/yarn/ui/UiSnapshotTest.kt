@@ -568,6 +568,15 @@ class UiSnapshotTest {
         }
     }
 
+    @Test fun proWelcome() = shot(true, "86_inbox_pro_welcome_dark") {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 24.dp)) {
+            app.yarn.ui.inbox.ProWelcome(30, {}, {})
+            storeInbox.take(4).forEach { ConversationRow(it, false, false, {}, {}) }
+        }
+    }
+    @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun proWelcomeHindi() = shot(false, "87_inbox_pro_welcome_hindi") {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 24.dp)) { app.yarn.ui.inbox.ProWelcome(30, {}, {}) }
+    }
     @Test fun cleanupFree() = shot(false, "85_cleanup_free") {
         androidx.compose.runtime.CompositionLocalProvider(app.yarn.ui.settings.LocalPro provides false) {
             app.yarn.ui.cleaner.CleanerContent(app.yarn.ui.cleaner.CleanerState(scanning = false, found = found), app.yarn.ui.cleaner.AutoClean(0, 0, 0, 30), false, false, true, {}, {}, {}, {}, {}, {})
