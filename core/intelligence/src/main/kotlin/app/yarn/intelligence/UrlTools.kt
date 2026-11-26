@@ -72,7 +72,13 @@ object UrlTools {
 
     data class UrlRisk(val url: String, val score: Float, val reasons: List<String>)
 
-    fun assess(url: String): UrlRisk {
+    /**
+     * How risky a link looks. [senderBrand] is the known brand behind the sender (e.g. "icicibank"):
+     * its own short domains ("icici.co") aren't imitations of it. [registeredSender] is a DLT header
+     * (-S, -T, -G): Indian operators only deliver links whitelisted for that sender's templates, so
+     * a link shortener there hides nothing.
+     */
+    fun assess(url: String, senderBrand: String? = null, registeredSender: Boolean = false): UrlRisk {
         val reasons = mutableListOf<String>()
         var score = 0f
         val host = host(url) ?: return UrlRisk(url, 0.3f, listOf("Malformed link"))
@@ -80,7 +86,7 @@ object UrlTools {
         val tld = host.substringAfterLast('.')
         if (IPV4.matches(host)) { score += 0.6f; reasons += "Link points to a raw IP address" }
         if (host.startsWith("xn--") || host.contains(".xn--")) { score += 0.5f; reasons += "Link uses an internationalised lookalike domain" }
-        if (domain in SHORTENERS) { score += 0.3f; reasons += "Link is shortened and hides its destination" }
+        if (domain in SHORTENERS && !registeredSender) { score += 0.3f; reasons += "Link is shortened and hides its destination" }
         if (tld in RISKY_TLDS) { score += 0.35f; reasons += "Link uses a domain ending often abused by scammers (.$tld)" }
         if (url.substringBefore('/').contains('@') || url.replace(SCHEME, "").substringBefore('/').contains('@')) {
             score += 0.5f; reasons += "Link hides its real destination with '@'"
@@ -92,6 +98,8 @@ object UrlTools {
         val deleeted = listOf(deleet(compactHost, 'i'), deleet(compactHost, 'l'))
         val deleetedTokens = hostTokens.map { deleet(it, 'i') }.toSet() + hostTokens.map { deleet(it, 'l') }
         for ((brand, official) in BRANDS) {
+            // The brand's own registered sender may use any of its domains.
+            if (senderBrand != null && senderBrand.contains(brand)) continue
             // Short brand names ("ups", "sbi") must be a whole label to avoid hits like "groups".
             val mentions = if (brand.length <= 5) {
                 brand in hostTokens || brand in deleetedTokens

@@ -72,10 +72,16 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
 
         signals.forEach { sig -> if (sig.pattern.containsMatchIn(text)) hit(sig.weight, sig.reason, sig.scam) }
 
+        // A well-known brand's own registered sender ID (India's DLT headers can't be borrowed):
+        // its alerts are never filtered, whatever their wording.
+        val brand = if (sender.kind == SenderKind.ALPHANUMERIC || sender.kind == SenderKind.SHORT_CODE) SenderNames.brandKey(sender.address) else null
+        val registered = sender.commercialSuffix == CommercialSuffix.SERVICE || sender.commercialSuffix == CommercialSuffix.TRANSACTIONAL ||
+            sender.commercialSuffix == CommercialSuffix.GOVERNMENT
+
         val urls = entities.filter { it.type == EntityType.URL }
         val risky = HashSet<String>()
         urls.forEach { e ->
-            val risk = UrlTools.assess(e.value)
+            val risk = UrlTools.assess(e.value, brand, registered)
             if (risk.score >= 0.3f) {
                 risky += e.value
                 risk.reasons.forEach { hit(minOf(risk.score, 0.7f), it, scam = risk.score >= 0.5f) }
@@ -123,6 +129,7 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
             Regex("(?i)\\b(?:unsubscribe|opt[- ]out|reply stop|txt stop|sms stop|\\d+% off|sale|coupon|offer)\\b").containsMatchIn(text)
 
         val verdict = when {
+            brand != null -> if (promo) SpamVerdict.PROMOTIONAL else SpamVerdict.CLEAN
             scamScore >= sensitivity.scamThreshold -> SpamVerdict.SCAM
             spamScore >= sensitivity.spamThreshold -> SpamVerdict.SPAM
             promo -> SpamVerdict.PROMOTIONAL

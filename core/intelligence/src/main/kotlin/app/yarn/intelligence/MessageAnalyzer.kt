@@ -99,6 +99,8 @@ class MessageAnalyzer(
                 base.copy(verdict = SpamVerdict.CLEAN, score = minOf(base.score, 0.2f), reasons = listOf("You marked a similar message as not spam"))
             }
         }
+        // A known brand's own sender is only filtered when the user says so (above), never by resemblance.
+        if (SenderNames.brandKey(input.sender.address) != null) return base
         val learned = learning.spamPosterior(input) ?: return base
         val combined = 0.6f * base.score + 0.4f * learned
         return when {
