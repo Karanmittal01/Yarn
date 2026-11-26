@@ -849,4 +849,90 @@ class UiSnapshotTest {
     @Test fun store8Private() = shot(true, "store_8_private") {
         app.yarn.ui.settings.SettingsScaffold("Smart features", {}) { smartFeatureItems(app.yarn.data.prefs.AppSettings(), {}, {}, {}) }
     }
+
+    // ---- Demo video (tools/store/video.py): the screens it shows, made-up people and numbers ----
+    private val videoTxn get() = withLogos(
+        item(1, "HDFC Bank", "Rs.2,500.00 debited from A/c XX1234 to VPA swiggy@icici on 24-11-26.", "BANKING", 1, "VM-HDFCBK-S", true, InboxGroup.TRANSACTIONS),
+        item(2, "SBI Card", "Rs 1,299.00 spent on your SBI Credit Card ending 4821 at MYNTRA.", "BANKING", 1, "AD-SBICRD-S", true, InboxGroup.TRANSACTIONS),
+        item(3, "Kotak Bank", "Rs 45,000.00 credited to A/c XX9876 on 24-11-26. Avl bal Rs 61,240.50", "BANKING", 0, "AD-KOTAKB-S", true, InboxGroup.TRANSACTIONS),
+        item(4, "PhonePe", "Paid Rs 349 to Jio Prepaid. UPI Ref 432109876543.", "PAYMENTS", 0, "VM-PHONPE-S", true, InboxGroup.TRANSACTIONS),
+        item(5, "CRED", "Your credit card bill of Rs 12,480 is paid. You earned 1,248 CRED coins.", "BILLS", 0, "JD-CREDIN-S", true, InboxGroup.TRANSACTIONS),
+    )
+    private val videoShop get() = withLogos(
+        item(1, "Swiggy", "Your Swiggy order from Behrouz Biryani is on the way!", "DELIVERY", 1, "AD-SWIGGY-S", true, InboxGroup.SHOPPING),
+        item(2, "Blinkit", "Your order will arrive in 8 minutes. Track it in the app.", "DELIVERY", 1, "VM-BLNKIT-S", true, InboxGroup.SHOPPING),
+        item(3, "Amazon", "Your order of boAt Airdopes has been delivered.", "SHOPPING", 0, "AX-AMAZON-S", true, InboxGroup.SHOPPING),
+        item(4, "Myntra", "Refund of Rs 899 for your return has been processed.", "SHOPPING", 0, "AD-MYNTRA-S", true, InboxGroup.SHOPPING),
+        item(5, "Flipkart", "Your order for Realme Buds is shipped and arrives Thursday.", "SHOPPING", 0, "VM-FLPKRT-S", true, InboxGroup.SHOPPING),
+    )
+    private val videoTravel get() = withLogos(
+        item(1, "IndiGo", "Web check-in is open for your flight 6E 2134 BLR-DEL on 28 Nov.", "TRAVEL", 1, "JD-INDIGO-S", true, InboxGroup.TRAVEL),
+        item(2, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.TRAVEL),
+        item(3, "Uber", "Your Uber is arriving in 3 min. Ravi, white Dzire KA 01 AB 1234.", "TRAVEL", 0, "VM-UBERIN-S", true, InboxGroup.TRAVEL),
+        item(4, "MakeMyTrip", "Your stay at Taj Goa is confirmed for 12-14 Dec. Booking ID NH71234.", "TRAVEL", 0, "VM-MMTRIP-S", true, InboxGroup.TRAVEL),
+        item(5, "Rapido", "Your ride is complete. Fare Rs 86 paid via UPI.", "TRAVEL", 0, "VM-RAPIDO-S", true, InboxGroup.TRAVEL),
+    )
+    private val videoOffers get() = withLogos(
+        item(1, "Zepto", "Sale is LIVE! Get flat 50% off on fruits & veggies. Order now", "PROMOTIONS", 0, "JM-ZEPTON-P", true, InboxGroup.OFFERS),
+        item(2, "Myntra", "End of Reason Sale: 50-80% off on 2 lakh+ styles. Starts tonight!", "PROMOTIONS", 0, "AD-MYNTRA-P", true, InboxGroup.OFFERS),
+        item(3, "Nykaa", "Your favourites are now up to 40% off. Shop the Pink Friday sale.", "PROMOTIONS", 0, "VM-NYKAAF-P", true, InboxGroup.OFFERS),
+        item(4, "bigbasket", "Get Rs 150 off on your next order above Rs 999. Code BB150.", "PROMOTIONS", 0, "VM-BIGBKT-P", true, InboxGroup.OFFERS),
+        item(5, "Airtel", "Get 2 months of Apple Music free with your Airtel plan. Claim now.", "PROMOTIONS", 0, "VM-AIRTEL-P", true, InboxGroup.OFFERS),
+    )
+    @androidx.compose.runtime.Composable
+    private fun VideoTabs(rows: List<InboxItem>, group: InboxGroup) = TabMock(rows, group, storeMe)
+    private fun videoOnboarding(step: Int, name: String, isDefault: Boolean = true, backup: app.yarn.ui.onboarding.OnboardingBackup = app.yarn.ui.onboarding.OnboardingBackup(), you: String = "") =
+        shot(false, name) {
+            app.yarn.ui.onboarding.OnboardingContent(step, isDefault, "", {}, app.yarn.ui.onboarding.AutoCleanChoice(), {}, {}, {}, {}, {}, backup = backup, name = you)
+        }
+    @Test fun video01Welcome() = videoOnboarding(0, "video_01_welcome", isDefault = false)
+    @Test fun video02Default() = videoOnboarding(1, "video_02_default", isDefault = false)
+    @Test fun video03Permissions() = videoOnboarding(2, "video_03_permissions")
+    @Test fun video04Backup() = videoOnboarding(3, "video_04_backup",
+        backup = app.yarn.ui.onboarding.OnboardingBackup("asha.verma@gmail.com", app.yarn.backup.DriveBackup("x", now - 2 * 86_400_000L, 48_000_000, 12306)))
+    @Test fun video05You() = videoOnboarding(4, "video_05_you", you = "Asha Verma")
+    @Test fun video06Clean() = videoOnboarding(5, "video_06_clean")
+    @Test fun video07Welcome() = shot(false, "video_07_inbox_welcome") {
+        val header = app.yarn.ui.inbox.inboxHeaderColor()
+        Column(Modifier.fillMaxSize().background(header)) {
+            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = storeMe, onProfile = {})
+            androidx.compose.foundation.lazy.LazyRow(
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+            ) { items(chips.size) { i -> app.yarn.ui.inbox.GroupChip(chips[i], selected = i == 0) {} } }
+            Column(
+                Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .background(MaterialTheme.colorScheme.surface).padding(top = 10.dp),
+            ) {
+                app.yarn.ui.inbox.ProWelcome(30, {}, {})
+                storeInbox.forEach { ConversationRow(it, false, false, {}, {}) }
+            }
+        }
+    }
+    @Test fun video08Inbox() = shot(false, "video_08_inbox") { InboxMock(storeInbox, storeMe) }
+    @Test fun video09Otp() = shot(false, "video_09_tab_otp") { VideoTabs(storeOtps, InboxGroup.OTP) }
+    @Test fun video10Txn() = shot(false, "video_10_tab_transactions") { VideoTabs(videoTxn, InboxGroup.TRANSACTIONS) }
+    @Test fun video11Shop() = shot(false, "video_11_tab_shopping") { VideoTabs(videoShop, InboxGroup.SHOPPING) }
+    @Test fun video12Travel() = shot(false, "video_12_tab_travel") { VideoTabs(videoTravel, InboxGroup.TRAVEL) }
+    @Test fun video13Offers() = shot(false, "video_13_tab_offers") { VideoTabs(videoOffers, InboxGroup.OFFERS) }
+    @Test fun video14Chat() = shot(false, "video_14_chat") { StoreChat() }
+    @Test fun video15Spam() = shot(false, "video_15_spam") { SpamMock(storeMe) }
+    @Test fun video16Look() = shot(false, "video_16_look") { LookMock(true, app.yarn.ui.theme.Accent.VIOLET, app.yarn.ui.theme.Wallpaper.SUNSET) }
+    @Test fun video17LookChat() = shot(false, "video_17_look_chat") { Themed(false, app.yarn.ui.theme.Accent.VIOLET, app.yarn.ui.theme.Wallpaper.SUNSET) { StoreChat() } }
+    @Test fun video18Clean() = shot(false, "video_18_clean") {
+        app.yarn.ui.cleaner.CleanerContent(app.yarn.ui.cleaner.CleanerState(scanning = false, found = found), app.yarn.ui.cleaner.AutoClean(10, 30, 7), true, false, true, {}, {}, {}, {}, {}, {})
+    }
+    @Test fun video19Backup() = shot(false, "video_19_backup") {
+        app.yarn.ui.settings.SettingsScaffold("Backup", {}) {
+            backupItems(
+                app.yarn.data.prefs.AppSettings(googleAccount = "asha.verma@gmail.com", lastBackupAt = now - 3_600_000, lastBackupBytes = 48_000_000),
+                null, app.yarn.backup.BackupState.Done("Backed up 12,306 messages to Google Drive"), false, null, false, {}, {}, {}, {}, {}, {},
+            )
+        }
+    }
+    @Test fun video20Private() = shot(false, "video_20_private") {
+        app.yarn.ui.settings.SettingsScaffold("Smart features", {}) { smartFeatureItems(app.yarn.data.prefs.AppSettings(), {}, {}, {}) }
+    }
+    @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun video21Hindi() = shot(false, "video_21_hindi") { InboxMock(storeInbox, storeMe) }
+    @Test fun video22Pro() = shot(false, "video_22_pro") { Paywall(app.yarn.billing.Access.Trial(30), back = false) }
 }
