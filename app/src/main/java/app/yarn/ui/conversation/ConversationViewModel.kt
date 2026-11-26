@@ -285,6 +285,34 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
         }
     }
 
+    /**
+     * Reacts to [target] with [emoji], sent as a text in the words iPhones use ("Loved “…”"), which
+     * Google Messages and Yarn show as an emoji on the message. Your own emoji again takes it back.
+     */
+    fun react(target: MessageWithAttachments, emoji: String) {
+        clearSelection()
+        val m = target.message
+        val mine = reactions.replayCache.firstOrNull()?.byMessage?.get(m.id)?.firstOrNull { it.from == null }?.emoji
+        val media = target.attachments.firstOrNull()?.mimeType.orEmpty().let {
+            when {
+                it.startsWith("image/") -> app.yarn.intelligence.SmsReactions.Media.IMAGE
+                it.startsWith("video/") -> app.yarn.intelligence.SmsReactions.Media.VIDEO
+                else -> app.yarn.intelligence.SmsReactions.Media.OTHER
+            }
+        }
+        val body = app.yarn.intelligence.SmsReactions.compose(emoji, m.body.takeIf { it.isNotBlank() }, media, removed = mine == emoji)
+        viewModelScope.launch(app.yarn.CrashLog.handler) {
+            try {
+                c.sender.queue(conversationId, body, emptyList(), _subId.value)
+            } catch (e: Exception) {
+                _events.tryEmit(c.app.getString(R.string.queue_failed, e.message.orEmpty()))
+            }
+        }
+    }
+
+    /** Your own reaction on a message, if any. */
+    fun myReaction(state: Reactions.State, messageId: Long): String? = state.byMessage[messageId]?.firstOrNull { it.from == null }?.emoji
+
     fun sendQuickReply(reply: String) {
         text.value = reply
         send()

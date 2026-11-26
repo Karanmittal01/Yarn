@@ -954,4 +954,7 @@
     <string name="reaction_removed_from">“%2$s” से %1$s हटाया</string>
     <string name="reaction_removed_from_attachment">अटैचमेंट से %1$s हटाया</string>
     <string name="reactions_a11y">प्रतिक्रियाएं: %1$s</string>
+    <string name="reaction_add">%1$s से प्रतिक्रिया दें</string>
+    <string name="reaction_remove">अपना %1$s हटाएं</string>
+    <string name="reaction_sent_as_text">टेक्स्ट की तरह भेजा जाता है, ताकि हर फ़ोन पर दिखे</string>
 </resources>

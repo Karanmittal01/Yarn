@@ -9,6 +9,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -331,7 +336,18 @@ fun ConversationScreen(
                     }
                     conv.blocked -> ReplyBlocker(stringResource(R.string.blocker_blocked), stringResource(R.string.unblock)) { vm.unblock() }
                     !canReply -> ReplyBlocker(stringResource(R.string.blocker_no_reply), null, null)
-                    else -> Composer(
+                    else -> Column {
+                    // One message picked: react to it, in a way other phones show too.
+                    val picked = selection.singleOrNull()?.let { id ->
+                        (0 until items.itemCount).firstNotNullOfOrNull { i -> items.peek(i)?.takeIf { it.message.id == id } }
+                    }?.takeIf { it.message.status in REACTABLE && (it.message.body.isNotBlank() || it.attachments.isNotEmpty()) }
+                    // Keeps the last pick while the tray slides away.
+                    var shown by remember { mutableStateOf<MessageWithAttachments?>(null) }
+                    if (picked != null) shown = picked
+                    androidx.compose.animation.AnimatedVisibility(visible = picked != null) {
+                        shown?.let { target -> ReactionTray(mine = vm.myReaction(reactions, target.message.id)) { vm.react(target, it) } }
+                    }
+                    Composer(
                         text = text, onText = { vm.text.value = it },
                         attachments = attachments, onAddAttachments = vm::addAttachments, onRemoveAttachment = vm::removeAttachment,
                         sims = sims, subId = subId, onSim = vm::setSim,
@@ -340,6 +356,7 @@ fun ConversationScreen(
                         pro = pro.isPro, onPro = context.container.licence::requestPro,
                         isGroupMms = conv.isGroup && settings.groupMms,
                     )
+                    }
                 }
             }
         },
@@ -541,4 +558,40 @@ private fun verdictLabel(verdict: String) = when (verdict) {
     "PROMOTIONAL" -> R.string.verdict_promotional
     "SUSPICIOUS" -> R.string.verdict_suspicious
     else -> R.string.verdict_clean
+}
+
+/** Messages you can react to: ones that were sent or received, not drafts, failures or downloads. */
+private val REACTABLE = setOf(MessageStatus.RECEIVED, MessageStatus.SENT, MessageStatus.DELIVERED)
+
+/** The six reactions every phone understands, above the composer while one message is picked. */
+@Composable
+internal fun ReactionTray(mine: String?, onReact: (String) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+    Surface(
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+        color = colors.surfaceContainerHigh,
+        shadowElevation = 3.dp,
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+    ) {
+        Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                app.yarn.intelligence.SmsReactions.OFFERED.forEach { emoji ->
+                    val chosen = emoji == mine
+                    val label = stringResource(if (chosen) R.string.reaction_remove else R.string.reaction_add, emoji)
+                    Box(
+                        Modifier
+                            .size(46.dp)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(if (chosen) colors.primary.copy(alpha = 0.22f) else Color.Transparent)
+                            .clickable(onClickLabel = label) { onReact(emoji) }
+                            .semantics { contentDescription = label },
+                        contentAlignment = Alignment.Center,
+                    ) { Text(emoji, fontSize = 24.sp) }
+                }
+            }
+            Text(stringResource(R.string.reaction_sent_as_text), style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
+        }
+    }
+    }
 }

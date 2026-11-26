@@ -231,7 +231,7 @@ abstract class MessageDao {
 
     /** Messages that start like a reaction sent as text; [app.yarn.intelligence.SmsReactions] decides which are. */
     @Query(
-        "SELECT id, address, body, date, outgoing FROM messages WHERE conversationId = :conversationId AND (" +
+        "SELECT id, address, body, date, outgoing, status FROM messages WHERE conversationId = :conversationId AND (" +
             "body LIKE 'liked %' OR body LIKE 'loved %' OR body LIKE 'disliked %' OR body LIKE 'laughed at %' OR " +
             "body LIKE 'emphasi%' OR body LIKE 'questioned %' OR body LIKE 'reacted %' OR body LIKE 'removed %') ORDER BY date, id",
     )

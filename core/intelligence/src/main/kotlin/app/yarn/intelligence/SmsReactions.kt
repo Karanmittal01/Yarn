@@ -54,6 +54,33 @@ object SmsReactions {
         return null
     }
 
+    /** The reactions Yarn offers: the six every iPhone and Google Messages understands. */
+    val OFFERED = listOf("👍", "❤️", "😂", "‼️", "❓", "👎")
+
+    private val VERB_FOR = mapOf("👍" to "Liked", "❤️" to "Loved", "😂" to "Laughed at", "‼️" to "Emphasized", "❓" to "Questioned", "👎" to "Disliked")
+    private val REMOVAL_FOR = mapOf("👍" to "a like", "❤️" to "a heart", "😂" to "a laugh", "‼️" to "an exclamation", "❓" to "a question mark", "👎" to "a dislike")
+
+    /** What a reaction says about an attachment: "an image", "a video" or "an attachment". */
+    enum class Media(val words: String) { IMAGE("an image"), VIDEO("a video"), OTHER("an attachment") }
+
+    /**
+     * The text to send for a reaction, worded as iPhones word it so other phones show it as one:
+     * `Loved “see you at 8”`, `Laughed at an image`, `Removed a heart from “see you at 8”`.
+     * [quote] is the message's text; long ones are cut short with "…".
+     */
+    fun compose(emoji: String, quote: String?, media: Media = Media.OTHER, removed: Boolean = false): String {
+        val what = quote?.trim()?.takeIf { it.isNotEmpty() }?.let { q ->
+            "“" + (if (q.length > MAX_QUOTE) q.take(MAX_QUOTE - 20).trimEnd() + "…" else q) + "”"
+        } ?: media.words
+        return if (removed) {
+            "Removed ${REMOVAL_FOR[emoji] ?: emoji} from $what"
+        } else {
+            VERB_FOR[emoji]?.let { "$it $what" } ?: "Reacted $emoji to $what"
+        }
+    }
+
+    private const val MAX_QUOTE = 120
+
     /** Whether [body] is the message that [quote] reacts to. Long messages may be quoted cut short with "…". */
     fun matches(quote: String, body: String): Boolean {
         val q = normalize(quote)

@@ -956,4 +956,7 @@
     <string name="reaction_removed_from">Removed %1$s from “%2$s”</string>
     <string name="reaction_removed_from_attachment">Removed %1$s from an attachment</string>
     <string name="reactions_a11y">Reactions: %1$s</string>
+    <string name="reaction_add">React with %1$s</string>
+    <string name="reaction_remove">Remove your %1$s</string>
+    <string name="reaction_sent_as_text">Sent as a text, so they see it on any phone</string>
 </resources>

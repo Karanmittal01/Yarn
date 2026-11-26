@@ -3,6 +3,7 @@ package app.yarn.messaging
 import android.content.Context
 import app.yarn.R
 import app.yarn.data.db.MessageDao
+import app.yarn.data.db.MessageStatus
 import app.yarn.data.db.ReactionText
 import app.yarn.intelligence.SmsReactions
 
@@ -24,7 +25,8 @@ object Reactions {
 
     suspend fun resolve(dao: MessageDao, conversationId: Long, texts: List<ReactionText>): State {
         if (texts.isEmpty()) return State()
-        val parsed = texts.mapNotNull { t -> SmsReactions.parse(t.body)?.let { t to it } }
+        // A reaction you sent that failed stays a bubble, with its Retry button.
+        val parsed = texts.filterNot { it.outgoing && it.status == MessageStatus.FAILED }.mapNotNull { t -> SmsReactions.parse(t.body)?.let { t to it } }
         if (parsed.isEmpty()) return State()
         val reactionIds = parsed.map { it.first.id }.toSet()
         val current = LinkedHashMap<Pair<Long, String>, String>()

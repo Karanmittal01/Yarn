@@ -52,4 +52,21 @@ class SmsReactionsTest {
         assertThat(SmsReactions.matches("ok", "ok sure")).isFalse()
         assertThat(SmsReactions.matches("see you at 8", "see you at 9")).isFalse()
     }
+
+    @Test
+    fun sendingReactionsInTheWordsPhonesKnow() {
+        assertThat(SmsReactions.compose("❤️", "see you at 8")).isEqualTo("Loved “see you at 8”")
+        assertThat(SmsReactions.compose("😂", null, SmsReactions.Media.IMAGE)).isEqualTo("Laughed at an image")
+        assertThat(SmsReactions.compose("‼️", "Call me", removed = true)).isEqualTo("Removed an exclamation from “Call me”")
+        assertThat(SmsReactions.compose("🙏", "Thanks")).isEqualTo("Reacted 🙏 to “Thanks”")
+        val long = "a".repeat(300)
+        assertThat(SmsReactions.compose("👍", long).length).isLessThan(130)
+        // Whatever Yarn sends, Yarn (and so the other side) reads back as the same reaction on the same message.
+        for (emoji in SmsReactions.OFFERED) for (removed in listOf(false, true)) for (quote in listOf("see you at 8", long, null)) {
+            val r = SmsReactions.parse(SmsReactions.compose(emoji, quote, SmsReactions.Media.VIDEO, removed))!!
+            assertThat(r.emoji).isEqualTo(emoji)
+            assertThat(r.removed).isEqualTo(removed)
+            if (quote != null) assertThat(SmsReactions.matches(r.quote!!, quote)).isTrue() else assertThat(r.media).isTrue()
+        }
+    }
 }

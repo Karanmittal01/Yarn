@@ -263,7 +263,7 @@ data class MessageWithAttachments(
 )
 
 /** A message that may be a reaction sent as text ("Loved “…”"); see messaging.Reactions. */
-data class ReactionText(val id: Long, val address: String, val body: String, val date: Long, val outgoing: Boolean)
+data class ReactionText(val id: Long, val address: String, val body: String, val date: Long, val outgoing: Boolean, val status: Int = MessageStatus.RECEIVED)
 
 /** A message a reaction may point at. */
 data class ReactionTarget(val id: Long, val body: String, val hasAttachments: Boolean)

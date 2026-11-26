@@ -406,7 +406,7 @@ class UiSnapshotTest {
     }
     /** Reactions that came as texts from an iPhone ("Loved “…”") show as emoji on their messages. */
     @androidx.compose.runtime.Composable
-    private fun ReactionsMock() {
+    private fun ReactionsMock(tray: Boolean = false) {
         val noop = app.yarn.ui.conversation.BubbleCallbacks({}, {}, {}, {}, {}, { _, _ -> })
         val D = app.yarn.data.db.MessageStatus.DELIVERED
         val thread = listOf(
@@ -420,13 +420,22 @@ class UiSnapshotTest {
             thread.forEachIndexed { i, m ->
                 val position = app.yarn.ui.conversation.runPosition(thread.getOrNull(i - 1), m, thread.getOrNull(i + 1))
                 app.yarn.ui.conversation.MessageBubble(
-                    app.yarn.data.db.MessageWithAttachments(m, emptyList(), emptyList()), null, false, false, null,
+                    app.yarn.data.db.MessageWithAttachments(m, emptyList(), emptyList()), null, tray && m.id == 4L, false, null,
                     false, noop, position = position, latestSent = m.id == 3L, reactions = reactions[m.id].orEmpty(),
                 )
+            }
+            if (tray) {
+                androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+                app.yarn.ui.conversation.ReactionTray(mine = "😂") {}
             }
         }
     }
     @Test fun reactionsDark() = shot(true, "89_reactions_dark") { ReactionsMock() }
+    @Test fun reactionTray() = shot(true, "92_reaction_tray_dark") {
+        Column(Modifier.fillMaxSize().chatWallpaper().padding(top = 28.dp)) {
+            ReactionsMock(tray = true)
+        }
+    }
     @Test fun reactionsLight() = shot(false, "90_reactions_light") { ReactionsMock() }
     @Test fun reactionInInbox() = shot(true, "91_reaction_in_inbox_dark") {
         InboxMock(rows = listOf(inbox[0].copy(conversation = inbox[0].conversation.copy(snippet = "Loved “I'll book the tickets 🎬”"))) + inbox.drop(1))
