@@ -116,6 +116,12 @@ data class AppSettings(
     val lastBackupBytes: Long = 0,
     /** Version of the sorting rules the stored categories were computed with. */
     val rulesVersion: Int = 0,
+    /** App version (versionCode) every message was last re-sorted with; an update re-sorts once. */
+    val sortedForApp: Int = 0,
+    /** A re-sort after an update that was interrupted resumes after this message id… */
+    val resortCursor: Long = 0,
+    /** …if it was for this app version. */
+    val resortCursorFor: Int = 0,
     /** Yarn's own text size, applied on top of the phone's font size (1 = same as the phone). */
     val textScale: Float = 1f,
 )
@@ -175,6 +181,9 @@ class SettingsRepository(private val context: Context) {
         val lastBackupAt = longPreferencesKey("last_backup_at")
         val lastBackupBytes = longPreferencesKey("last_backup_bytes")
         val rulesVersion = intPreferencesKey("rules_version")
+        val sortedForApp = intPreferencesKey("sorted_for_app")
+        val resortCursor = longPreferencesKey("resort_cursor")
+        val resortCursorFor = intPreferencesKey("resort_cursor_for")
         val textScale = floatPreferencesKey("text_scale")
     }
 
@@ -234,6 +243,9 @@ class SettingsRepository(private val context: Context) {
             p[K.lastBackupAt] = s.lastBackupAt
             p[K.lastBackupBytes] = s.lastBackupBytes
             p[K.rulesVersion] = s.rulesVersion
+            p[K.sortedForApp] = s.sortedForApp
+            p[K.resortCursor] = s.resortCursor
+            p[K.resortCursorFor] = s.resortCursorFor
             p[K.textScale] = s.textScale
         }
     }
@@ -297,6 +309,9 @@ class SettingsRepository(private val context: Context) {
         lastBackupAt = p[K.lastBackupAt] ?: d.lastBackupAt,
         lastBackupBytes = p[K.lastBackupBytes] ?: d.lastBackupBytes,
         rulesVersion = p[K.rulesVersion] ?: d.rulesVersion,
+        sortedForApp = p[K.sortedForApp] ?: d.sortedForApp,
+        resortCursor = p[K.resortCursor] ?: d.resortCursor,
+        resortCursorFor = p[K.resortCursorFor] ?: d.resortCursorFor,
         textScale = p[K.textScale] ?: d.textScale,
     )
 }

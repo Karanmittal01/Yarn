@@ -746,6 +746,19 @@ class UiSnapshotTest {
     @Test fun smartResortIdle() = shot(false, "30_smart_features_resort_button") {
         app.yarn.ui.settings.SettingsScaffold("Smart features", {}) { smartFeatureItems(app.yarn.data.prefs.AppSettings(), {}, {}, {}) }
     }
+    /** After an update: the re-sort bar pinned above the chats, then its "done" state. */
+    @Test fun updateResort() = shot(true, "93_update_resort_dark") {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+            app.yarn.ui.inbox.PinnedJobBar(app.yarn.work.JobProgress(app.yarn.work.JobKind.UPDATING, 3120, 8450))
+            inbox.take(5).forEach { ConversationRow(it, false, false, {}, {}) }
+        }
+    }
+    @Test fun updateResortDone() = shot(false, "94_update_resort_done_light") {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+            app.yarn.ui.inbox.PinnedJobBar(app.yarn.work.JobProgress(app.yarn.work.JobKind.UPDATING, 8450, 8450, complete = true))
+            inbox.take(5).forEach { ConversationRow(it, false, false, {}, {}) }
+        }
+    }
     @Test fun inboxProgress() = shot(false, "31_inbox_progress_bars") {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 24.dp)) {
             app.yarn.ui.inbox.WorkBanners(app.yarn.work.JobProgress(app.yarn.work.JobKind.RESORTING, 3120, 8450), app.yarn.backup.BackupState.Running("Uploading to Google Drive", 45, 100, percent = true), importing = false)

@@ -959,4 +959,6 @@
     <string name="reaction_add">React with %1$s</string>
     <string name="reaction_remove">Remove your %1$s</string>
     <string name="reaction_sent_as_text">Sent as a text, so they see it on any phone</string>
+    <string name="job_updating">Re-sorting all messages with the updated smart sorting</string>
+    <string name="job_done">All messages re-sorted</string>
 </resources>

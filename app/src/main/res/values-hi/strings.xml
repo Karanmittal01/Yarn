@@ -957,4 +957,6 @@
     <string name="reaction_add">%1$s से प्रतिक्रिया दें</string>
     <string name="reaction_remove">अपना %1$s हटाएं</string>
     <string name="reaction_sent_as_text">टेक्स्ट की तरह भेजा जाता है, ताकि हर फ़ोन पर दिखे</string>
+    <string name="job_updating">नई स्मार्ट सॉर्टिंग से सभी मैसेज फिर से छांटे जा रहे हैं</string>
+    <string name="job_done">सभी मैसेज फिर से छांट दिए गए</string>
 </resources>

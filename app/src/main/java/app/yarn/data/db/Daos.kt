@@ -440,6 +440,13 @@ abstract class MessageDao {
     @Query("SELECT * FROM messages ORDER BY id ASC LIMIT :limit OFFSET :offset")
     abstract suspend fun page(limit: Int, offset: Int): List<MessageEntity>
 
+    /** The next [limit] messages after [afterId], oldest id first: a re-sort can stop and resume here. */
+    @Query("SELECT * FROM messages WHERE id > :afterId ORDER BY id ASC LIMIT :limit")
+    abstract suspend fun pageAfter(afterId: Long, limit: Int): List<MessageEntity>
+
+    @Query("SELECT COUNT(*) FROM messages WHERE id <= :id")
+    abstract suspend fun countUpTo(id: Long): Int
+
     // ---- attachments & entities -------------------------------------------------------------
 
     @Insert

@@ -295,9 +295,12 @@ fun InboxScreen(
                 .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                 .background(sheet),
         ) {
+            Column(Modifier.fillMaxSize()) {
+            // Re-sorting stays pinned at the top while you scroll, so you can watch chats find their tabs.
+            PinnedJobBar(job.takeUnless { status.sync.running })
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(top = 10.dp, bottom = padding.calculateBottomPadding() + 110.dp),
             ) {
                 item(key = "banners", contentType = "banners") {
@@ -311,7 +314,7 @@ fun InboxScreen(
                         )
                     }
                     StatusBanners(status, onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } })
-                    WorkBanners(job, backupState, importing = status.sync.running)
+                    WorkBanners(null, backupState, importing = status.sync.running)
                     CleanBanners(
                         report = settings.autoCleanReport, junk = if (status.isDefault) junk else 0,
                         onClean = { onNavigate(InboxDestination.Cleanup) },
@@ -355,6 +358,7 @@ fun InboxScreen(
                 if (!list.isNullOrEmpty()) {
                     item(key = "count", contentType = "count") { InboxCount(list) }
                 }
+            }
             }
             // Far down a long list: one tap back to the newest, like Google Messages.
             val far by remember { derivedStateOf { listState.firstVisibleItemIndex > 8 } }
@@ -849,6 +853,30 @@ private fun StatusBanners(status: InboxStatus, onSetDefault: () -> Unit) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)) {
             Text(stringResource(R.string.organising, status.sync.imported), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).clip(CircleShape))
+        }
+    }
+}
+
+/** Sorting and re-sorting, pinned above the chats: "Re-sorting all messages with the updated smart sorting". */
+@Composable
+internal fun PinnedJobBar(job: app.yarn.work.JobProgress?) {
+    AnimatedVisibility(
+        job != null,
+        enter = androidx.compose.animation.fadeIn(app.yarn.ui.theme.Motion.fade(240)) + androidx.compose.animation.expandVertically(app.yarn.ui.theme.Motion.size),
+        exit = androidx.compose.animation.fadeOut(app.yarn.ui.theme.Motion.fade(180)) + androidx.compose.animation.shrinkVertically(app.yarn.ui.theme.Motion.size),
+    ) {
+        // Keeps showing the last state while it slides away.
+        var last by remember { mutableStateOf(job) }
+        if (job != null) last = job
+        last?.let {
+            app.yarn.ui.common.JobProgressBar(
+                it,
+                Modifier
+                    .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 2.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            )
         }
     }
 }

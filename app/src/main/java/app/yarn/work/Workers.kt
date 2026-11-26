@@ -1,6 +1,7 @@
 package app.yarn.work
 
 import android.content.Context
+import androidx.room.withTransaction
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -111,7 +112,8 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         c.progress.finish(JobKind.SORTING)
         runCatching { c.smartSorter.sortRecent(limit = 60) }
         val firstImport = !c.settings.current().initialImportDone
-        c.settings.update { it.copy(initialImportDone = true) }
+        // The first import sorted everything with this version's rules: no re-sort needed until the next update.
+        c.settings.update { it.copy(initialImportDone = true, sortedForApp = if (firstImport) app.yarn.BuildConfig.VERSION_CODE else it.sortedForApp) }
         // Auto-clean chosen during setup runs right after the first import, not hours later.
         if (firstImport && app.yarn.telephony.DefaultSmsApp.isDefault(applicationContext)) runCatching { c.cleaner.autoClean() }
         return Result.success()
@@ -129,41 +131,73 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     }
 }
 
-/** Re-runs analysis for all messages after the user changes sensitivity or resets learning. */
+/**
+ * Re-runs analysis for every message: after an app update (with improved smart sorting), and after
+ * the user changes spam sensitivity or resets learning. Works in batches, each saved in one
+ * transaction, so chats move to their new tabs as it goes; an update's re-sort resumes where it
+ * stopped if Android ends it early.
+ */
 class ReanalyzeWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val c = applicationContext.container
+        val afterUpdate = inputData.getBoolean(KEY_UPDATE, false)
+        val kind = if (afterUpdate) JobKind.UPDATING else JobKind.RESORTING
+        val version = app.yarn.BuildConfig.VERSION_CODE
         c.engine.reload()
-        var offset = 0
-        val touched = HashSet<Long>()
+        c.engine.ensureFilters()
+        val start = c.settings.current().let { if (afterUpdate && it.resortCursorFor == version) it.resortCursor else 0L }
         val total = c.db.messages().count()
-        c.progress.update(JobKind.RESORTING, 0, total)
+        var done = if (start > 0) c.db.messages().countUpTo(start) else 0
+        var cursor = start
+        c.progress.update(kind, done, total)
         try {
-        while (!isStopped) {
-            val page = c.db.messages().page(500, offset)
-            if (page.isEmpty()) break
-            for (m in page) {
-                if (m.outgoing) continue
-                val (updated, entities) = c.engine.annotate(m)
-                c.db.messages().update(updated)
-                c.db.messages().replaceEntities(m.id, "rules", entities)
-                touched += m.conversationId
+            while (!isStopped) {
+                val page = c.db.messages().pageAfter(cursor, BATCH)
+                if (page.isEmpty()) break
+                val touched = HashSet<Long>()
+                c.db.withTransaction {
+                    for (m in page) {
+                        if (m.outgoing) continue
+                        val (updated, entities) = c.engine.annotate(m)
+                        c.db.messages().update(updated)
+                        c.db.messages().replaceEntities(m.id, "rules", entities)
+                        touched += m.conversationId
+                    }
+                    touched.forEach { c.db.conversations().refresh(it) }
+                }
+                cursor = page.last().id
+                done += page.size
+                c.progress.update(kind, done, maxOf(total, done))
+                if (afterUpdate) c.settings.update { it.copy(resortCursor = cursor, resortCursorFor = version) }
             }
-            offset += page.size
-            c.progress.update(JobKind.RESORTING, offset, maxOf(total, offset))
-        }
-        touched.forEach { c.db.conversations().refresh(it) }
-        // Let the on-device model take a second look at whatever the rules were unsure about.
-        if (!isStopped) runCatching { c.smartSorter.sortRecent(limit = 150) }
+            if (isStopped) return Result.retry()
+            // Every message now carries this version's sorting.
+            c.settings.update { it.copy(sortedForApp = version, resortCursor = 0, resortCursorFor = 0) }
+            c.progress.complete(kind, maxOf(total, done))
+            // Let the on-device model take a second look at whatever the rules were unsure about.
+            runCatching { c.smartSorter.sortRecent(limit = 150) }
+            if (afterUpdate) kotlinx.coroutines.delay(4_000)
         } finally {
-            c.progress.finish(JobKind.RESORTING)
+            c.progress.finish(kind)
         }
         return Result.success()
     }
 
     companion object {
+        private const val KEY_UPDATE = "after_update"
+        private const val BATCH = 400
+
+        /** After a settings change: start over, replacing any re-sort under way. */
         fun enqueue(context: Context) {
             WorkManager.getInstance(context).enqueueUniqueWork("reanalyze", ExistingWorkPolicy.REPLACE, OneTimeWorkRequestBuilder<ReanalyzeWorker>().build())
+        }
+
+        /** After an app update: once, resuming an interrupted run rather than restarting a running one. */
+        fun enqueueAfterUpdate(context: Context) {
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "reanalyze", ExistingWorkPolicy.KEEP,
+                OneTimeWorkRequestBuilder<ReanalyzeWorker>().setInputData(workDataOf(KEY_UPDATE to true)).build(),
+            )
         }
     }
 }

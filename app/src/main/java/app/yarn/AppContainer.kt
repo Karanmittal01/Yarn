@@ -131,12 +131,13 @@ class AppContainer(val app: Application) {
         scope.launch {
             val s = settings.current()
             GoogleBackupWorker.schedule(app, s.googleAccount != null && s.autoBackup)
-            // Sorting rules improved since these messages were filed: re-sort once.
-            if (s.initialImportDone && s.rulesVersion < YarnApplication.RULES_VERSION) {
-                db.messages().resetModelCategories()
-                ReanalyzeWorker.enqueue(app)
-            }
-            if (s.rulesVersion < YarnApplication.RULES_VERSION) settings.update { it.copy(rulesVersion = YarnApplication.RULES_VERSION) }
+            // After every update, re-sort every message once with the new smart sorting (resuming if
+            // an earlier run was cut short). When the rules themselves changed, the on-device model's
+            // earlier picks are redone too.
+            val newRules = s.rulesVersion < YarnApplication.RULES_VERSION
+            if (s.initialImportDone && newRules) db.messages().resetModelCategories()
+            if (newRules) settings.update { it.copy(rulesVersion = YarnApplication.RULES_VERSION) }
+            if (s.initialImportDone && (newRules || s.sortedForApp != BuildConfig.VERSION_CODE)) ReanalyzeWorker.enqueueAfterUpdate(app)
         }
         // Prepare the free on-device models in the background (no-ops when unsupported).
         scope.launch {
