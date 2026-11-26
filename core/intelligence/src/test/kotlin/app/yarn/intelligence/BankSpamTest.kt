@@ -13,6 +13,9 @@ class BankSpamTest {
     fun aBanksOwnAlertsAndLinksAreNotSpam() {
         assertThat(verdict("JD-ICICIT-S", "Rs 5,656.92 spent on ICICI Bank Card XX4001 on 26-Nov-26 at PAY*ATRIA CONVERGENCE. Avl Lmt: Rs 2,94,343.08. If not you, call 1800 2662/SMS BLOCK 4001 to 9215676766"))
             .isEqualTo(SpamVerdict.CLEAN)
+        // The tester's message, word for word: its EMI link on icici.co used to read as a fake ICICI site.
+        assertThat(verdict("JD-ICICIT-S", "Rs 5,656.92 spent on ICICI Bank Card XX4001 on 26-Nov-26 at PAY*ATRIA CONVE. Avl Lmt: Rs 2,96,489.08. To dispute, call 18002662/SMS BLOCK 4001 to 9215676766. To convert this txn to EMI give a missed call on 9924667667. Know more about EMI conversion at https://icici.co/ICICIT/a/LEd4nPjg"))
+            .isEqualTo(SpamVerdict.CLEAN)
         // ICICI's own short domain isn't an imitation of ICICI when ICICI sends it.
         assertThat(verdict("VM-ICICIB-S", "Important update regarding changes to the features and charges of your ICICI Bank Credit Card. Click https://icici.co/T7jK2 to know more."))
             .isEqualTo(SpamVerdict.CLEAN)
