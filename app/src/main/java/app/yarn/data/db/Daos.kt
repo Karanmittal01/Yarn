@@ -229,6 +229,25 @@ abstract class MessageDao {
     @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY date DESC, id DESC LIMIT :limit")
     abstract suspend fun recent(conversationId: Long, limit: Int): List<MessageEntity>
 
+    /** Messages that start like a reaction sent as text; [app.yarn.intelligence.SmsReactions] decides which are. */
+    @Query(
+        "SELECT id, address, body, date, outgoing FROM messages WHERE conversationId = :conversationId AND (" +
+            "body LIKE 'liked %' OR body LIKE 'loved %' OR body LIKE 'disliked %' OR body LIKE 'laughed at %' OR " +
+            "body LIKE 'emphasi%' OR body LIKE 'questioned %' OR body LIKE 'reacted %' OR body LIKE 'removed %') ORDER BY date, id",
+    )
+    abstract fun reactionTexts(conversationId: Long): Flow<List<ReactionText>>
+
+    /** Messages up to [before] whose text starts with [startLike] (a LIKE pattern), newest first. */
+    @Query(
+        "SELECT id, body, hasAttachments FROM messages WHERE conversationId = :conversationId AND date <= :before AND " +
+            "body LIKE :startLike ESCAPE '\\' ORDER BY date DESC, id DESC LIMIT 25",
+    )
+    abstract suspend fun reactionTargets(conversationId: Long, before: Long, startLike: String): List<ReactionTarget>
+
+    /** The newest photo, video or other attachment up to [before]. */
+    @Query("SELECT id, body, hasAttachments FROM messages WHERE conversationId = :conversationId AND date <= :before AND hasAttachments = 1 ORDER BY date DESC, id DESC LIMIT 1")
+    abstract suspend fun latestAttachmentBefore(conversationId: Long, before: Long): ReactionTarget?
+
     @Query("SELECT * FROM messages WHERE conversationId = :conversationId AND read = 0 AND outgoing = 0 ORDER BY date ASC")
     abstract suspend fun unread(conversationId: Long): List<MessageEntity>
 

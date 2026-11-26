@@ -638,7 +638,8 @@ fun ConversationRow(
     val snippet = when (c.snippet) {
         "Multimedia message" -> stringResource(R.string.mms_title)
         "Attachment" -> stringResource(R.string.attachment)
-        else -> c.snippet
+        // A reaction sent as text ("Loved “…”") reads as one.
+        else -> remember(c.snippet) { app.yarn.messaging.Reactions.describe(context, c.snippet) } ?: c.snippet
     }
     val preview = when {
         !c.draft.isNullOrBlank() -> stringResource(R.string.draft_prefix, c.draft.orEmpty())

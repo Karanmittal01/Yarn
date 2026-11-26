@@ -951,4 +951,9 @@
     <string name="pro_welcome_sub">Smart tabs, spam protection, logos, automatic backup and more. After that Yarn stays free, with the All and OTP tabs.</string>
     <string name="pro_whats_included">What\'s included</string>
     <string name="got_it">Got it</string>
+    <string name="reacted_to">Reacted %1$s to “%2$s”</string>
+    <string name="reacted_to_attachment">Reacted %1$s to an attachment</string>
+    <string name="reaction_removed_from">Removed %1$s from “%2$s”</string>
+    <string name="reaction_removed_from_attachment">Removed %1$s from an attachment</string>
+    <string name="reactions_a11y">Reactions: %1$s</string>
 </resources>

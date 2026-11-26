@@ -949,4 +949,9 @@
     <string name="pro_welcome_sub">स्मार्ट टैब, स्पैम सुरक्षा, लोगो, अपने-आप बैकअप और भी बहुत कुछ। उसके बाद भी Yarn मुफ़्त रहेगा, All और OTP टैब के साथ।</string>
     <string name="pro_whats_included">क्या-क्या मिलता है</string>
     <string name="got_it">ठीक है</string>
+    <string name="reacted_to">“%2$s” पर %1$s प्रतिक्रिया दी</string>
+    <string name="reacted_to_attachment">अटैचमेंट पर %1$s प्रतिक्रिया दी</string>
+    <string name="reaction_removed_from">“%2$s” से %1$s हटाया</string>
+    <string name="reaction_removed_from_attachment">अटैचमेंट से %1$s हटाया</string>
+    <string name="reactions_a11y">प्रतिक्रियाएं: %1$s</string>
 </resources>

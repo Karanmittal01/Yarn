@@ -158,7 +158,7 @@ class Notifier(
         for (m in unread) {
             val text = when {
                 !s.showNotificationPreviews -> context.getString(R.string.shortcut_new_message)
-                m.body.isNotBlank() -> m.body
+                m.body.isNotBlank() -> app.yarn.messaging.Reactions.describe(context, m.body) ?: m.body
                 m.hasAttachments -> context.getString(R.string.notif_attachment)
                 else -> context.getString(R.string.mms_title)
             }

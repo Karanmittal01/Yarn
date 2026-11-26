@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -145,6 +147,8 @@ fun MessageBubble(
     latestSent: Boolean = false,
     /** Group chats: room for the sender's picture beside incoming bubbles, drawn on a run's last bubble. */
     senderAvatar: (@Composable () -> Unit)? = null,
+    /** Reactions on this message, as (emoji, who) — "You" for your own. */
+    reactions: List<Pair<String, String>> = emptyList(),
 ) {
     val m = item.message
     val context = LocalContext.current
@@ -206,6 +210,7 @@ fun MessageBubble(
         // A small translate symbol sits beside an incoming bubble, so it adds no height to the chat.
         val showTranslate = !outgoing && (translateTo != null || translation != null)
         Row(verticalAlignment = Alignment.Bottom) {
+        Box {
         Surface(
             color = container,
             contentColor = content,
@@ -251,6 +256,15 @@ fun MessageBubble(
                 }
             }
         }
+        // Reactions hang off the bubble's bottom corner, on the side away from the sender.
+        if (reactions.isNotEmpty()) {
+            ReactionPill(
+                reactions,
+                Modifier.align(if (outgoing) Alignment.BottomStart else Alignment.BottomEnd)
+                    .offset(x = if (outgoing) (-4).dp else 4.dp, y = 18.dp),
+            )
+        }
+        }
         if (showTranslate) {
             TranslateIcon(
                 translation, translateTo, onTranslate = { mobile -> callbacks.onTranslate(item, mobile) },
@@ -258,6 +272,7 @@ fun MessageBubble(
             )
         }
         }
+        if (reactions.isNotEmpty()) Spacer(Modifier.height(16.dp))
         if (showMeta) Row(Modifier.padding(start = 6.dp, end = 6.dp, top = 3.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             if (m.starred) Icon(Icons.Outlined.Star, null, Modifier.padding(end = 3.dp).size(12.dp), tint = colors.tertiary)
             val meta = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp, letterSpacing = 0.1.sp)
@@ -293,6 +308,33 @@ fun MessageBubble(
             confirmButton = { TextButton(onClick = { pendingRiskyUrl = null }) { Text(stringResource(R.string.stay_safe)) } },
             dismissButton = { TextButton(onClick = { pendingRiskyUrl = null; Actions.openUrl(context, url) }) { Text(stringResource(R.string.open_anyway), color = colors.error) } },
         )
+    }
+}
+
+/** The emoji people reacted with, counted ("❤️ 2"); tap to see who. */
+@Composable
+private fun ReactionPill(reactions: List<Pair<String, String>>, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val colors = MaterialTheme.colorScheme
+    val counted = reactions.groupBy { it.first }.map { (emoji, who) -> emoji to who.size }
+    val who = reactions.joinToString(" · ") { (emoji, name) -> "$name $emoji" }
+    val label = stringResource(R.string.reactions_a11y, who)
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = colors.surfaceContainerHighest,
+        border = androidx.compose.foundation.BorderStroke(2.dp, colors.surface),
+        shadowElevation = 1.dp,
+        modifier = modifier
+            .clip(RoundedCornerShape(50))
+            .clickable { Toast.makeText(context, who, Toast.LENGTH_SHORT).show() }
+            .semantics { contentDescription = label },
+    ) {
+        Row(Modifier.padding(horizontal = 7.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            counted.forEach { (emoji, n) ->
+                Text(emoji, fontSize = 14.sp)
+                if (n > 1) Text("$n", style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant, modifier = Modifier.padding(start = 2.dp, end = 3.dp))
+            }
+        }
     }
 }
 

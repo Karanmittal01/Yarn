@@ -117,6 +117,7 @@ fun ConversationScreen(
     val rewrite by vm.rewrite.collectAsStateWithLifecycle()
     val isDefault by vm.isDefault.collectAsStateWithLifecycle()
     val participants by vm.participants.collectAsStateWithLifecycle()
+    val reactions by vm.reactions.collectAsStateWithLifecycle(app.yarn.messaging.Reactions.State())
     val settings by vm.settings.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -394,6 +395,9 @@ fun ConversationScreen(
                             senderAvatar = if (conv.isGroup && !item.message.outgoing) {
                                 { Avatar(vm.senderName(item.message.address), participants[item.message.address]?.photoUri, size = 28.dp) }
                             } else null,
+                            reactions = reactions.byMessage[item.message.id].orEmpty().map { r ->
+                                r.emoji to (r.from?.let { vm.senderName(it) } ?: stringResource(R.string.you))
+                            },
                         )
                     }
                 }

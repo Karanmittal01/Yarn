@@ -8,6 +8,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import androidx.paging.filter
 import app.yarn.AppContainer
 import app.yarn.ai.AssistantSummary
 import app.yarn.ai.Engine
@@ -25,6 +26,7 @@ import app.yarn.intelligence.SpamVerdict
 import app.yarn.intelligence.SummaryMessage
 import app.yarn.messaging.AttachmentDraft
 import app.yarn.messaging.MediaTools
+import app.yarn.messaging.Reactions
 import app.yarn.telephony.PhoneNumbers
 import app.yarn.telephony.SimInfo
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +41,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
@@ -108,11 +113,22 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
         markReadNow()
     }
 
-    val messages: Flow<PagingData<MessageWithAttachments>> = section.flatMapLatest { s ->
+    /** Reactions that came as text ("Loved “…”"), shown as emoji on the messages they're about. */
+    val reactions: SharedFlow<Reactions.State> = c.db.messages().reactionTexts(conversationId)
+        .mapLatest { Reactions.resolve(c.db.messages(), conversationId, it) }
+        .flowOn(Dispatchers.IO)
+        .shareIn(safeScope, SharingStarted.Eagerly, replay = 1)
+
+    private val pages: Flow<PagingData<MessageWithAttachments>> = section.flatMapLatest { s ->
         Pager(PagingConfig(pageSize = 40, prefetchDistance = 40, enablePlaceholders = true, initialLoadSize = 80)) {
             if (s == null) c.db.messages().paging(conversationId) else c.db.messages().pagingIn(conversationId, s.categories.map { it.name })
         }.flow
     }.cachedIn(viewModelScope)
+
+    /** The chat, without reaction texts that now show as emoji on their message. */
+    val messages: Flow<PagingData<MessageWithAttachments>> = combine(pages, reactions.map { it.hidden }.distinctUntilChanged()) { page, hidden ->
+        if (hidden.isEmpty()) page else page.filter { it.message.id !in hidden }
+    }
 
     val sims: StateFlow<List<SimInfo>> = c.sims.sims
     val isDefault = c.isDefaultSmsApp
@@ -212,7 +228,8 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     private fun refreshInsights() {
         smartJob?.cancel()
         smartJob = viewModelScope.launch(Dispatchers.Default + app.yarn.CrashLog.handler) {
-            val recent = c.db.messages().recent(conversationId, 12)
+            // Reactions sent as text ("Loved “…”") aren't something to reply to.
+            val recent = c.db.messages().recent(conversationId, 12).filter { app.yarn.intelligence.SmsReactions.parse(it.body) == null }
             val conv = conversation.value ?: return@launch
             val lastIncoming = recent.firstOrNull { !it.outgoing }
             _scam.value = lastIncoming?.let { m ->

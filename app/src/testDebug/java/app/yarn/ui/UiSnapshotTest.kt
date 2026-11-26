@@ -404,6 +404,33 @@ class UiSnapshotTest {
             }
         }
     }
+    /** Reactions that came as texts from an iPhone ("Loved “…”") show as emoji on their messages. */
+    @androidx.compose.runtime.Composable
+    private fun ReactionsMock() {
+        val noop = app.yarn.ui.conversation.BubbleCallbacks({}, {}, {}, {}, {}, { _, _ -> })
+        val D = app.yarn.data.db.MessageStatus.DELIVERED
+        val thread = listOf(
+            msg(1, "Kal shaam ko milte hain? Movie dekhne chalenge", false, 1, 62),
+            msg(2, "Perfect, see you at 7", true, 1, 12, D),
+            msg(3, "I'll book the tickets 🎬", true, 1, 11, D),
+            msg(4, "You're the best!! Popcorn on me 🍿", false, 1, 5),
+        ).map { it.message }
+        val reactions = mapOf(2L to listOf("👍" to "Karan Mittal"), 3L to listOf("❤️" to "Karan Mittal"), 4L to listOf("😂" to "You"))
+        Column(Modifier.fillMaxSize().chatWallpaper().padding(top = 28.dp)) {
+            thread.forEachIndexed { i, m ->
+                val position = app.yarn.ui.conversation.runPosition(thread.getOrNull(i - 1), m, thread.getOrNull(i + 1))
+                app.yarn.ui.conversation.MessageBubble(
+                    app.yarn.data.db.MessageWithAttachments(m, emptyList(), emptyList()), null, false, false, null,
+                    false, noop, position = position, latestSent = m.id == 3L, reactions = reactions[m.id].orEmpty(),
+                )
+            }
+        }
+    }
+    @Test fun reactionsDark() = shot(true, "89_reactions_dark") { ReactionsMock() }
+    @Test fun reactionsLight() = shot(false, "90_reactions_light") { ReactionsMock() }
+    @Test fun reactionInInbox() = shot(true, "91_reaction_in_inbox_dark") {
+        InboxMock(rows = listOf(inbox[0].copy(conversation = inbox[0].conversation.copy(snippet = "Loved “I'll book the tickets 🎬”"))) + inbox.drop(1))
+    }
     @Test fun chatRunsDark() = shot(true, "45_chat_runs_delivered_dark") { RunsMock() }
     @Test fun chatRunsLight() = shot(false, "46_chat_runs_delivered_light") { RunsMock() }
     @Test fun accountSheetDark() = shot(true, "47_account_sheet_dark") {
