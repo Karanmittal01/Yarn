@@ -84,6 +84,8 @@ class EntityExtractor(
             if (REFERENCE_NUMBER_BEFORE.containsMatchIn(before) && !before.contains("otp") && !before.contains("code")) return@mapNotNull null
             if (after.startsWith(":") && after.drop(1).take(2).all { it.isDigit() }) return@mapNotNull null
             if (after.trimStart().startsWith("rs") || after.trimStart().startsWith("inr")) return@mapNotNull null
+            // A year in a date ("valid till 2026-12-11", "04 Jun 2026") is not a code.
+            if (YEAR.matches(code) && (YEAR_AFTER.containsMatchIn(after) || YEAR_BEFORE.containsMatchIn(before))) return@mapNotNull null
             if (before.endsWith("+") || (before.trimEnd().lastOrNull()?.isDigit() == true && before.endsWith(" "))) {
                 if (!before.contains("code") && !before.contains("otp")) return@mapNotNull null
             }
@@ -425,7 +427,7 @@ class EntityExtractor(
 
         private val OTP_KEYWORD = Regex(
             "(?i)\\b(otp|one[- ]time[- ](?:password|passcode|pin|code)|verification|verify|security code|login code|" +
-                "sign[- ]?in code|auth(?:entication|orization)? code|access code|confirmation code|passcode|pin|code|2fa|mfa|tan)\\b|" +
+                "sign[- ]?in code|auth(?:entication|orization)? code|access code|confirmation code|passcode|pin|code|2fa|mfa|tan|dac)\\b|" +
                 "(ओटीपी|सत्यापन कोड|वेरिफ़िकेशन कोड)",
         )
         /** Reference numbers (application, booking, ARN…) that sit next to the word "verification". */
@@ -435,12 +437,15 @@ class EntityExtractor(
         /** "… is 448812", "… is:769966", "… is-7781". */
         private val ANNOUNCED_BEFORE = Regex("(?i)\\b(?:is|are)\\s*[:\\-]?\\s*$")
         private val STRONG_OTP = Regex(
-            "(?i)(?:\\d{4,8}\\s+is\\s+(?:your|the)|(?:otp|code|pin|passcode)\\s*(?:is|:|-)\\s*(?:[A-Z]-)?\\d)",
+            "(?i)(?:\\d{4,8}\\s+is\\s+(?:your|the)|(?:otp|code|pin|passcode|dac)\\s*(?:is|:|-)\\s*(?:[A-Z]-)?\\d|pin for [\\w ]{1,30}? is\\s*:?\\s*\\d)",
         )
         private val OTP_VALIDITY = Regex("(?i)valid(?:\\s+only)?\\s+(?:for|till|upto|up to|within)\\s+(\\d{1,3})\\s*(min|mins|minutes|hrs|hours|hour)")
         /** "Value: 1000", "worth 500", "balance 250": amounts written without a currency sign. */
         private val VALUE_BEFORE = Regex("(?i)\\b(?:value|worth|amount|amt|balance|bal|points|denomination|mrp|price|limit)\\s*(?:of|is)?\\s*[:=-]?\\s*$")
-        private val VOUCHER_CONTEXT = Regex("(?i)\\b(?:e-?gift|gift ?(?:card|voucher)|vouchers?|coupons?|promo ?code|redeem|redemption)\\b")
+        private val VOUCHER_CONTEXT = Regex("(?i)\\b(?:e-?gift|gift ?(?:card|voucher)|vouchers?|coupons?|promo ?code|redeem|redemption|(?:use|apply) (?:the )?code [a-z]+\\d*)\\b")
+        private val YEAR = Regex("(?:19|20)\\d\\d")
+        private val YEAR_AFTER = Regex("^[-/.]\\d{1,2}[-/.]\\d{1,2}")
+        private val YEAR_BEFORE = Regex("(?i)(?:\\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\\.?|\\d{1,2}[-/.]\\d{1,2}[-/.]|\\d{1,2}(?:st|nd|rd|th)?)\\s*[-/,]?\\s*$")
         private val GENERIC_CODE_WORDS = setOf("code", "pin")
         private val CURRENCY_BEFORE = Regex("(₹|rs\\.?|inr|\\$|usd|€|£|eur|gbp)\\s*$")
         private val ACCOUNT_BEFORE = Regex("(a/c|acct|account|card|ending|xx|\\*\\*|no\\.)\\s*[:#]?\\s*$")

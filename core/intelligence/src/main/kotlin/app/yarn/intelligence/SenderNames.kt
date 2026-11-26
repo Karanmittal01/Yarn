@@ -1459,6 +1459,13 @@ object SenderNames {
         Brand("MYGOV", "MyGov", Category.UPDATES),
         Brand("PARIVH", "Parivahan", Category.UPDATES),
         Brand("VAHAN", "Parivahan", Category.UPDATES),
+        Brand("VAAHAN", "Parivahan", Category.UPDATES),
+        // Requested from Yarn's "Request a logo" (Nov 2026).
+        Brand("CKYC", "CKYC (CERSAI)", Category.UPDATES),
+        Brand("NESL", "NeSL", Category.UPDATES),
+        Brand("EAWIGN", "Awign"),
+        Brand("MAWIGN", "Awign"),
+        Brand("AWIGN", "Awign"),
         Brand("COWIN", "CoWIN", Category.UPDATES),
         Brand("GOOGLE", "Google", Category.UPDATES),
         Brand("WHATSP", "WhatsApp", Category.UPDATES),

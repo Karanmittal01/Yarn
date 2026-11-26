@@ -41,4 +41,17 @@ class BankSpamTest {
         assertThat(verdict("VM-KYCUPD-S", "Your ICICI Bank account KYC expires today and the account will be blocked. Update now: https://icici.co.kyc-verify.top/x"))
             .isIn(listOf(SpamVerdict.SPAM, SpamVerdict.SCAM))
     }
+
+    @Test
+    fun amazonPayAlertsAreNeverSpam() {
+        val text = "Payment of Rs 167.05 using Amazon Pay Balance is successful at MagicPin. Updated Balance: Rs 0.00. For help/stmt: https://www.amazon.in/cstxn"
+        for (from in listOf("AX-AMAZON-S", "JM-AMZPAY-S", "VK-AMAZON-T", "AMAZON")) assertThat(verdict(from, text)).isEqualTo(SpamVerdict.CLEAN)
+        // Forwarded by a friend: Amazon's own link isn't someone pretending to be Amazon.
+        assertThat(verdict("+919876543210", text)).isEqualTo(SpamVerdict.CLEAN)
+        // Arriving as an RCS business chat, with or without the "@…" part of the address.
+        val agent = "mfwwc6tpnzpxaylzl5uw4x3bm5sw45a"
+        assertThat(SenderInfo("$agent@rbm.goog").kind).isEqualTo(SenderKind.ALPHANUMERIC)
+        assertThat(verdict("$agent@rbm.goog", text)).isEqualTo(SpamVerdict.CLEAN)
+        assertThat(verdict(agent, text)).isEqualTo(SpamVerdict.CLEAN)
+    }
 }

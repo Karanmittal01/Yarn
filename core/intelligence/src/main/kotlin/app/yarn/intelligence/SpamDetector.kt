@@ -1,5 +1,7 @@
 package app.yarn.intelligence
 
+import kotlin.math.pow
+
 /** How aggressively to filter. Users choose this in settings. */
 enum class SpamSensitivity(val spamThreshold: Float, val scamThreshold: Float) {
     LOW(0.75f, 0.85f),
@@ -19,6 +21,10 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
     private fun s(weight: Float, reason: String, scam: Boolean, vararg phrases: String) =
         Signal(Regex("(?i)\\b(?:${phrases.joinToString("|")})"), weight, reason, scam)
 
+    /** Hindi wording: Java's \\b only knows Latin letters, so these phrases match anywhere. */
+    private fun hindi(weight: Float, reason: String, scam: Boolean, vararg phrases: String) =
+        Signal(Regex("(?:${phrases.joinToString("|")})"), weight, reason, scam)
+
     private val signals = listOf(
         s(0.45f, "Threatens account suspension or blocking", true,
             "(?:account|card|wallet|sim|number|service)s? (?:will be |has been |is |are )?(?:suspended|blocked|locked|deactivated|disabled|terminated|closed)",
@@ -31,17 +37,37 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
         s(0.35f, "Claims unusual or unauthorised activity", true,
             "unusual (?:activity|sign-?in|login)", "unauthori[sz]ed (?:transaction|access|login|attempt)", "suspicious (?:activity|login|transaction)"),
         s(0.4f, "Prize or lottery claim", true,
-            "(?:you(?:'ve| have)? |u )(?:won|been selected)", "lottery", "lucky draw", "claim (?:your |ur )?(?:prize|reward|gift|cash)", "jackpot", "winner"),
+            "(?:you(?:'ve| have)? |u |your (?:mobile |phone )?number (?:has )?)(?:won|been selected)", "lottery", "lucky draw", "lucky winner",
+            "claim (?:your |ur )?(?:prize|reward|gift|cash)", "jackpot", "winner", "kbc", "kaun banega crorepati"),
         s(0.4f, "Undelivered-parcel or fee scam wording", true,
             "(?:package|parcel|shipment) (?:is |was |has been )?(?:on hold|held|could not be delivered|undeliverable|returned)",
             "(?:redelivery|customs|shipping|clearance) fee", "incomplete (?:address|shipping)", "update (?:your )?(?:delivery )?address"),
         s(0.4f, "Unpaid toll/fine or tax refund wording", true,
-            "unpaid toll", "toll (?:balance|due|violation)", "outstanding (?:toll|fine|penalty)", "tax refund", "refund (?:is )?pending", "irs", "hmrc", "income tax refund"),
+            "unpaid toll", "toll (?:balance|due|violation)", "outstanding (?:toll|fine|penalty)", "tax refund", "refund (?:is )?pending", "irs", "hmrc", "income tax refund",
+            "(?:pending|unpaid|outstanding|overdue) (?:traffic )?e-?challan", "avoid (?:legal action|court|penalty|arrest|fir)"),
+        s(0.5f, "Impersonates police, customs or a government officer", true,
+            "illegal (?:items|drugs|goods|activity|activities|parcel)", "(?:drugs|narcotics) (?:found|in your)", "held by customs", "seized by",
+            "(?:cbi|ncb|ed|cyber ?cell|crime branch|police|customs|narcotics|trai|rbi) officer", "digital arrest", "(?:will|could) be arrested",
+            "arrest warrant", "money laundering", "press 1 (?:to|or)",
+            "(?:son|daughter|husband|wife|brother|sister|father|mother) (?:has been|is|was|got) (?:arrested|detained|caught)", "in police custody"),
+        s(0.45f, "Asks you to return money \"sent by mistake\"", true,
+            "(?:sent|transferred|credited) (?:rs\\.? ?|₹ ?)?[\\d,]+ (?:to your (?:account|number|upi|wallet) )?by mistake",
+            "by mistake[^.]{0,60}(?:return|send (?:it )?back|refund)", "return (?:it|my money|the money) (?:to|on) my"),
+        s(0.45f, "Asks you to install an app or share your screen", true,
+            "(?:install|download) (?:the |this )?(?:app|apk)[^.]{0,40}(?:redeem|kyc|reward|points|refund|update)", "anydesk", "teamviewer", "quick ?support", "screen ?shar(?:e|ing) app"),
         s(0.4f, "Job or investment lure", true,
             "work from home", "part[- ]time (?:job|work)", "earn (?:rs\\.?|₹|\\$)?\\s?\\d", "daily (?:income|earning|profit)", "guaranteed (?:returns?|profit)",
-            "double your", "crypto(?:currency)? (?:investment|trading|profit)", "telegram", "task[- ]based"),
+            "double your", "crypto(?:currency)? (?:investment|trading|profit)", "telegram", "task[- ]based", "stock tips", "trading signals",
+            "vip (?:group|tips|signals|members?)", "(?:daily|weekly|monthly) \\d+ ?% (?:profit|returns?)", "\\d+ ?% (?:daily|weekly|monthly) (?:profit|returns?)",
+            "(?:per|each) (?:review|like|task|rating)", "rate (?:hotels|restaurants|products) (?:on google )?(?:and|&) earn", "prepaid task"),
         s(0.4f, "Electricity/utility disconnection threat", true,
-            "(?:electricity|power|gas|connection) (?:will be |is )?(?:disconnected|cut)", "disconnection (?:tonight|today)"),
+            "(?:electricity|power|gas|connection) (?:will be |is )?(?:disconnected|cut)", "disconnection (?:tonight|today)",
+            "bijli (?:\\w+ ){0,3}(?:kaat|kat|cut)"),
+        hindi(0.4f, "Electricity/utility disconnection threat", true, "बिजली (?:\\S+ ){0,3}(?:काट|कट)", "कनेक्शन (?:\\S+ ){0,3}(?:काट|कट)"),
+        hindi(0.45f, "Asks you to verify identity or update KYC via a link", true, "केवाईसी (?:\\S+ ){0,3}(?:अपडेट|पूरा|समाप्त)"),
+        s(0.5f, "Threatens to shame you to your contacts", true,
+            "(?:send|share|forward) (?:your )?(?:photos?|pictures?|images?|morphed) (?:\\w+ ){0,2}to (?:all )?(?:your )?(?:contacts|family|relatives)",
+            "(?:all )?your contacts will (?:be informed|know|receive)"),
         s(0.35f, "Urgent pressure language", false,
             "urgent", "immediately", "act now", "call now", "call immediately", "final (?:notice|warning|reminder)", "within 24 ?h(?:ou)?rs", "expires? today", "last chance", "respond now"),
         s(0.3f, "Pushes you to click a link", false,
@@ -49,13 +75,19 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
         s(0.25f, "Free-gift or loan bait", false,
             "free (?:gift|iphone|recharge|voucher|money)", "gift card", "loan (?:approved|sanctioned|offer)", "pre-?approved loan", "instant loan", "credit score"),
         s(0.3f, "Adult or gambling content", false,
-            "casino", "betting", "bet now", "rummy", "teen patti", "hot singles", "dating site", "xxx"),
+            "casino", "betting", "bet now", "rummy", "teen patti", "hot singles", "dating site", "xxx", "win real cash", "real money games?",
+            "(?:first|welcome) deposit", "deposit bonus", "aviator", "satta", "matka"),
         s(0.2f, "Wrong-number conversation opener", false,
             "is this \\w+\\?", "sorry,? wrong number", "hi,? are you (?:free|there)", "long time no see"),
     )
 
     private val safeHints = Regex("(?i)\\b(?:do not share|don't share|never share|never ask|will never ask|not requested by you|if not you|if this wasn't you)\\b")
-    private val brandMention = Regex("(?i)\\b(?:paypal|amazon|apple|icloud|netflix|usps|fedex|dhl|ups|irs|hdfc|icici|sbi|axis|kotak|paytm|phonepe|flipkart|chase|wells ?fargo|bank of america|whatsapp|e-?zpass|india post|royal mail|hmrc|bank)\\b")
+    private val brandMention = Regex("(?i)\\b(?:paypal|amazon|apple|icloud|netflix|usps|fedex|dhl|ups|irs|hdfc|icici|sbi|axis|kotak|paytm|phonepe|flipkart|chase|wells ?fargo|bank of america|whatsapp|e-?zpass|india post|royal mail|hmrc|jio|airtel|aadhaar|uidai|income ?tax|epfo|irctc|rbi|trai|npci)\\b")
+    private val bankMention = Regex("(?i)\\b(?:bank|a/c|account|kyc|credit card|debit card)\\b")
+
+    /** "Call 98765 43210", "contact officer on +91 9876543210", "सम्पर्क करें 9876543210". */
+    private val CALL_MOBILE = Regex("(?i)(?:call|contact|whatsapp|sampark|संपर्क|सम्पर्क|फोन)(?:\\S*\\s+){0,5}?(?:on |at |no\\.? ?)?(?:\\+?91[- ]?)?[6-9]\\d{4} ?\\d{5}\\b|(?:\\+?91[- ]?)?[6-9]\\d{9}\\s*(?:पर )?(?:call|सम्पर्क|संपर्क)")
+    private val MONEY_OR_ACCOUNT = Regex("(?i)debited|deducted|charged|auto-?renew|cancel|refund|blocked|deactivat|suspend|kyc|prize|lottery|claim|officer|adhikari|अधिकारी|बिजली|bijli|electricity|arrest|customs|parcel|courier|loan")
 
     fun assess(input: MessageInput, entities: List<Entity>): SpamAssessment {
         if (!input.isIncoming) return SpamAssessment(SpamVerdict.CLEAN, 0f, emptyList())
@@ -70,7 +102,21 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
             if (reason !in reasons) reasons += reason
         }
 
-        signals.forEach { sig -> if (sig.pattern.containsMatchIn(text)) hit(sig.weight, sig.reason, sig.scam) }
+        // Each signal counts once, a little more when several of its phrases appear ("work from home",
+        // "earn 5000 daily", "Telegram").
+        var scamWords = false
+        var lure = false
+        signals.forEach { sig ->
+            val n = sig.pattern.findAll(text).map { it.value.lowercase() }.distinct().take(3).count()
+            if (n > 0) {
+                // Registered businesses repeat their own wording ("could not be delivered… update address");
+                // only unregistered senders get the extra weight.
+                val k = if (sender.commercialSuffix == null) n else 1
+                hit(1f - (1f - sig.weight).pow(1f + 0.5f * (k - 1)), sig.reason, sig.scam)
+                if (sig.scam || sig.reason.startsWith("Adult")) scamWords = true
+                if (sig.reason.startsWith("Pushes") || sig.reason.startsWith("Free-gift")) lure = true
+            }
+        }
 
         // A well-known brand's own registered sender ID (India's DLT headers can't be borrowed):
         // its alerts are never filtered, whatever their wording.
@@ -88,13 +134,27 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
             }
         }
 
-        val mentionsBrand = brandMention.containsMatchIn(text)
+        // A named company, or "your bank account" alongside other warning signs ("bank ka kaam ho gaya"
+        // from a friend is just conversation).
+        val mentionsBrand = brandMention.containsMatchIn(text) || bankMention.containsMatchIn(text) && reasons.isNotEmpty()
         val hasUrl = urls.isNotEmpty()
-        if (mentionsBrand && sender.kind == SenderKind.PHONE_NUMBER && hasUrl) {
+        // People share real shop links ("this phone is on sale, amzn.in/d/…"): only a link that isn't
+        // the brand's own makes a phone number pretending to be a company.
+        val foreignLink = urls.any { !UrlTools.isOfficialBrandDomain(it.value) }
+        if (mentionsBrand && sender.kind == SenderKind.PHONE_NUMBER && foreignLink) {
             hit(0.55f, "Claims to be a company but comes from a personal phone number with a link", true)
         }
-        if (mentionsBrand && sender.kind == SenderKind.EMAIL && hasUrl) {
+        if (mentionsBrand && sender.kind == SenderKind.EMAIL && foreignLink) {
             hit(0.5f, "Claims to be a company but comes from an email address with a link", true)
+        }
+        // Scam wording from a stranger's number: businesses in India send from registered sender IDs,
+        // so a 10-digit number talking prizes, KYC, customs or "sent by mistake" is almost never genuine.
+        if (sender.kind == SenderKind.PHONE_NUMBER && CALL_MOBILE.containsMatchIn(text) && MONEY_OR_ACCOUNT.containsMatchIn(text)) {
+            hit(0.45f, "Asks you to call a mobile number about your money or account", true)
+            scamWords = true
+        }
+        if (sender.kind == SenderKind.PHONE_NUMBER && (scamWords || lure && foreignLink)) {
+            hit(0.35f, "Comes from an unknown personal number", true)
         }
         if (sender.kind == SenderKind.PHONE_NUMBER && hasUrl && urls.none { UrlTools.isOfficialBrandDomain(it.value) } && reasons.isNotEmpty()) {
             hit(0.2f, "Unknown number sent a link", false)

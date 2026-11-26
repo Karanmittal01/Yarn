@@ -14,6 +14,7 @@ object UrlTools {
     val RISKY_TLDS = setOf(
         "xyz", "top", "click", "loan", "work", "gq", "tk", "ml", "cf", "ga", "icu", "buzz", "cyou",
         "rest", "sbs", "cfd", "monster", "quest", "bar", "lol", "mom", "support", "zip", "mov",
+        "cc", "vip", "win", "bid", "cam", "beauty", "hair", "skin", "boats", "autos",
     )
 
     /** Brand keyword -> registrable domains that legitimately belong to it. */
@@ -30,7 +31,7 @@ object UrlTools {
         "ups" to setOf("ups.com"),
         "irs" to setOf("irs.gov"),
         "hdfc" to setOf("hdfcbank.com", "hdfc.bank.in", "hdfcbank.bank.in"),
-        "icici" to setOf("icicibank.com", "icici.bank.in"),
+        "icici" to setOf("icicibank.com", "icici.bank.in", "icici.co", "icicidirect.com", "iciciprulife.com", "icicilombard.com"),
         "sbi" to setOf("onlinesbi.sbi", "sbi.co.in", "sbi.bank.in", "onlinesbi.com"),
         "axis" to setOf("axisbank.com", "axis.bank.in"),
         "kotak" to setOf("kotak.com", "kotak.bank.in"),
@@ -41,10 +42,23 @@ object UrlTools {
         "wellsfargo" to setOf("wellsfargo.com"),
         "bankofamerica" to setOf("bankofamerica.com", "bofa.com"),
         "whatsapp" to setOf("whatsapp.com", "wa.me"),
+        "youtube" to setOf("youtube.com", "youtu.be"),
         "instagram" to setOf("instagram.com"),
         "facebook" to setOf("facebook.com", "fb.com", "fb.me"),
         "ezpass" to setOf("e-zpassny.com", "ezpassnj.com", "ezpassva.com", "e-zpassiag.com", "ezpassmd.com"),
         "indiapost" to setOf("indiapost.gov.in"),
+        // Government services live on gov.in; anything else using their names is pretending.
+        "parivahan" to setOf("parivahan.gov.in"),
+        "incometax" to setOf("incometax.gov.in", "incometaxindia.gov.in"),
+        "uidai" to setOf("uidai.gov.in"),
+        "aadhaar" to setOf("uidai.gov.in"),
+        "epfo" to setOf("epfindia.gov.in", "epfo.gov.in"),
+        "trai" to setOf("trai.gov.in"),
+        "rbi" to setOf("rbi.org.in"),
+        "npci" to setOf("npci.org.in"),
+        "irctc" to setOf("irctc.co.in", "irctc.com", "irctctourism.com"),
+        "airtel" to setOf("airtel.in", "airtel.com", "airtelxstream.in"),
+        "jio" to setOf("jio.com", "jiomart.com", "jiocinema.com", "jiohotstar.com"),
         "royalmail" to setOf("royalmail.com"),
         "hmrc" to setOf("gov.uk"),
     )
@@ -86,13 +100,18 @@ object UrlTools {
         val tld = host.substringAfterLast('.')
         if (IPV4.matches(host)) { score += 0.6f; reasons += "Link points to a raw IP address" }
         if (host.startsWith("xn--") || host.contains(".xn--")) { score += 0.5f; reasons += "Link uses an internationalised lookalike domain" }
-        if (domain in SHORTENERS && !registeredSender) { score += 0.3f; reasons += "Link is shortened and hides its destination" }
+        // Google Maps' own share links ("maps.app.goo.gl/…") only ever open a place on the map.
+        if (domain in SHORTENERS && !registeredSender && host != "maps.app.goo.gl") { score += 0.3f; reasons += "Link is shortened and hides its destination" }
         if (tld in RISKY_TLDS) { score += 0.35f; reasons += "Link uses a domain ending often abused by scammers (.$tld)" }
         if (url.substringBefore('/').contains('@') || url.replace(SCHEME, "").substringBefore('/').contains('@')) {
             score += 0.5f; reasons += "Link hides its real destination with '@'"
         }
         if (host.count { it == '.' } >= 4) { score += 0.15f; reasons += "Link has an unusually deep subdomain" }
         if (host.count { it == '-' } >= 2) { score += 0.15f; reasons += "Domain contains several hyphens" }
+        // Fake "reward points" and KYC apps are handed out as .apk links.
+        if (host.split('.').dropLast(1).contains("apk") || url.substringBefore('?').lowercase().endsWith(".apk")) {
+            score += 0.5f; reasons += "Link downloads an app from outside the Play Store"
+        }
         val compactHost = host.replace("-", "").replace(".", "")
         val hostTokens = host.split('.', '-').toSet()
         val deleeted = listOf(deleet(compactHost, 'i'), deleet(compactHost, 'l'))
@@ -107,7 +126,9 @@ object UrlTools {
                 compactHost.contains(brand) || deleeted.any { it.contains(brand) }
             }
             if (mentions && official.none { domain == it || host == it || host.endsWith(".$it") }) {
-                score += 0.6f
+                // A registered sender's links are whitelisted for its own header, so a name in its link is
+                // usually its own campaign domain: worth a warning on the link, never enough to file it.
+                score += if (registeredSender) 0.3f else 0.6f
                 reasons += "Domain imitates ${brand.replaceFirstChar { it.uppercase() }} but is not an official ${brand} domain"
                 break
             }

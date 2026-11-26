@@ -966,11 +966,15 @@ NEW += [
     # Requested from Yarn's "Request a logo" (Nov 2026).
     ("MFine", "mfine.co", ["HMFINE", "MFINE"]),
     ("Apollo Pharmacy", "apollopharmacy.in", ["APLPHR"]),
+    ("CKYC (CERSAI)", "cersai.org.in", ["CKYC"]),
+    ("NeSL", "nesl.co.in", ["NESL"]),
+    ("Awign", "awign.com", ["EAWIGN", "MAWIGN", "AWIGN"]),
 ]
 ALIASES += [
     ("UIDAI (Aadhaar)", ["ADHAAR"]),
     ("Qwikcilver", ["QWKCLR"]),
     ("bigbasket", ["BIGBKT"]),
     ("SBI Card", ["MYSBIC"]),
+    ("Parivahan", ["VAAHAN"]),
 ]
 

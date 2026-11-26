@@ -53,6 +53,7 @@ object CategoryRules {
             "postpaid", "electricity bill", "gas bill", "water bill", "broadband", "premium (?:of $MONEY )?(?:for|is|due)", "insurance premium", "autopay", "auto-debit",
             "mandate", "subscription renew(?:s|al|ed)", "plan expires", "validity (?:ends|expires)",
             "emi (?:of|for|is|was)", "bounced", "pay immediately"),
+        r(Category.BILLS, 3.2f, "Mentions a traffic fine", "e-?challan", "challan (?:no\\.?|number|of|amount|issued|pending|has been)", "traffic (?:fine|violation)"),
 
         // ---- Orders, food, groceries, deliveries ------------------------------------------------
         r(Category.SHOPPING, 3f, "Talks about your order", "your order(?!s| now| to (?:buy|sell))", "your (?!next |first )(?:\\w+ ){1,2}order(?!s| now| to (?:buy|sell))", "order (?:#|no\\.?|id|number) ?[a-z]*\\d[\\w-]*",
@@ -67,7 +68,7 @@ object CategoryRules {
             "on (?:its|the) way", "reached your location", "near your location", "valet"),
 
         // ---- Travel ---------------------------------------------------------------------------
-        r(Category.TRAVEL, 2.8f, "Mentions travel", "flight", "boarding", "pnr", "check-?in", "gate", "departure", "arrival", "train", "coach", "berth", "hotel",
+        r(Category.TRAVEL, 2.8f, "Mentions travel", "flight", "boarding", "pnr", "check-?in", "gate (?:no\\.? ?)?[a-z]?\\d+", "boarding gate", "departure", "arrival", "train", "coach", "berth", "hotel",
             "itinerary", "cab", "ride", "captain", "(?:bike|bus|cab|vehicle) [a-z]{2}\\d{1,2}[a-z]{0,3}\\d{1,4}", "your driver", "driver \\w+", "uber", "ola", "rapido", "airport", "terminal", "e-ticket", "ticket booked", "bus ticket",
             // Office cabs and shuttles (Routematic, MoveInSync…): pickups, drops and the vehicle.
             "pick ?up details", "drop details", "next pick ?up", "your pick(?:up)?", "vehicle ?(?:#|no\\.?|number|type)", "vehicle (?:has reached|is arriving|has arrived|assigned|is on)",
@@ -121,8 +122,9 @@ object CategoryRules {
             // A card, account or plan ended: news about the account, not an order or a trip.
             "(?:card|account|a/c|policy|mandate|subscription|membership|plan|sim|connection|standing instruction|autopay|auto-?debit) (?:[\\w-]+ ){0,3}(?:has been |is |was |stands )?(?:cancelled|canceled|closed|terminated|suspended|deactivated|discontinued|surrendered|hotlisted)",
             "supply will be (?:disrupted|interrupted|affected)", "power (?:cut|outage|shutdown)", "for maintenance",
-            "statement (?:for [\\w ]+? )?(?:has been (?:emailed|sent|mailed)|is (?:now )?available)", "will expire (?:on|in)", "new card will be", "renewal card",
+            "statement (?:for [\\w /,-]+? )?(?:has been (?:emailed|sent|mailed)|is (?:now )?available)", "will expire (?:on|in)", "new card will be", "renewal card",
             "unlocked", "kyc is due", "complete (?:your |video )?kyc", "on its way", "(?:card|cheque ?book) (?:has been |is )?(?:dispatched|delivered|shipped)", "dispatched via",
+            "(?:licen[cs]e|passport|rc|registration certificate|pan card|aadhaar|epic|voter id|welcome kit|smart card) (?:[\\w-]+ ){0,3}(?:has been |is |was )?(?:dispatched|delivered|printed|shipped)",
             "nominee", "\\bnoc\\b", "under (?:police )?verification", "policy (?:has been )?issued", "will mature", "auto-?renewed", "kyc (?:has been|is) (?:completed|updated|verified)"),
         // An application decided or under way ("We approved your HDFC Bank Credit Card (App No. …)"),
         // not one being sold: "pre-approved" and "eligible for" stay offers.
@@ -147,7 +149,8 @@ object CategoryRules {
             "added to your \\w* ?(?:balance|wallet|account)|has been executed|units allotted|\\bsip of|recharge (?:of (?:rs|inr|₹)|successful|is successful)|emi (?:of|for) (?:rs|inr|₹)|bounced|declined|levied|charges of (?:rs|inr|₹)|डेबिट|जमा)",
     )
     private val ORDER_LEAD = Regex(
-        "(?i)(?:your (?!next |first )(?:\\w+ ){0,2}order(?!s| now| to (?:buy|sell))|order (?:#|no\\.|id|number|is|has|was|\\d)|shipped|shipment|dispatched|packed|" +
+        "(?i)(?:your (?!next |first )(?:\\w+ ){0,2}order(?!s| now| to (?:buy|sell))|order (?:#|no\\.|id|number|is|has|was|[a-z]{0,3}\\d)|shipped|shipment|dispatched|packed|" +
+            "return (?:request|pickup)|replacement request|" +
             "out for delivery|return pickup|parcel|package|courier|unable to deliver|(?:has been|was|is|got) delivered|delivered (?:to|at|today|successfully)|order delivered)",
     )
     // Store credit handed out as a perk ("Rs. 1,000* credited to your Seiko Power Cash Wallet. Enjoy
@@ -156,6 +159,11 @@ object CategoryRules {
     private val PERK_CREDIT = Regex(
         "(?i)$MONEY\\*|enjoy (?:your |the |these |exclusive )?(?:benefits|perks|privileges)|power ?cash|bonus cash|promo(?:tional)? (?:cash|credits?|balance)",
     )
+    // A trip (a PNR, a ticket, a flight) that a refund or fare belongs to: "Your ticket for PNR … has been
+    // cancelled. Refund of Rs …" is about the journey.
+    private val TRIP_LEAD = Regex("(?i)\\b(?:pnr|e-?ticket|your (?:\\w+ )?ticket|flight [a-z0-9]{2} ?\\d|boarding pass|your (?:\\w+ )?(?:trip|ride|journey)|booking (?:id|ref))\\b")
+    // An official document on its way by post is a notice, not a parcel you ordered.
+    private val DOCUMENT_POSTED = Regex("(?i)\\b(?:licen[cs]e|passport|rc|registration certificate|pan card|aadhaar|epic|voter id|welcome kit|smart card)\\b")
     private val DISCOUNT = Regex("(?i)\\d+ ?% ?(?:off|discount|cashback)|use (?:code|coupon)|promo ?code|flat $MONEY off|up ?to $MONEY off")
     private val SERVICE = listOf(Category.OTP, Category.BANKING, Category.PAYMENTS, Category.BILLS, Category.SHOPPING, Category.DELIVERY, Category.TRAVEL)
 
@@ -238,7 +246,8 @@ object CategoryRules {
         if (otp == null && !moneyEvidence) { scale(Category.BANKING, 0.4f); scale(Category.PAYMENTS, 0.5f) }
 
         // A discount or promo code is an advert, unless money moved or an order is under way.
-        if (otp == null && !moneyEvidence && DISCOUNT.containsMatchIn(text) && !ORDER_LEAD.containsMatchIn(text)) add(Category.PROMOTIONS, 3f, "Offers a discount")
+        // People forward offers too ("Did you see the HDFC offer? 10% off"); only a business's discount is an advert.
+        if (otp == null && !moneyEvidence && sender.isBusinessLike && DISCOUNT.containsMatchIn(text) && !ORDER_LEAD.containsMatchIn(text)) add(Category.PROMOTIONS, 3f, "Offers a discount")
 
         // What the message is about, before we look at who sent it.
         val promo = get(Category.PROMOTIONS)
@@ -265,8 +274,12 @@ object CategoryRules {
                 add(Category.PROMOTIONS, 40f, "Sender header is marked promotional (-P)", fromText = false)
             }
             CommercialSuffix.TRANSACTIONAL -> {
-                scale(Category.PROMOTIONS, 0.2f)
-                add(if (otp != null) Category.OTP else Category.BANKING, 1f, "Sender header is marked transactional (-T)", fromText = false)
+                // -T headers are meant for codes and money. Some businesses send notices and offers on
+                // them too; those are filed by what they say.
+                if (otp != null || moneyEvidence) {
+                    scale(Category.PROMOTIONS, 0.2f)
+                    add(if (otp != null) Category.OTP else Category.BANKING, 1f, "Sender header is marked transactional (-T)", fromText = false)
+                }
             }
             CommercialSuffix.GOVERNMENT -> add(Category.UPDATES, 2f, "Sender header is marked government (-G)", fromText = false)
             CommercialSuffix.SERVICE, null -> Unit
@@ -278,11 +291,19 @@ object CategoryRules {
         // Banks don't ship orders: "your new card is on its way" is a service notice.
         val bankSender = brand == Category.BANKING || brand == Category.PAYMENTS
         if (bankSender && otp == null) { scale(Category.DELIVERY, 0.3f); scale(Category.SHOPPING, 0.3f) }
+        val government = sender.commercialSuffix == CommercialSuffix.GOVERNMENT || DOCUMENT_POSTED.containsMatchIn(text)
+        if (government && otp == null) { scale(Category.DELIVERY, 0.3f); scale(Category.SHOPPING, 0.3f) }
         if (sender.isBusinessLike && otp == null) {
             val moneyAt = if (perk) null else MONEY_LEAD.find(text)?.range?.first
-            val orderAt = ORDER_LEAD.find(text)?.range?.first
-            if (moneyAt != null && (orderAt == null || moneyAt < orderAt)) add(Category.PAYMENTS, 5f, "Money moved")
-            if (orderAt != null && !bankSender && (moneyAt == null || orderAt < moneyAt)) add(Category.SHOPPING, 5f, "About your order")
+            val orderAt = if (government) null else ORDER_LEAD.find(text)?.range?.first
+            val tripAt = TRIP_LEAD.find(text)?.range?.first?.takeIf { get(Category.TRAVEL) >= 2.8f }
+            val first = listOfNotNull(moneyAt, orderAt, tripAt).minOrNull()
+            when (first) {
+                null -> Unit
+                tripAt -> add(Category.TRAVEL, 5f, "About your trip")
+                moneyAt -> add(Category.PAYMENTS, 5f, "Money moved")
+                orderAt -> if (!bankSender) add(Category.SHOPPING, 5f, "About your order")
+            }
         }
 
         // Real activity beats marketing lines in footers ("Get 10% cashback on your next order").

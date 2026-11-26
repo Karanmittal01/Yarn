@@ -81,6 +81,8 @@ object SenderAnalyzer {
     fun kindOf(address: String, isContact: Boolean): SenderKind {
         if (isContact) return SenderKind.CONTACT
         val a = address.trim()
+        // An RCS business chat ("…@rbm.goog" or its bare Base32 agent ID) is a business, not an email.
+        if (SenderNames.rcsAgent(a) != null) return SenderKind.ALPHANUMERIC
         if (EMAIL.matches(a)) return SenderKind.EMAIL
         val digits = a.filter { it.isDigit() }
         val hasLetters = a.any { it.isLetter() }

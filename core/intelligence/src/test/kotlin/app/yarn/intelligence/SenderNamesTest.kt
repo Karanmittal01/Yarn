@@ -12,6 +12,8 @@ class SenderNamesTest {
             "VM-WOOHOO-S" to "Woohoo", "AD-HSQUAR-S" to "Hudle", "JD-PLAYO-S" to "Playo", "VM-LPHILP-P" to "Louis Philippe",
             "AD-APWELL-S" to "Apollo", "JD-SMYTTN-P" to "Smytten", "VM-MYTNEU-P" to "Tata Neu", "AD-TATNEU-S" to "Tata Neu", "JD-MAXMZE-S" to "Maximize", "JD-HMFINE-S" to "MFine", "CP-APLPHR-S" to "Apollo Pharmacy",
             "VM-BIGBKT-S" to "bigbasket", "AD-MYSBIC-S" to "SBI Card", "JD-SHPFAS-S" to "Shipfast", "VM-HOIYTC-S" to "Hoi", "VK-RMATIC-S" to "Routematic", "AD-ADHAAR-G" to "UIDAI (Aadhaar)", "VM-QWKCLR-S" to "Qwikcilver", "JD-PAYRWD-S" to "Pay with Rewards",
+            // Logo requests from testers, exactly as they arrived.
+            "AX-CKYCR-S" to "CKYC (CERSAI)", "AD-VAAHAN-S" to "Parivahan", "VD-NESLIU-S" to "NeSL", "TX-EAWIGN-S" to "Awign", "TX-MAWIGN-P" to "Awign",
         )
         for ((address, name) in expected) assertThat(SenderNames.pretty(address)).isEqualTo(name)
     }
@@ -20,6 +22,10 @@ class SenderNamesTest {
         assertThat(SenderNames.brandKey("VM-HDFCBK-S")).isEqualTo("hdfcbank")
         assertThat(SenderNames.brandKey("JD-SWGTNG-S")).isEqualTo("swiggytoing")
         assertThat(SenderNames.brandKey("VM-ACMEIN-T")).isNull()
+        assertThat(SenderNames.brandKey("AX-CKYCR-S")).isEqualTo("ckyccersai")
+        assertThat(SenderNames.brandKey("VD-NESLIU-S")).isEqualTo("nesl")
+        assertThat(SenderNames.brandKey("TX-EAWIGN-S")).isEqualTo("awign")
+        assertThat(SenderNames.brandKey("AD-VAAHAN-S")).isEqualTo("parivahan")
     }
 
     @Test fun jiosCodeNumberIsJio() {

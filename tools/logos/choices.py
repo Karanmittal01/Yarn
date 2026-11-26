@@ -244,6 +244,13 @@ pick(P, "mfine")
 # "Apollo Pharmacy" mark from its staff app Vishwam, cut above that app's own name.
 pick("vishwam", "apollopharmacy")
 TUNE["apollopharmacy"] = {"ops": [("crop", 0.0, 0.06, 1.0, 0.725)], "inner": 0.46, "cap": 0.78}
+# CKYC (CKYCR, CERSAI's Central KYC registry): the round seal from cersai.org.in (the Play search finds an
+# unrelated Italian "CERSAIE" app). NeSL (NESLIU): its navy "N" site icon. Awign (EAWIGN/MAWIGN): the blue
+# "A" from its Play icon, without the wordmark.
+pick("web1", "ckyccersai")
+pick("site", "nesl")
+pick(P, "awign")
+TUNE["awign"] = {"ops": [("crop", 0.28, 0.06, 0.72, 0.56)]}
 
 # Maximize (MAXMZE), gift cards and rewards: the white mark from its site icon on its green, not the
 # festive Play icon with string lights.
