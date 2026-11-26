@@ -50,4 +50,41 @@ class SenderNamesTest {
         assertThat(SenderNames.pretty("VM-RPCARD-S")).isEqualTo("RPCARD")
         assertThat(SenderNames.pretty("VM-SHPWSE-S")).isEqualTo("Shopwise")
     }
+
+    /** How a business chat's agent ID reaches the message store: Base32, lower case, no padding. */
+    private fun encode(id: String): String {
+        val alphabet = "abcdefghijklmnopqrstuvwxyz234567"
+        val out = StringBuilder()
+        var buffer = 0
+        var bits = 0
+        for (b in id.toByteArray()) {
+            buffer = (buffer shl 8) or (b.toInt() and 0xFF)
+            bits += 8
+            while (bits >= 5) { bits -= 5; out.append(alphabet[(buffer shr bits) and 31]) }
+        }
+        if (bits > 0) out.append(alphabet[(buffer shl (5 - bits)) and 31])
+        return out.toString()
+    }
+
+    @Test fun businessChatsAreNamedAfterTheirBusiness() {
+        // The tester's inbox showed "m5xw6z3mmvpxaylzl5yg..." and "njuw643qnbsxezk7ob4wu...".
+        assertThat(encode("google_pay_x")).startsWith("m5xw6z3mmvpxaylzl5")
+        assertThat(encode("jiosphere_x")).startsWith("njuw643qnbsxezk7")
+        // What the tester's inbox showed, cut short by the screen, still reads as the business.
+        assertThat(SenderNames.pretty("m5xw6z3mmvpxaylzl5yg")).isEqualTo("Google Pay")
+        assertThat(SenderNames.pretty("njuw643qnbsxezk7ob4wu")).startsWith("JioSphere")
+        val gpay = encode("google_pay_9f3a1c_agent")
+        assertThat(SenderNames.rcsAgent(gpay)).isEqualTo("google_pay_9f3a1c_agent")
+        assertThat(SenderNames.pretty(gpay)).isEqualTo("Google Pay")
+        assertThat(SenderNames.brandKey(gpay)).isEqualTo("googlepay")
+        assertThat(SenderNames.isBusiness(gpay)).isTrue()
+        assertThat(SenderNames.pretty(encode("jiosphere_rbm_agent"))).isEqualTo("JioSphere")
+        assertThat(SenderNames.pretty(encode("woxen_university_7k2p") + "@rbm.goog")).isEqualTo("Woxen University")
+    }
+
+    @Test fun ordinarySendersAreNotMistakenForBusinessChats() {
+        for (a in listOf("VM-HDFCBK-S", "+919812345678", "59039149", "notificationsalerts@example.com", "abcdefghijklmnopqrstu")) {
+            assertThat(SenderNames.rcsAgent(a)).isNull()
+        }
+    }
 }

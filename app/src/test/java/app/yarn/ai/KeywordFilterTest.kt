@@ -27,7 +27,9 @@ import org.robolectric.annotation.Config
 class KeywordFilterTest {
     private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
     private lateinit var db: YarnDatabase
-    private val scope = CoroutineScope(SupervisorJob())
+    // The engine's background watchers outlive each test's database; their errors stay in this test.
+    private val scope = CoroutineScope(SupervisorJob() + kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> })
+    private val settings by lazy { SettingsRepository(context) }
 
     @Before fun setUp() {
         db = Room.inMemoryDatabaseBuilder(context, YarnDatabase::class.java).allowMainThreadQueries().build()
@@ -38,7 +40,7 @@ class KeywordFilterTest {
         db.close()
     }
 
-    private fun engine(pro: Boolean) = IntelligenceEngine(db, SettingsRepository(context), ContactsRepository(context), scope) { pro }
+    private fun engine(pro: Boolean) = IntelligenceEngine(db, settings, ContactsRepository(context), scope) { pro }
 
     private fun message(body: String) = MessageEntity(
         conversationId = 1, address = "VM-LOANZY-P", body = body, date = 1_000, outgoing = false, status = MessageStatus.RECEIVED,

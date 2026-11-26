@@ -190,7 +190,10 @@ fun ConversationScreen(
         Box(Modifier.fillMaxSize())
         return
     }
-    val canReply = conv.addresses.isNotEmpty() && conv.addresses.all { PhoneNumbers.isDialable(it) || PhoneNumbers.isEmail(it) }
+    // Business chats (RCS agents) can't receive texts.
+    val canReply = conv.addresses.isNotEmpty() && conv.addresses.all {
+        (PhoneNumbers.isDialable(it) || PhoneNumbers.isEmail(it)) && app.yarn.intelligence.SenderNames.rcsAgent(it) == null
+    }
     val photo = if (!conv.isGroup) {
         val address = conv.addresses.firstOrNull()
         participants[address]?.photoUri ?: app.yarn.ui.common.BrandLogos.uri(context, address)

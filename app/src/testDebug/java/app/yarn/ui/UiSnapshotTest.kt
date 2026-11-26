@@ -935,4 +935,29 @@ class UiSnapshotTest {
     }
     @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun video21Hindi() = shot(false, "video_21_hindi") { InboxMock(storeInbox, storeMe) }
     @Test fun video22Pro() = shot(false, "video_22_pro") { Paywall(app.yarn.billing.Access.Trial(30), back = false) }
+
+    // Business chats (RCS agents) arrive with Base32 agent IDs; they now show their business and card text.
+    @Test fun businessChats() = shot(true, "88_inbox_business_chats_dark") {
+        fun b32(id: String): String {
+            val alphabet = "abcdefghijklmnopqrstuvwxyz234567"
+            val out = StringBuilder(); var buffer = 0; var bits = 0
+            for (b in id.toByteArray()) { buffer = (buffer shl 8) or (b.toInt() and 0xFF); bits += 8; while (bits >= 5) { bits -= 5; out.append(alphabet[(buffer shr bits) and 31]) } }
+            if (bits > 0) out.append(alphabet[(buffer shl (5 - bits)) and 31])
+            return out.toString()
+        }
+        val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        fun chat(id: Long, agent: String, card: String): InboxItem {
+            val address = b32(agent)
+            val name = app.yarn.intelligence.SenderNames.pretty(address)!!
+            return item(id, name, card, "UPDATES", 1, address, true, InboxGroup.UPDATES).let { it.copy(photoUri = app.yarn.ui.common.BrandLogos.uri(ctx, address)) }
+        }
+        val rows = listOf(
+            chat(1, "jiosphere_pyq7x2_agent", "Browse faster with JioSphere: built-in ad blocker and VPN. Update now"),
+            chat(2, "google_pay_8f3k2a_agent", "Get up to Rs 100 cashback on your next electricity bill payment"),
+            chat(3, "woxen_university_admissions_9k2", "Admissions open for 2027. Apply for B.Tech and MBA by 15 December"),
+        )
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 24.dp)) {
+            rows.forEach { ConversationRow(it, false, false, {}, {}) }
+        }
+    }
 }

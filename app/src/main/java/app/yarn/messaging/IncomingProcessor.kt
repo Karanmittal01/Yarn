@@ -231,7 +231,9 @@ class IncomingProcessor(
         val date = conf.dateEpochSeconds?.times(1000) ?: m.date
         val parts = conf.parts.map(PartToStore::from)
 
-        val text = conf.parts.filter { it.isText }.joinToString("\n") { it.text().trim() }.trim()
+        val plain = conf.parts.filter { it.isText }.joinToString("\n") { it.text().trim() }.trim()
+        // A business chat's rich card: show its words, not an empty attachment.
+        val text = plain.ifEmpty { conf.parts.mapNotNull { RichCards.text(it.contentType, it.data.decodeToString()) }.joinToString("\n").trim() }
         val threadId = providerLock.withLockOrAfter(LOCK_WAIT_MS) {
             val threadId = runCatching { store.threadIdFor(participants.toSet()) }.getOrDefault(m.conversationId)
             val saved = store.persistMms(
@@ -240,9 +242,9 @@ class IncomingProcessor(
                 messageId = conf.messageId, transactionId = conf.transactionId ?: m.mmsTransactionId, contentLocation = m.mmsContentLocation,
             )
             conversations.ensure(threadId, participants)
-            val attachments = saved?.partUris?.filter { (p, _) -> !p.isText && !p.isSmil }?.map { (p, uri) ->
+            val attachments = saved?.partUris?.filter { (p, _) -> !p.isText && !p.isSmil && !RichCards.isCard(p.contentType) }?.map { (p, uri) ->
                 AttachmentEntity(messageId = messageId, mimeType = p.contentType, uri = uri.toString(), fileName = p.name, size = p.data.size.toLong())
-            } ?: conf.parts.filter { !it.isText && !it.isSmil }.mapIndexedNotNull { i, p ->
+            } ?: conf.parts.filter { !it.isText && !it.isSmil && !RichCards.isCard(it.contentType) }.mapIndexedNotNull { i, p ->
                 // Provider write failed: keep the media in private storage so the user still sees it.
                 val f = File(MediaTools.outboxDir(context), "in-$messageId-$i-${p.displayName ?: "part"}".replace(Regex("[^A-Za-z0-9._-]"), "_"))
                 runCatching { f.writeBytes(p.data) }.getOrNull() ?: return@mapIndexedNotNull null

@@ -208,7 +208,10 @@ class Notifier(
             )
         }
         run {
-            if (latest.body.isNotBlank() && !conversation.spam && conversation.addresses.all { PhoneNumbers.isDialable(it) || PhoneNumbers.isEmail(it) }) {
+            if (latest.body.isNotBlank() && !conversation.spam && conversation.addresses.all {
+                    (PhoneNumbers.isDialable(it) || PhoneNumbers.isEmail(it)) && app.yarn.intelligence.SenderNames.rcsAgent(it) == null
+                }
+            ) {
                 val remoteInput = RemoteInput.Builder(NotificationActionReceiver.KEY_REPLY).setLabel(context.getString(R.string.reply)).build()
                 builder.addAction(
                     NotificationCompat.Action.Builder(R.drawable.ic_reply, context.getString(R.string.reply), actionIntent(NotificationActionReceiver.ACTION_REPLY, conversationId, mutable = true))

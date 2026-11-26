@@ -8,6 +8,7 @@ import app.yarn.data.db.MessageEntity
 import app.yarn.data.db.MessageKind
 import app.yarn.data.db.MessageStatus
 import app.yarn.data.db.YarnDatabase
+import app.yarn.messaging.RichCards
 import app.yarn.telephony.ProviderMms
 import app.yarn.telephony.ProviderSms
 import app.yarn.telephony.TelephonyStore
@@ -120,7 +121,7 @@ class TelephonySync(
                         if (row.id !in alive) continue
                         val entity = row.toEntity() ?: continue
                         attachments[row.id] = row.parts
-                            .filter { !it.contentType.startsWith("text/") && !it.contentType.equals("application/smil", true) }
+                            .filter { !it.contentType.startsWith("text/") && !it.contentType.equals("application/smil", true) && !RichCards.isCard(it.contentType) }
                             .map { AttachmentEntity(messageId = 0, mimeType = it.contentType, uri = TelephonyStore.partUri(it.id).toString(), fileName = it.name) }
                         entities += entity
                     }
@@ -179,6 +180,30 @@ class TelephonySync(
         }
     }
 
+    /**
+     * Business chats imported before Yarn could read their cards show "Attachment": give them the
+     * card's words, and drop the card from their attachments. Returns how many were fixed.
+     */
+    suspend fun repairRichCards(): Int {
+        val touched = HashSet<Long>()
+        for (m in db.messages().blankMediaMessages()) {
+            val attachments = db.messages().attachments(m.id)
+            val cards = attachments.filter { RichCards.isCard(it.mimeType) }
+            if (cards.isEmpty()) continue
+            val text = cards.mapNotNull { a ->
+                val raw = a.uri.substringAfterLast('/').toLongOrNull()?.let { store.readPartText(it) }
+                RichCards.text(a.mimeType, raw)
+            }.joinToString("\n").trim()
+            val keep = attachments - cards.toSet()
+            db.messages().deleteAttachments(m.id)
+            if (keep.isNotEmpty()) db.messages().insertAttachments(keep.map { it.copy(id = 0) })
+            db.messages().update(m.copy(body = text, hasAttachments = keep.isNotEmpty(), analyzed = text.isEmpty() && m.analyzed))
+            touched += m.conversationId
+        }
+        touched.forEach { db.conversations().refresh(it) }
+        return touched.size
+    }
+
     private fun ProviderSms.toEntity(): MessageEntity {
         val outgoing = type != Telephony.Sms.MESSAGE_TYPE_INBOX
         val status = when (type) {
@@ -196,7 +221,9 @@ class TelephonySync(
     private fun ProviderMms.toEntity(): MessageEntity? {
         val outgoing = box != Telephony.Mms.MESSAGE_BOX_INBOX
         val isNotification = messageType == TelephonyStore.MESSAGE_TYPE_NOTIFICATION_IND
-        val text = parts.filter { it.contentType.startsWith("text/plain", true) }.mapNotNull { it.text }.joinToString("\n").trim()
+        val plain = parts.filter { it.contentType.startsWith("text/plain", true) }.mapNotNull { it.text }.joinToString("\n").trim()
+        // A business chat's card: its title and description stand in for the text.
+        val text = plain.ifEmpty { parts.mapNotNull { RichCards.text(it.contentType, it.text) }.joinToString("\n").trim() }
         val address = if (outgoing) to.joinToString(",") else from ?: to.firstOrNull() ?: return null
         val status = when {
             isNotification -> MessageStatus.PENDING_DOWNLOAD
@@ -204,7 +231,7 @@ class TelephonySync(
             box == Telephony.Mms.MESSAGE_BOX_SENT -> MessageStatus.SENT
             else -> MessageStatus.FAILED
         }
-        val hasMedia = parts.any { !it.contentType.startsWith("text/") && !it.contentType.equals("application/smil", true) }
+        val hasMedia = parts.any { !it.contentType.startsWith("text/") && !it.contentType.equals("application/smil", true) && !RichCards.isCard(it.contentType) }
         return MessageEntity(
             conversationId = threadId, kind = MessageKind.MMS, providerId = id, address = address, body = text, subject = subject,
             date = dateMillis, outgoing = outgoing, status = status, subId = subId, read = read || outgoing, seen = read || outgoing,

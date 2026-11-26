@@ -146,6 +146,15 @@ class AppContainer(val app: Application) {
                 runCatching { mlEntities.ensureModel(allowMobileData = false) }
             }
         }
+        // Once: business chats (RCS cards) imported before Yarn could read them get their words back.
+        scope.launch {
+            val repairs = app.getSharedPreferences("repairs", android.content.Context.MODE_PRIVATE)
+            if (!repairs.getBoolean(K_RICH_CARDS, false) && settings.current().initialImportDone) {
+                val fixed = runCatching { sync.repairRichCards() }.getOrDefault(-1)
+                if (fixed >= 0) repairs.edit().putBoolean(K_RICH_CARDS, true).apply()
+                if (fixed > 0) SyncWorker.enqueue(app)
+            }
+        }
         // Refresh cached names once per launch (contact edits, better sender-name mapping in updates).
         scope.launch { runCatching { conversations.refreshDisplayNames() } }
         scope.launch { runCatching { bin.emptyExpired() } }
@@ -228,3 +237,6 @@ class YarnApplication : Application() {
 
 /** Whether messages were last filed with Pro's spam filtering, so a change while Yarn was closed is caught. */
 private const val K_FILED_AS_PRO = "filed_as_pro"
+
+/** Business chats' cards were turned into text (see TelephonySync.repairRichCards). */
+private const val K_RICH_CARDS = "rich_cards_v1"

@@ -255,6 +255,10 @@ abstract class MessageDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     abstract suspend fun insert(m: MessageEntity): Long
 
+    /** Multimedia messages with no text: candidates for showing a business chat card's words. */
+    @Query("SELECT * FROM messages WHERE kind = 1 AND body = '' AND hasAttachments = 1")
+    abstract suspend fun blankMediaMessages(): List<MessageEntity>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     abstract suspend fun insertAll(m: List<MessageEntity>): List<Long>
 

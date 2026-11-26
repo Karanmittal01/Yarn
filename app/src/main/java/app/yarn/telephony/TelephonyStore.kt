@@ -116,7 +116,9 @@ class TelephonyStore(private val context: Context) {
             while (c.moveToNext()) {
                 val ct = c.getString(2).orEmpty()
                 val name = c.getString(5) ?: c.getString(4) ?: c.getString(6)
-                parts.getOrPut(c.getLong(1)) { mutableListOf() } += ProviderPart(c.getLong(0), ct, c.getString(3), name)
+                // A business chat's rich card is kept as a file, not text: read it so its words can be shown.
+                val text = c.getString(3) ?: if (app.yarn.messaging.RichCards.isCard(ct)) readPartText(c.getLong(0)) else null
+                parts.getOrPut(c.getLong(1)) { mutableListOf() } += ProviderPart(c.getLong(0), ct, text, name)
             }
         }
         val projection = arrayOf(
@@ -260,6 +262,20 @@ class TelephonyStore(private val context: Context) {
     }
     fun deleteMms(id: Long) = safeDelete(ContentUris.withAppendedId(Telephony.Mms.CONTENT_URI, id))
     fun deleteThread(threadId: Long) = safeDelete(ContentUris.withAppendedId(Telephony.Threads.CONTENT_URI, threadId))
+
+    /** A small part's content as text (rich cards are a few KB; anything past 64 KB is left out). */
+    fun readPartText(partId: Long): String? = runCatching {
+        resolver.openInputStream(partUri(partId))?.use { input ->
+            val buf = java.io.ByteArrayOutputStream()
+            val chunk = ByteArray(8 * 1024)
+            while (buf.size() < 64 * 1024) {
+                val n = input.read(chunk)
+                if (n < 0) break
+                buf.write(chunk, 0, n)
+            }
+            buf.toByteArray().decodeToString()
+        }
+    }.getOrNull()
 
     fun existingSmsIds(): Set<Long> = ids(Telephony.Sms.CONTENT_URI)
     fun existingMmsIds(): Set<Long> = ids(Telephony.Mms.CONTENT_URI)

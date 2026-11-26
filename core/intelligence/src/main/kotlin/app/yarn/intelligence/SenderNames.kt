@@ -1482,6 +1482,7 @@ object SenderNames {
 
     private fun known(address: String): Brand? {
         val a = address.trim()
+        rcsAgent(a)?.let { return agentBrand(it) }
         if (a.contains('@')) return null
         if (a.none { it.isLetter() }) return if (a.startsWith("+")) null else SHORT_CODES[a.filter(Char::isDigit)]
         val token = SenderAnalyzer.brandToken(a)
@@ -1493,6 +1494,7 @@ object SenderNames {
 
     fun isBusiness(address: String): Boolean {
         val a = address.trim()
+        if (rcsAgent(a) != null) return true
         if (a.contains('@')) return false
         return a.any { it.isLetter() } || a.filter { it.isDigit() }.length in 3..8 && !a.startsWith("+")
     }
@@ -1500,6 +1502,7 @@ object SenderNames {
     /** Readable name for an alphanumeric sender, or null when [address] isn't one. */
     fun pretty(address: String): String? {
         val a = address.trim()
+        rcsAgent(a)?.let { id -> return agentBrand(id)?.name ?: agentName(id) }
         if (a.contains('@')) return null
         known(a)?.let { return it.name }
         return if (a.none { it.isLetter() }) null else SenderAnalyzer.brandToken(a)
@@ -1513,4 +1516,66 @@ object SenderNames {
      * Only registered sender IDs map to a key, so an ordinary phone number never borrows a brand's logo.
      */
     fun brandKey(address: String): String? = known(address)?.name?.lowercase()?.filter { it in 'a'..'z' || it in '0'..'9' }
+
+    // ---- RCS business chats -------------------------------------------------------------------
+
+    /**
+     * The business behind an RCS business chat ("chatbot"). Such chats reach the phone's message
+     * store from an address that is the business's agent ID in Base32, such as
+     * "m5xw6z3mmvpxaylzl5yg…" for "google_pay…". Returns the decoded ID, or null for any other sender.
+     */
+    fun rcsAgent(address: String): String? {
+        val local = address.trim().removePrefix("sip:").substringBefore('@').lowercase().trimEnd('=')
+        if (local.length < 16 || !local.all { it in 'a'..'z' || it in '2'..'7' }) return null
+        val id = base32(local)?.trimEnd { !it.isLetterOrDigit() } ?: return null
+        val allowed = id.all { it in 'a'..'z' || it in '0'..'9' || it == '_' || it == '-' || it == '.' }
+        return id.takeIf { allowed && it.length >= 4 && it.count(Char::isLetter) * 2 >= it.length }
+    }
+
+    /** "jiosphere_ab12_agent" becomes "JioSphere": no hash-like parts, no "agent" or "bot". */
+    fun agentName(id: String): String {
+        val words = id.split('_', '-', '.').filter { it.isNotBlank() }
+        val kept = words.filter { w -> w !in AGENT_NOISE && w.none(Char::isDigit) && w.length > 1 }.ifEmpty { words.take(1) }
+        val joined = kept.joinToString(" ")
+        AGENT_NAMES[joined.replace(" ", "")]?.let { return it }
+        return kept.joinToString(" ") { w -> AGENT_NAMES[w] ?: w.replaceFirstChar(Char::uppercaseChar) }
+    }
+
+    /** A known brand behind an agent ID, so it gets the brand's name and logo. */
+    private fun agentBrand(id: String): Brand? {
+        val compact = agentName(id).lowercase().filter { it.isLetterOrDigit() }
+        if (compact.isEmpty()) return null
+        fun norm(b: Brand) = b.name.lowercase().filter { it.isLetterOrDigit() }
+        return KNOWN.firstOrNull { norm(it) == compact }
+            ?: KNOWN.firstOrNull { norm(it).length >= 5 && compact.startsWith(norm(it)) }
+    }
+
+    private val AGENT_NOISE = setOf("agent", "bot", "chatbot", "rbm", "rcs", "prod", "production", "test", "dev", "official", "msg", "messaging")
+    private val AGENT_NAMES = mapOf(
+        "jiosphere" to "JioSphere", "googlepay" to "Google Pay", "gpay" to "Google Pay", "phonepe" to "PhonePe",
+        "paytm" to "Paytm", "jio" to "Jio", "airtel" to "Airtel", "makemytrip" to "MakeMyTrip", "irctc" to "IRCTC",
+    )
+
+    /** RFC 4648 Base32 (lower case, no padding); trailing bits that don't make a byte are dropped. */
+    private fun base32(s: String): String? {
+        var buffer = 0
+        var bits = 0
+        val out = StringBuilder()
+        for (c in s) {
+            val v = when (c) {
+                in 'a'..'z' -> c - 'a'
+                in '2'..'7' -> c - '2' + 26
+                else -> return null
+            }
+            buffer = (buffer shl 5) or v
+            bits += 5
+            if (bits >= 8) {
+                bits -= 8
+                val b = (buffer shr bits) and 0xFF
+                if (b < 0x20 || b > 0x7E) return null
+                out.append(b.toChar())
+            }
+        }
+        return out.toString()
+    }
 }
