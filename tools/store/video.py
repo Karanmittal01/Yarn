@@ -3,6 +3,7 @@
 Render the screens first (made-up people and numbers only):
     ./gradlew :app:testDebugUnitTest --tests '*UiSnapshotTest.video*'
 then, from the repository root, with Pillow and NumPy installed and ffmpeg on the PATH:
+    python tools/store/voiceover.py <voice_dir>   # optional narration, see that file
     python tools/store/video.py [output.mp4]
 
 The story: a messy-inbox hook, the logo, signing up, then each main feature in the phone with
@@ -424,12 +425,15 @@ def main():
         for s in only.split(","):
             v.frame(float(s)).convert("RGB").save(out.replace(".mp4", f"-{s}.png"))
         return
+    # The voiceover from tools/store/voiceover.py when it's there, else silence.
+    voice = os.path.join(ROOT, "app", "build", "yarn-voiceover.wav")
+    audio = ["-i", voice] if os.path.exists(voice) else ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000"]
     cmd = [
         "ffmpeg", "-y", "-loglevel", "error",
         "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-        "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
+        *audio, "-af", "aresample=48000,pan=stereo|c0=c0|c1=c0" if os.path.exists(voice) else "anull",
         "-shortest", "-c:v", "libx264", "-preset", "slow", "-crf", "20", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", out,
+        "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", out,
     ]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     total = int(END * FPS)
