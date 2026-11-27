@@ -251,6 +251,10 @@ pick("web1", "ckyccersai")
 pick("site", "nesl")
 pick(P, "awign")
 TUNE["awign"] = {"ops": [("crop", 0.28, 0.06, 0.72, 0.56)]}
+# National Consumer Helpline (NCHSMS), the Department of Consumer Affairs' complaint line: the headset with
+# its 1800114000 / 1915 numbers and red "NCH" band from its Play icon (the website's icon is the State
+# Emblem, which isn't a logo to borrow).
+pick(P, "nationalconsumerhelpline")
 
 # Maximize (MAXMZE), gift cards and rewards: the white mark from its site icon on its green, not the
 # festive Play icon with string lights.

@@ -969,6 +969,7 @@ NEW += [
     ("CKYC (CERSAI)", "cersai.org.in", ["CKYC"]),
     ("NeSL", "nesl.co.in", ["NESL"]),
     ("Awign", "awign.com", ["EAWIGN", "MAWIGN", "AWIGN"]),
+    ("National Consumer Helpline", "consumerhelpline.gov.in", ["NCHSMS"]),
 ]
 ALIASES += [
     ("UIDAI (Aadhaar)", ["ADHAAR"]),

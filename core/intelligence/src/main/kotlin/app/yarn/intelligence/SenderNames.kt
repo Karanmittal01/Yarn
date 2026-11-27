@@ -1467,6 +1467,7 @@ object SenderNames {
         Brand("EAWIGN", "Awign"),
         Brand("MAWIGN", "Awign"),
         Brand("AWIGN", "Awign"),
+        Brand("NCHSMS", "National Consumer Helpline", Category.UPDATES),
         Brand("COWIN", "CoWIN", Category.UPDATES),
         Brand("GOOGLE", "Google", Category.UPDATES),
         Brand("WHATSP", "WhatsApp", Category.UPDATES),
