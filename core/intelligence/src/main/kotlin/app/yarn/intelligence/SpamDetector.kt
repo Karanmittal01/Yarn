@@ -35,7 +35,11 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
     private val signals = listOf(
         s(0.45f, "Threatens account suspension or blocking", true,
             "(?:account|card|wallet|sim|number|service)s? (?:will be |has been |is |are )?(?:suspended|blocked|locked|deactivated|disabled|terminated|closed)",
-            "(?:suspend|block|deactivate)(?:ed)? (?:your|ur) (?:account|card|sim)"),
+            "(?:suspend|block|deactivate)(?:ed)? (?:your|ur) (?:account|card|sim)",
+            "(?:fastag|tag|upi(?: id)?|vehicle|pan(?: card)?|aadhaa?r|wallet|account|card|sim)s? (?:will be |has been |is )?blacklisted"),
+        // Indian carriers prefix messages they've flagged ("Airtel Warning: SPAM"); the carrier saw the traffic.
+        s(0.6f, "Your carrier marked it as spam", false,
+            "(?:airtel|jio|vi|vodafone(?: idea)?|bsnl) (?:warning|alert) ?[:|-]? ?(?:suspected )?(?:spam|fraud)"),
         withLink(0.45f, "Asks you to verify identity or update KYC via a link", true,
             "(?:update|complete|verify|re-?verify) (?:your |ur )?(?:kyc|pan|aadhaar|identity|account details|billing|payment (?:info|details|method))",
             "kyc (?:is |has )?(?:expired|expiring|pending|update|suspended|failed|blocked)", "verify (?:your )?(?:vehicle|account|card|kyc|bank) details",
@@ -80,8 +84,8 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
             "download (?:the )?(?:attached )?(?:\\w+ )?(?:verification|kyc|support|security) app",
             "(?:son|daughter|husband|wife|brother|sister|father|mother) (?:has been|is|was|got) (?:arrested|detained|caught)", "in police custody"),
         s(0.45f, "Asks you to return money \"sent by mistake\"", true,
-            "(?:sent|transferred|credited) (?:rs\\.? ?|₹ ?)?[\\d,]+ (?:to your (?:account|number|upi|wallet) )?by mistake",
-            "by mistake[^.]{0,60}(?:return|send (?:it )?back|refund)", "return (?:it|my money|the money) (?:to|on) my",
+            "(?:sent|transferred|credited) (?:rs\\.? ?|₹ ?)?[\\d,]+ (?:to (?:you|your (?:account|number|upi|wallet)) )?(?:on \\w+ )?by mistake",
+            "by mistake[\\s\\S]{0,60}?(?:return|send (?:it )?back|refund|wapas)", "return (?:it|my money|the money) (?:to|on) my",
             "galti se[^.]{0,80}(?:wapas|lauta|return|bhej)", "wapas (?:bhej|kar|de) (?:do|dijiye|dena)"),
         s(0.45f, "Asks you to install an app or share your screen", true,
             "(?:install|download) (?:the |this )?(?:app|apk)[^.]{0,40}(?:redeem|kyc|reward|points|refund|update)", "anydesk", "teamviewer", "quick ?support", "screen ?shar(?:e|ing) app"),
@@ -124,7 +128,7 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
     )
 
     private val safeHints = Regex("(?i)\\b(?:do not share|don't share|never share|never ask|will never ask|not requested by you|if not you|if this wasn't you)\\b")
-    private val brandMention = Regex("(?i)\\b(?:paypal|amazon|apple|icloud|netflix|usps|fedex|dhl|ups|irs|hdfc|icici|sbi|axis|kotak|paytm|phonepe|flipkart|chase|wells ?fargo|bank of america|whatsapp|e-?zpass|india post|royal mail|hmrc|jio|airtel|aadhaar|uidai|income ?tax|epfo|irctc|rbi|trai|npci)\\b")
+    private val brandMention = Regex("(?i)\\b(?:paypal|amazon|apple|icloud|netflix|usps|fedex|dhl|ups|irs|hdfc|icici|sbi|axis|kotak|paytm|phonepe|flipkart|chase|wells ?fargo|bank of america|whatsapp|e-?zpass|india post|royal mail|hmrc|jio|airtel|aadhaar|uidai|income ?tax|epfo|irctc|rbi|trai|npci|fastag|nhai|phonepe|google pay|gpay|bhim)\\b")
     private val bankMention = Regex("(?i)\\b(?:bank|a/c|account|kyc|credit card|debit card)\\b")
 
     /** "Call 98765 43210", "contact officer on +91 9876543210", "सम्पर्क करें 9876543210". */
@@ -133,7 +137,7 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
 
     private val ACCOUNT_THREAT = Regex("(?i)suspicious|flagged|blocked|deactivat|suspend|frozen|\\bkyc\\b|prize|lottery|\\bwon\\b|winner|arrest|customs|disconnect")
     private val CARD_POINTS = Regex("(?i)(?:credit|debit) card (?:reward )?points|card reward")
-    private val REWARD_EXPIRY = Regex("(?i)(?:reward|loyalty)? ?points?[^.]{0,40}(?:expir|lapse)[\\s\\S]{0,70}?(?:redeem|claim|click|using|here)")
+    private val REWARD_EXPIRY = Regex("(?i)(?:reward|loyalty)? ?points?(?:[^.]|\\.(?=\\d)){0,40}(?:expir|lapse)[\\s\\S]{0,70}?(?:redeem|claim|click|using|here)")
     private val MOBILE = Regex("(?<![\\dA-Za-z])(?:\\+?91[- ]?)?[6-9]\\d{4} ?\\d{5}(?!\\d)")
     private val PHONE_LIKE = Regex("(?<!\\d)(?:[6-9]\\d[\\d -]{7,12}\\d)(?!\\d)")
 

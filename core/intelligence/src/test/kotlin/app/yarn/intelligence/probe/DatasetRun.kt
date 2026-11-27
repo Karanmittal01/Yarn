@@ -21,10 +21,11 @@ class DatasetRun {
         val strict = MessageAnalyzer(AnalyzerConfig(spamSensitivity = SpamSensitivity.HIGH))
         out.bufferedWriter().use { w ->
             File(input).readLines().forEach { line ->
-                val (sender, raw) = line.split('\t', limit = 2)
+                val (given, raw) = line.split('\t', limit = 2)
                 val text = raw.replace("\\n", "\n")
-                // A sender shown as a name ("MOM", "Priya Verma") is a saved contact on a real phone.
-                val contact = sender in CONTACT_NAMES || Regex("[A-Z][a-z]+ [A-Z][a-z]+").matches(sender)
+                // "c:Mom" is a saved contact, as is a sender shown as a name ("MOM", "Priya Verma").
+                val sender = given.removePrefix("c:")
+                val contact = given.startsWith("c:") || sender in CONTACT_NAMES || Regex("[A-Z][a-z]+ [A-Z][a-z]+").matches(sender)
                 val m = MessageInput(text, SenderInfo(sender, isContact = contact), 1_790_000_000_000L)
                 val r = a.analyze(m)
                 val h = strict.analyze(m)

@@ -777,6 +777,11 @@ import round4  # noqa: E402
 
 round4.build(add)
 
+# Round five: a second AI-written test set (tools/corpus/round5.py).
+import round5  # noqa: E402
+
+round5.build(add)
+
 
 def main():
     seen = set()

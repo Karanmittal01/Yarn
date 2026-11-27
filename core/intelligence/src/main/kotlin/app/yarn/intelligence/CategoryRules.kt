@@ -52,7 +52,7 @@ object CategoryRules {
             "balance (?:is|of)", "recharge (?:of|successful|is successful|done)", "fastag",
             "(?:has been |was |is )?charged (?:to|on) your", "charged $MONEY", "$MONEY (?:has been |was )?charged"),
 
-        r(Category.BILLS, 2.5f, "Mentions a bill or due date", "bill (?:of|for|is|amount|generated)", "amount due", "amt due", "overdue",
+        r(Category.BILLS, 2.5f, "Mentions a bill or due date", "bill (?:of|for|is|amount|generated)", "bill $MONEY", "(?:policy|insurance|renewal)[^\\n]{0,60}?premium $MONEY", "property tax", "amount due", "amt due", "overdue",
             "postpaid", "electricity bill", "gas bill", "water bill", "premium (?:of $MONEY )?(?:for|is|due)", "insurance premium", "autopay", "auto-debit",
             "mandate", "subscription renew(?:s|al|ed)", "plan expires", "validity (?:ends|expires)",
             "emi (?:of|for|is|was)", "bounced", "pay immediately"),
@@ -101,7 +101,7 @@ object CategoryRules {
             "lifetime free", "get (?:an? )?(?:loan|credit card|card)", "upgrade to", "interest rates? (?:starting|as low)", "unlimited (?:5g|data|calls)",
             "5g unlimited", "with $MONEY plan", "$MONEY plan", "recharge (?:before|with)",
             "(?:\\d+ )?months? (?:of )?\\w+ free", "earn \\d+ ?% cashback"),
-        r(Category.PROMOTIONS, 2.4f, "Advertises a financial product or perk", "reward points? (?:are|is) waiting", "redeem (?:them|it|now|your)", "coins (?:are|is) expiring",
+        r(Category.PROMOTIONS, 2.4f, "Advertises a financial product or perk", "reward points? (?:are|is) waiting", "\\d+x (?:reward )?points", "(?:get|earn) \\d+x", "redeem (?:them|it|now|your)", "coins (?:are|is) expiring",
             "complimentary", "exclusive (?:for you|benefits?|offers?|dining|deals?)", "unlock (?:exclusive|special)", "zero (?:joining|annual|processing|forex)",
             "lounge (?:access|voucher)", "claim (?:it|now|your|before|by)", "plan your", "attractive (?:rates?|interest)", "earn up ?to", "open an? (?:\\w+ )?account (?:in|online|now|today)",
             "know more", "avail (?:now|it|today)", "no (?:documents?|income proof|paperwork)(?: (?:needed|required))?", "home loans?", "at \\d+(?:\\.\\d+)?% p\\.?a",
@@ -121,6 +121,8 @@ object CategoryRules {
         r(Category.UPDATES, 1.8f, "Service notification", "appointment", "reminder", "scheduled", "your request", "ticket (?:no|number|id)", "complaint",
             "has been (?:updated|approved|activated|registered|processed)", "successfully", "alert", "notification", "status", "results?", "report", "renewal",
             "booking (?:id|is confirmed|confirmed)", "is confirmed"),
+        r(Category.UPDATES, 2.6f, "Says a plan or pack is running out", "(?:plan|pack|validity|recharge|subscription|membership|balance) (?:[\\w.,]+ ){0,4}(?:expires?|expiring|will expire|is due to expire)",
+            "\\d+ ?% (?:of )?(?:your )?(?:daily )?data (?:used|consumed)", "consumed \\d+ ?% of", "data left"),
 
         // Safety advice ("We never ask for your OTP") is a notice, not a transaction or a code.
         r(Category.UPDATES, 4f, "Safety advice from the sender", "never (?:asks?|calls?|call you|ask you|requests?|send)", "will never (?:ask|call|send|request)",
@@ -166,7 +168,9 @@ object CategoryRules {
     private val MONEY_LEAD = Regex(
         "(?i)(?:debited|credited|deducted|refunded|refund (?:of|for|has|is|amount)|\\bpaid\\b|payment (?:of|received|successful|is successful|done|failed)|" +
             "\\bspent\\b|charged|transferred|withdrawn|gift card (?:has|of|worth|is)|(?:card|voucher) is here|voucher details|redemption (?:[\\w-]+ ){0,8}(?:is )?successful|\\b\\w+ money (?:is|has)|cashback (?:of|has been|credited|is credited)|" +
-            "added to your \\w* ?(?:balance|wallet|account)|has been executed|units allotted|recharge (?:of (?:rs|inr|₹)|successful|is successful)|payout of|spend of (?:rs|inr|₹)|" +
+            "added to your \\w* ?(?:balance|wallet|account)|has been executed|units allotted|payout of|" +
+            "recharge (?:of )?$MONEY[\\s\\S]{0,30}?(?:successful|done|completed|processed|failed)|recharge (?:successful|is successful|done)|रिचार्ज[\\s\\S]{0,30}?सफल|recharge[\\s\\S]{0,30}?safal|" +
+            "\\breceived $MONEY|$MONEY (?:received|sent|paid) (?:from|to)|\\byou sent $MONEY|(?:transaction|txn|purchase) of $MONEY (?:on|at|using|via)|payment (?:of )?$MONEY (?:is |has been )?(?:received|successful|done|completed)|spend of (?:rs|inr|₹)|" +
             "received (?:rs\\.?|inr|₹) ?[\\d,.]+ towards|trade confirmation|(?:credit|debit) in (?:your )?(?:demat|a/c)|(?:was|has been|is) used for|online transaction of|" +
             "\\bsip (?:installment |instalment )?of (?:rs|inr|₹)[^.]*(?:processed|debited|deducted|successful)|\\b(?:debit|credit) of (?:rs|inr|₹)|(?:nach|ecs|ach)(?:/nach)? debit|" +
             "returned unpaid|disbursed|\\b(?:dr|cr) (?:rs\\.?|inr|₹)? ?\\d|shortfall of|dividend|(?:fd|fixed deposit|recurring deposit|rd) (?:of (?:rs|inr|₹)[\\d,.\\s]+)?(?:has been |is )?(?:booked|opened)|ডেবিট|জমা|வரவு|பற்று|డెబిట్|జమ|ಜಮಾ|ಡೆಬಿಟ್|emi (?:of|for) (?:rs|inr|₹)|bounced|declined|levied|charges of (?:rs|inr|₹)|डेबिट|जमा)",
@@ -180,7 +184,8 @@ object CategoryRules {
     // your benefits."): an amount with conditions attached, or money that only spends at the brand.
     // Real money never carries an asterisk.
     private val PERK_CREDIT = Regex(
-        "(?i)$MONEY\\*|enjoy (?:your |the |these |exclusive )?(?:benefits|perks|privileges)|power ?cash|bonus cash|promo(?:tional)? (?:cash|credits?|balance)",
+        "(?i)$MONEY\\*|enjoy (?:your |the |these |exclusive )?(?:benefits|perks|privileges)|power ?cash|bonus cash|promo(?:tional)? (?:cash|credits?|balance)|scratch ?cards?|" +
+            "\\d+ ?(?:gb|mb) (?:\\w+ ){0,2}(?:credited|added)",
     )
     // A trip (a PNR, a ticket, a flight) that a refund or fare belongs to: "Your ticket for PNR … has been
     // cancelled. Refund of Rs …" is about the journey.
@@ -189,8 +194,10 @@ object CategoryRules {
     private val DOCUMENT_POSTED = Regex("(?i)\\b(?:licen[cs]e|passport|rc|registration certificate|pan card|aadhaar|epic|voter id|welcome kit|smart card)\\b")
     // A new limit, a registered mandate or standing instruction: an amount is named, nothing is paid.
     private val SETUP_ONLY = Regex(
-        "(?i)(?:mandate|standing instruction|autopay|auto-?debit)[\\s\\S]{0,80}?(?:has been |is |was )?(?:registered|created|set up|approved|enabled|cancell?ed|canceled|revoked|deregistered|paused)|limit (?:has been |is )?(?:revised|increased|enhanced|reduced|changed|upgraded)",
+        "(?i)(?:mandate|standing instruction|autopay|auto-?debit)[\\s\\S]{0,80}?(?:has been |is |was )?(?:registered|created|set up|approved|enabled|activated|active|cancell?ed|canceled|revoked|deregistered|paused)|" +
+            "limit[\\s\\S]{0,30}?(?:has been |is |was )?(?:revised|increased|enhanced|reduced|changed|upgraded)|(?:transaction|daily|transfer|upi|per day) limit (?:is|of|for)",
     )
+    private val CHAT_ABOUT_CODE = Regex("(?i)\\?|\\b(?:beta|bhai|yaar|kya|hai na|na\\?|bata|batao|dena|de do|chahiye|mom|papa|mummy)\\b")
     private val MOVED = Regex("(?i)debited|deducted|\\bpaid\\b|credited|withdrawn|transferred|spent")
     private val PROMO_NUMBER = Regex("\\d{6}")
     private val BILL_WORD = Regex("(?i)\\b(?:bill|premium|emi|postpaid|dues?|invoice|fees?|rent|maintenance charges?|challan)\\b")
@@ -206,7 +213,9 @@ object CategoryRules {
         val topProbability: Float get() = probabilities.getValue(top)
     }
 
-    fun score(input: MessageInput, entities: List<Entity>): Scores {
+    fun score(input: MessageInput, found: List<Entity>): Scores {
+        // "New card fee Rs.0": nothing to pay.
+        val entities = found.filterNot { it.type == EntityType.AMOUNT && it.value.substringAfter(' ').toDoubleOrNull() == 0.0 }
         val text = input.text
         val raw = HashMap<Category, Float>()
         val reasons = HashMap<Category, MutableList<String>>()
@@ -261,6 +270,9 @@ object CategoryRules {
             }
             SenderKind.EMAIL -> Unit
         }
+        // Family asking about a code ("gas wala aaya hai, OTP dena hai kya? 7712 hai na?") is talking, not
+        // forwarding one; a code a contact simply passes on ("OTP is 4421") stays an OTP.
+        if (sender.kind == SenderKind.CONTACT && otp != null && CHAT_ABOUT_CODE.containsMatchIn(text)) scale(Category.OTP, 0.3f)
         if (sender.kind == SenderKind.CONTACT || sender.kind == SenderKind.PHONE_NUMBER) {
             // People mention money and links too; only overwhelming evidence should move them.
             for (c in SERVICE + Category.PROMOTIONS + Category.UPDATES) if (c != Category.OTP) scale(c, 0.5f)
@@ -277,6 +289,8 @@ object CategoryRules {
         if (otp == null && !moneyEvidence) { scale(Category.BANKING, 0.4f); scale(Category.PAYMENTS, 0.5f) }
         // "Due" with no amount and no bill is a reminder (a vaccination, a car service), not a bill.
         if (otp == null && !hasAmount && !BILL_WORD.containsMatchIn(text)) scale(Category.BILLS, 0.4f)
+        // An autopay or mandate being set up names the amount it will take; nothing is due yet.
+        if (setupOnly) scale(Category.BILLS, 0.4f)
 
         // A discount or promo code is an advert, unless money moved or an order is under way.
         // People forward offers too ("Did you see the HDFC offer? 10% off"); only a business's discount is an advert.
@@ -330,7 +344,8 @@ object CategoryRules {
                     add(if (otp != null) Category.OTP else Category.BANKING, 1f, "Sender header is marked transactional (-T)", fromText = false)
                 }
             }
-            CommercialSuffix.GOVERNMENT -> add(Category.UPDATES, 2f, "Sender header is marked government (-G)", fromText = false)
+            // A challan, an electricity board's bill or a UPI credit is money whoever sends it.
+            CommercialSuffix.GOVERNMENT -> if (!moneyEvidence) add(Category.UPDATES, 2f, "Sender header is marked government (-G)", fromText = false)
             CommercialSuffix.SERVICE, null -> Unit
         }
 
