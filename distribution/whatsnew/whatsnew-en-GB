@@ -1,6 +1,5 @@
-React to messages: long-press, pick 👍 ❤️ 😂, and they see it too. Reactions from iPhones now show as emoji.
-Smarter sorting, tested on 1,500 real Indian messages: bank and Amazon Pay alerts stay out of Spam.
-Catches more scams: fake police and customs calls, "sent by mistake", fake challans.
-Business chats show the business's name instead of random letters.
-Long-press Send to schedule. Fewer prompts at setup.
-New logos: CKYC, NeSL, Awign, Parivahan.
+Fixed: Yarn could get stuck on "Sorting your messages". One odd message can no longer hold up the rest.
+Business chats like Tata AIG and JioMart now show their name on more phones.
+Smarter sorting, tested on over 9,000 messages: bills, recharges and UPI payments land where they belong.
+Catches more scams: fake KYC, power-cut, reward-point, loan-fee and investment-group messages.
+New logo: National Consumer Helpline.
