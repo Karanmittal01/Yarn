@@ -31,13 +31,12 @@ FREE TO USE. YARN PRO FREE FOR 30 DAYS.
 Yarn is free: texting, OTPs with one-tap Copy, translation, smart replies, app lock and Google Drive backup. Every new install also gets Yarn Pro free for 30 days. After that, Yarn stays free with the All and OTP tabs, or keep Pro for ₹199 a year or ₹999 once for life (early-bird prices; regular ₹499 a year and ₹2,999). The yearly plan renews until you cancel in Google Play. No ads, ever.
 
 YOUR INBOX, SORTED (PRO)
-Every message is filed into Personal, OTP, Transactions, Shopping, Travel, Updates or Offers, so messages from people you care about are never buried under alerts and ads.
+Every message lands in Personal, OTP, Updates or Offers, and scams go to Spam, so messages from people you care about are never buried under alerts and ads.
 • OTP: one-time codes in one place, with one-tap Copy (free)
-• Transactions: bank debits and credits, card spends, UPI, bills and investments
-• Shopping: orders, food and grocery deliveries, refunds and couriers
-• Travel: trains, flights, cabs and office pickups
-• Updates: appointments, account changes and service notices
+• Updates: bank alerts, bills, orders, deliveries, trips and service notices
 • Offers: sales and marketing, kept out of your way
+• Your own tabs: Bank & payments, Orders & deliveries, Travel, chats you pick, or any word like "salary"
+Bank alerts can still ring while other updates stay quiet.
 
 BUILT FOR INDIA
 Yarn names about 1,000 Indian banks, shops, apps, couriers, telecoms and government services instead of sender codes like VM-ABCDEF-S, and with Pro shows their logos. Missing a logo? Long-press the sender's picture to ask for it. Yarn understands the -P, -S, -T and -G sender tags and is available in English and Hindi.

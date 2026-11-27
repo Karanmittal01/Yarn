@@ -960,4 +960,22 @@
     <string name="kind_money">Bank &amp; payments</string>
     <string name="kind_orders">Orders &amp; deliveries</string>
     <string name="kind_other_updates">Other updates</string>
+    <string name="chip_new_tab">New tab</string>
+    <string name="custom_tab_title">Make a tab</string>
+    <string name="custom_tab_intro">Pick what it should show. You can have up to 3 of your own tabs; long-press one to remove it.</string>
+    <string name="custom_tab_money_desc">Debits, credits, UPI, cards and bills</string>
+    <string name="custom_tab_orders_desc">Orders, deliveries and returns</string>
+    <string name="custom_tab_travel_desc">Tickets, PNR, flights and cabs</string>
+    <string name="custom_tab_chats">Chats I pick</string>
+    <string name="custom_tab_chats_desc">Family, work, your society: whoever you choose</string>
+    <string name="custom_tab_words">Messages with a word</string>
+    <string name="custom_tab_words_desc">Like salary, school or society</string>
+    <string name="custom_tab_name">Tab name</string>
+    <string name="custom_tab_words_field">Words to look for</string>
+    <string name="custom_tab_words_hint">Separate words with commas</string>
+    <string name="custom_tab_pick_chats">Choose chats</string>
+    <string name="custom_tab_add">Add tab</string>
+    <string name="custom_tab_remove_title">Remove the “%1$s” tab?</string>
+    <string name="custom_tab_remove_text">Only the tab goes. Your messages stay where they are.</string>
+    <string name="custom_tab_remove">Remove</string>
 </resources>

@@ -1,5 +1,8 @@
 package app.yarn.ui.inbox
 
+import app.yarn.intelligence.group
+import app.yarn.data.repo.filter
+import kotlinx.coroutines.withContext
 import app.yarn.data.prefs.sortingOn
 import androidx.lifecycle.ViewModel
 import app.yarn.safeScope
@@ -58,7 +61,13 @@ data class InboxChip(
     val group: InboxGroup? = null,
     val unread: Int = 0,
     val pro: Boolean = false,
-)
+    /** A tab the user made: shown by its own name, removed with a long press. */
+    val custom: app.yarn.data.prefs.CustomTab? = null,
+    /** The "New tab" chip, which opens the tab maker instead of a list. */
+    val add: Boolean = false,
+) {
+    val key: String get() = custom?.id ?: if (add) "add" else label.toString()
+}
 
 data class InboxStatus(
     val isDefault: Boolean = true,
@@ -138,12 +147,12 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
 
     /** Whether tabs are on (sorting) and which ones: Yarn Free has All and OTP; Pro has them all. */
     private val tabs = combine(
-        c.settings.settings.map { it.sortingOn }, c.licence.access.map { it.isPro },
-    ) { sorting, pro -> sorting to pro }.distinctUntilChanged()
+        c.settings.settings.map { it.sortingOn to it.customTabs }, c.licence.access.map { it.isPro },
+    ) { (sorting, custom), pro -> Triple(sorting, pro, custom) }.distinctUntilChanged()
 
     val chips: StateFlow<List<InboxChip>> = combine(
         c.db.conversations().totalsByCategory(), c.db.conversations().sectionCategories(), spamTab, _filter, tabs,
-    ) { totals, sections, spam, current, (sorting, pro) ->
+    ) { totals, sections, spam, current, (sorting, pro, custom) ->
         val unreadAll = totals.sumOf { it.unread }
         // A chat counts once per section it has messages in, and as unread there only if that part is unread.
         val bySection = sections.groupBy { Category.fromName(it.category)?.let(InboxGroup::of) }
@@ -166,9 +175,17 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
                 val unread = rows.filter { it.unread > 0 }.map { it.conversationId }.toSet().size
                 if (rows.isNotEmpty() || current == g.filter) add(InboxChip(g.label, g.filter, g, unread))
             }
+            // Tabs the user made, after the built-in ones. One of a kind counts unread like a section.
+            if (sorting) custom.forEach { t ->
+                val unread = t.kind?.let { k ->
+                    sections.filter { s -> Category.fromName(s.category)?.group == k && s.unread > 0 }.map { it.conversationId }.toSet().size
+                } ?: 0
+                add(InboxChip(0, t.filter, unread = unread, custom = t))
+            }
             // Spam is a tab like the others, last in the row.
             val spamFilter = InboxFilter(InboxView.SPAM)
             if (spam.first > 0 || current == spamFilter) add(InboxChip(R.string.verdict_spam, spamFilter, unread = spam.second))
+            if (sorting && custom.size < app.yarn.data.prefs.CustomTab.MAX) add(InboxChip(R.string.chip_new_tab, InboxFilter(), add = true))
         }
     }.stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), listOf(InboxChip(R.string.chip_all, InboxFilter())))
 
@@ -236,6 +253,22 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     val events: SharedFlow<UndoEvent> = _events
 
     fun setFilter(f: InboxFilter) { _filter.value = f; clearSelection() }
+
+    /** Adds a tab the user made and opens it. */
+    fun addCustomTab(tab: app.yarn.data.prefs.CustomTab) = viewModelScope.launch(app.yarn.CrashLog.handler) {
+        c.settings.update { s -> if (s.customTabs.size >= app.yarn.data.prefs.CustomTab.MAX) s else s.copy(customTabs = s.customTabs + tab) }
+        setFilter(tab.filter)
+    }
+
+    fun removeCustomTab(tab: app.yarn.data.prefs.CustomTab) = viewModelScope.launch(app.yarn.CrashLog.handler) {
+        c.settings.update { s -> s.copy(customTabs = s.customTabs.filterNot { it.id == tab.id }) }
+        if (_filter.value.custom?.id == tab.id) setFilter(InboxFilter())
+    }
+
+    /** Recent chats to pick from when making a tab of chosen chats. */
+    suspend fun recentChats(): List<ConversationEntity> = withContext(Dispatchers.IO) {
+        c.db.conversations().recent(300)
+    }
 
     init {
         // Sorting turned off, or Pro ended, while a tab was open: back to the one list.

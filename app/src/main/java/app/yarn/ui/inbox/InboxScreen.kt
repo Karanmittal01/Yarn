@@ -11,6 +11,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -257,16 +258,27 @@ fun InboxScreen(
                 if (showChips && chips.size > 1) {
                     // A new tab starts at the top of its list.
                     LaunchedEffect(filter) { listState.scrollToItem(0) }
+                    var makingTab by remember { mutableStateOf(false) }
+                    var removing by remember { mutableStateOf<app.yarn.data.prefs.CustomTab?>(null) }
                     LazyRow(
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        items(chips, key = { it.label }) { chip ->
-                            GroupChip(chip, selected = !chip.pro && chip.filter == filter) {
-                                if (chip.pro) context.container.licence.requestPro() else vm.setFilter(chip.filter)
+                        items(chips, key = { it.key }) { chip ->
+                            GroupChip(
+                                chip, selected = !chip.pro && !chip.add && chip.filter == filter,
+                                onLongClick = chip.custom?.let { t -> { removing = t } },
+                            ) {
+                                when {
+                                    chip.pro -> context.container.licence.requestPro()
+                                    chip.add -> makingTab = true
+                                    else -> vm.setFilter(chip.filter)
+                                }
                             }
                         }
                     }
+                    if (makingTab) NewTabDialog(loadChats = vm::recentChats, onCreate = { vm.addCustomTab(it) }, onDismiss = { makingTab = false })
+                    removing?.let { t -> RemoveTabDialog(t, onRemove = { vm.removeCustomTab(t) }, onDismiss = { removing = null }) }
                 } else {
                     Spacer(Modifier.height(6.dp))
                 }
@@ -516,9 +528,9 @@ private fun CrashBanner(onSend: () -> Unit, onDismiss: () -> Unit) {
 }
 
 @Composable
-internal fun GroupChip(chip: InboxChip, selected: Boolean, onClick: () -> Unit) {
+internal fun GroupChip(chip: InboxChip, selected: Boolean, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
     val idle = if (app.yarn.ui.theme.LocalDarkTheme.current) Color(0xFF3D3E43) else Color.White
-    val label = stringResource(chip.label)
+    val label = chip.custom?.name ?: stringResource(chip.label)
     val selectedDesc = stringResource(R.string.state_selected)
     val notSelectedDesc = stringResource(R.string.state_not_selected)
     val unreadDesc = stringResource(R.string.chip_unread, label, chip.unread)
@@ -529,7 +541,7 @@ internal fun GroupChip(chip: InboxChip, selected: Boolean, onClick: () -> Unit) 
             .height(36.dp)
             .clip(CircleShape)
             .background(bg)
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 16.dp)
             .semantics(mergeDescendants = true) {
                 stateDescription = if (selected) selectedDesc else notSelectedDesc
@@ -539,6 +551,10 @@ internal fun GroupChip(chip: InboxChip, selected: Boolean, onClick: () -> Unit) 
     ) {
         if (chip.pro) {
             Icon(Icons.Outlined.AutoAwesome, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(6.dp))
+        }
+        if (chip.add) {
+            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp), tint = fg)
             Spacer(Modifier.width(6.dp))
         }
         Text(label, style = MaterialTheme.typography.labelLarge, color = fg, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium)

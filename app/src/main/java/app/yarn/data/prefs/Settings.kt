@@ -54,8 +54,47 @@ fun AppSettings.notifyFor(group: CategoryGroup): NotifyMode = notifyTabs[group] 
 /** Messages are filed into tabs only while both Smart features and Smart sorting are on. */
 val AppSettings.sortingOn: Boolean get() = aiEnabled && autoCategorize
 
+/**
+ * A tab the user made (Yarn Pro): one kind of message ([kind]: bank & payments, orders, travel),
+ * the chats they picked ([chats], conversation ids), or messages containing any of [words].
+ */
+data class CustomTab(
+    val id: String,
+    val name: String,
+    val kind: CategoryGroup? = null,
+    val chats: List<Long> = emptyList(),
+    val words: List<String> = emptyList(),
+) {
+    companion object {
+        /** At most this many, so the tab row stays short. */
+        const val MAX = 3
+
+        fun toJson(tabs: List<CustomTab>): String = org.json.JSONArray(tabs.map { t ->
+            org.json.JSONObject()
+                .put("id", t.id).put("name", t.name)
+                .put("kind", t.kind?.name ?: "")
+                .put("chats", org.json.JSONArray(t.chats))
+                .put("words", org.json.JSONArray(t.words))
+        }).toString()
+
+        fun fromJson(json: String?): List<CustomTab> = runCatching {
+            val a = org.json.JSONArray(json ?: return emptyList())
+            (0 until a.length()).mapNotNull { i ->
+                val o = a.getJSONObject(i)
+                val chats = o.optJSONArray("chats")?.let { c -> (0 until c.length()).map { c.getLong(it) } }.orEmpty()
+                val words = o.optJSONArray("words")?.let { w -> (0 until w.length()).map { w.getString(it) } }.orEmpty()
+                val kind = o.optString("kind").takeIf { it.isNotEmpty() }?.let { k -> runCatching { CategoryGroup.valueOf(k) }.getOrNull() }
+                CustomTab(o.getString("id"), o.getString("name"), kind, chats, words)
+                    .takeIf { it.kind != null || it.chats.isNotEmpty() || it.words.isNotEmpty() }
+            }
+        }.getOrDefault(emptyList())
+    }
+}
+
 data class AppSettings(
     val onboardingDone: Boolean = false,
+    /** Tabs the user made, after the built-in ones (Yarn Pro). */
+    val customTabs: List<CustomTab> = emptyList(),
     /** Your name and picture as set in Yarn; blank falls back to your "Me" card in Contacts. */
     val profileName: String = "",
     val profilePhoto: String = "",
@@ -147,6 +186,7 @@ class SettingsRepository(private val context: Context) {
         /** Before per-tab choices: whether offers notified (silently). Read once to carry the choice over. */
         val notifyPromotions = booleanPreferencesKey("notify_promotions")
         val notifyTabs = stringPreferencesKey("notify_tabs")
+        val customTabs = stringPreferencesKey("custom_tabs")
         val notifySpam = booleanPreferencesKey("notify_spam")
         val otpCopy = booleanPreferencesKey("otp_copy")
         val aiEnabled = booleanPreferencesKey("ai_enabled")
@@ -209,6 +249,7 @@ class SettingsRepository(private val context: Context) {
             p[K.sendDelay] = s.sendDelaySeconds
             p[K.previews] = s.showNotificationPreviews
             p[K.notifyTabs] = s.notifyTabs.entries.joinToString(",") { "${it.key.name}:${it.value.name}" }
+            p[K.customTabs] = CustomTab.toJson(s.customTabs)
             p[K.notifySpam] = s.notifySpam
             p[K.otpCopy] = s.otpCopyAction
             p[K.aiEnabled] = s.aiEnabled
@@ -263,6 +304,7 @@ class SettingsRepository(private val context: Context) {
 
     private fun readFrom(p: Preferences, d: AppSettings): AppSettings = AppSettings(
         onboardingDone = p[K.onboardingDone] ?: d.onboardingDone,
+        customTabs = p[K.customTabs]?.let { CustomTab.fromJson(it) } ?: d.customTabs,
         profileName = p[K.profileName] ?: d.profileName,
         profilePhoto = p[K.profilePhoto] ?: d.profilePhoto,
         theme = p[K.theme]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: d.theme,

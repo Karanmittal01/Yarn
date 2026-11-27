@@ -958,4 +958,22 @@
     <string name="kind_money">बैंक और पेमेंट</string>
     <string name="kind_orders">ऑर्डर और डिलीवरी</string>
     <string name="kind_other_updates">अन्य अपडेट</string>
+    <string name="chip_new_tab">नया टैब</string>
+    <string name="custom_tab_title">टैब बनाएं</string>
+    <string name="custom_tab_intro">चुनें कि इसमें क्या दिखे। आप अपने 3 टैब तक बना सकते हैं; हटाने के लिए टैब को देर तक दबाएं।</string>
+    <string name="custom_tab_money_desc">डेबिट, क्रेडिट, UPI, कार्ड और बिल</string>
+    <string name="custom_tab_orders_desc">ऑर्डर, डिलीवरी और रिटर्न</string>
+    <string name="custom_tab_travel_desc">टिकट, PNR, फ़्लाइट और कैब</string>
+    <string name="custom_tab_chats">मेरे चुने हुए चैट</string>
+    <string name="custom_tab_chats_desc">परिवार, ऑफ़िस, सोसाइटी: जिन्हें आप चुनें</string>
+    <string name="custom_tab_words">किसी शब्द वाले मैसेज</string>
+    <string name="custom_tab_words_desc">जैसे salary, school या society</string>
+    <string name="custom_tab_name">टैब का नाम</string>
+    <string name="custom_tab_words_field">खोजने के शब्द</string>
+    <string name="custom_tab_words_hint">शब्दों को कॉमा से अलग करें</string>
+    <string name="custom_tab_pick_chats">चैट चुनें</string>
+    <string name="custom_tab_add">टैब जोड़ें</string>
+    <string name="custom_tab_remove_title">“%1$s” टैब हटाएं?</string>
+    <string name="custom_tab_remove_text">सिर्फ़ टैब हटेगा। आपके मैसेज जहां हैं वहीं रहेंगे।</string>
+    <string name="custom_tab_remove">हटाएं</string>
 </resources>

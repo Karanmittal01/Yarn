@@ -1,5 +1,6 @@
 package app.yarn.ui
 
+import app.yarn.data.repo.filter
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -155,6 +156,75 @@ class UiSnapshotTest {
                 Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                     .background(MaterialTheme.colorScheme.surface).padding(top = 10.dp),
             ) { rows.forEach { ConversationRow(it, false, false, {}, {}) } }
+        }
+    }
+
+    // ---- Tabs the user makes (Yarn Pro) ----------------------------------------------------------
+    private val moneyTab = app.yarn.data.prefs.CustomTab("money", "Bank & payments", kind = app.yarn.intelligence.CategoryGroup.TRANSACTIONS)
+    private val familyTab = app.yarn.data.prefs.CustomTab("family", "Family", chats = listOf(1L, 6L))
+    private val customChips = chips.dropLast(1) + listOf(
+        app.yarn.ui.inbox.InboxChip(0, moneyTab.filter, unread = 1, custom = moneyTab),
+        app.yarn.ui.inbox.InboxChip(0, familyTab.filter, custom = familyTab),
+        chips.last(),
+        app.yarn.ui.inbox.InboxChip(app.yarn.R.string.chip_new_tab, app.yarn.data.repo.InboxFilter(), add = true),
+    )
+    private val moneyRows = listOf(
+        item(3, "HDFC Bank", "Rs.2,500.00 debited from A/c XX1234 to VPA swiggy@icici", "BANKING", 1, "VM-HDFCBK-S", true, InboxGroup.UPDATES),
+        item(24, "Union Bank", "Your A/c XX1234 is credited by Rs 5,000.00", "BANKING", 0, "AD-UNIONB-S", true, InboxGroup.UPDATES),
+        item(25, "Airtel", "Your Airtel Postpaid bill Rs.799 is due on 15-Dec. Pay via Airtel Thanks.", "BILLS", 0, "VM-AIRTEL-S", true, InboxGroup.UPDATES),
+        item(9, "CDSL", "Credit in a/c *89040843 through IPO/FPO for 107 shares", "BANKING", 0, "JX-CDSLTX-S", true, InboxGroup.UPDATES),
+        item(26, "Paytm", "Rs.499 paid to SWIGGY via Paytm UPI. UPI Ref 312345678901.", "PAYMENTS", 0, "VM-PAYTMO-S", true, InboxGroup.UPDATES),
+    )
+
+    @androidx.compose.runtime.Composable
+    private fun CustomTabMock(rows: List<InboxItem>, selectedKey: String) {
+        val header = app.yarn.ui.inbox.inboxHeaderColor()
+        Column(Modifier.fillMaxSize().background(header)) {
+            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = karan, onProfile = {})
+            androidx.compose.foundation.lazy.LazyRow(
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                state = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = 3),
+            ) { items(customChips.size) { i -> app.yarn.ui.inbox.GroupChip(customChips[i], selected = customChips[i].key == selectedKey) {} } }
+            Column(
+                Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .background(MaterialTheme.colorScheme.surface).padding(top = 10.dp),
+            ) { rows.forEach { ConversationRow(it, false, false, {}, {}) } }
+        }
+    }
+
+    /** A dialog drawn in place over the inbox (dialogs open in their own window, which the capture doesn't see). */
+    @androidx.compose.runtime.Composable
+    private fun DialogMock(title: Int, confirm: Int?, dismiss: Int, body: @androidx.compose.runtime.Composable () -> Unit) {
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+            InboxMock()
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.45f)), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                androidx.compose.material3.Surface(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.padding(horizontal = 28.dp).fillMaxWidth(),
+                ) {
+                    Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 12.dp)) {
+                        androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(title), style = MaterialTheme.typography.headlineSmall)
+                        androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 14.dp))
+                        body()
+                        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
+                            androidx.compose.material3.TextButton(onClick = {}) { androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(dismiss)) }
+                            if (confirm != null) androidx.compose.material3.TextButton(onClick = {}) { androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(confirm)) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test fun customTabRow() = shot(true, "96_custom_tabs_dark") { CustomTabMock(moneyRows, "money") }
+    @Test fun customTabRowLight() = shot(false, "97_custom_tabs_light") { CustomTabMock(moneyRows, "money") }
+    @Test fun newTabChoices() = shot(true, "98_new_tab_dark") {
+        DialogMock(app.yarn.R.string.custom_tab_title, null, app.yarn.R.string.cancel) { app.yarn.ui.inbox.NewTabChoices({}, {}, {}) }
+    }
+    @Test fun newTabWords() = shot(false, "99_new_tab_words_light") {
+        DialogMock(app.yarn.R.string.custom_tab_title, app.yarn.R.string.custom_tab_add, app.yarn.R.string.back) {
+            app.yarn.ui.inbox.NewTabWords("salary, bonus, payslip", {}, "Salary", {})
         }
     }
 

@@ -34,7 +34,16 @@ import app.yarn.R
 
 enum class InboxView { ALL, IMPORTANT, UNREAD, CATEGORY, ARCHIVED, SPAM, BLOCKED, STARRED }
 
-data class InboxFilter(val view: InboxView = InboxView.ALL, val categories: Set<Category> = emptySet())
+data class InboxFilter(
+    val view: InboxView = InboxView.ALL,
+    val categories: Set<Category> = emptySet(),
+    /** A tab the user made; its rule decides what's listed. */
+    val custom: app.yarn.data.prefs.CustomTab? = null,
+)
+
+/** What a tab the user made lists. */
+val app.yarn.data.prefs.CustomTab.filter: InboxFilter
+    get() = InboxFilter(InboxView.CATEGORY, kind?.let { k -> Category.entries.filter { it.group == k }.toSet() }.orEmpty(), custom = this)
 
 /**
  * The inbox tabs people see (with All and Spam): few, so a message has one obvious home. Money,
@@ -80,6 +89,7 @@ class ConversationRepository(
     fun observe(filter: InboxFilter): Flow<List<ConversationEntity>> {
         val base = "blocked = 0 AND (messageCount > 0 OR (draft IS NOT NULL AND draft != ''))"
         val live = "$base AND archived = 0 AND spam = 0"
+        filter.custom?.let { t -> if (t.kind == null) return observeCustom(t, live) }
         if (filter.view == InboxView.CATEGORY) return observeSection(filter.categories)
         val where = when (filter.view) {
             InboxView.ALL, InboxView.CATEGORY -> live
@@ -92,6 +102,20 @@ class ConversationRepository(
         }
         val order = if (filter.view == InboxView.ALL) "pinned DESC, pinnedAt DESC, lastMessageAt DESC" else "lastMessageAt DESC"
         return db.conversations().observe(SimpleSQLiteQuery("SELECT * FROM conversations WHERE $where ORDER BY $order"))
+    }
+
+    /** A tab of picked chats, or of chats with a message containing one of the tab's words. */
+    private fun observeCustom(t: app.yarn.data.prefs.CustomTab, live: String): Flow<List<ConversationEntity>> {
+        val args = ArrayList<Any>()
+        val rule = when {
+            t.chats.isNotEmpty() -> "id IN (${t.chats.joinToString(",")})"
+            else -> {
+                val words = t.words.map { it.trim() }.filter { it.isNotEmpty() }.ifEmpty { return kotlinx.coroutines.flow.flowOf(emptyList()) }
+                words.forEach { w -> args += "%" + w.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%" }
+                "id IN (SELECT conversationId FROM messages WHERE " + words.joinToString(" OR ") { "body LIKE ? ESCAPE '\\'" } + ")"
+            }
+        }
+        return db.conversations().observe(SimpleSQLiteQuery("SELECT * FROM conversations WHERE $live AND $rule ORDER BY lastMessageAt DESC", args.toTypedArray()))
     }
 
     /**
