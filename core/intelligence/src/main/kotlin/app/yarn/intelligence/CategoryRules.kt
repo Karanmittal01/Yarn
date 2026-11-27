@@ -25,17 +25,20 @@ object CategoryRules {
     private val RULES = listOf(
         // ---- One-time codes ---------------------------------------------------------------------
         r(Category.OTP, 3.5f, "Mentions a one-time password", "otp", "one[- ]time (?:password|passcode|pin|code)", "verification code", "security code",
-            "login code", "auth(?:entication)? code", "2fa", "passcode", "(?:delivery |secret |security |ride )?pin is", "code to verify", "is your (?:\\w+ )?code", "code is", "code for (?:login|logging in|verification|sign[- ]?in)", "ओटीपी", "सत्यापन कोड"),
+            "login code", "auth(?:entication)? code", "2fa", "passcode", "(?:delivery |secret |security |ride )?pin is", "code to verify", "is your (?:\\w+ )?code", "code is", "code for (?:login|logging in|verification|sign[- ]?in)", "transaction password", "ओटीपी", "सत्यापन कोड"),
         r(Category.OTP, 1.5f, "Asks you not to share a code", "do not share", "don't share", "dont share", "never share", "valid (?:for|till) \\d+ ?(?:min|minutes|mins|seconds)"),
 
         // ---- Banks, cards, investments ----------------------------------------------------------
         r(Category.BANKING, 2.5f, "Mentions an account debit/credit", "debited", "credited", "a/c", "acct", "account balance", "avl bal", "avl\\.? bal", "available balance",
             "avl limit", "available limit", "withdrawn", "withdrawal", "atm", "neft", "imps", "rtgs", "ach", "wire transfer", "spent on", "spent at",
-            "(?:txn|trxn|transaction|purchase) (?:of|for) $MONEY", "डेबिट", "क्रेडिट", "जमा", "निकासी", "खाते"),
+            "(?:txn|trxn|transaction|purchase) (?:of|for) $MONEY", "(?:card )?spend of $MONEY", "डेबिट", "क्रेडिट", "जमा", "निकासी", "खाते",
+            // Bengali, Tamil, Telugu, Kannada, Gujarati: debit, credit, deposit.
+            "ডেবিট", "ক্রেডিট", "জমা", "வரவு", "பற்று", "டெபிட்", "డెబిట్", "క్రెడిట్", "జమ", "ಡೆಬಿಟ್", "ಜಮಾ", "ડેબિટ", "જમા"),
         r(Category.BANKING, 1.8f, "Mentions a card or bank account", "credit card", "debit card", "card ending", "card xx\\d+", "savings account", "current account", "net ?banking",
             "statement", "emi", "loan account", "cheque", "kyc", "home branch", "card (?:has been |is )?(?:blocked|activated|dispatched|delivered)", "bank"),
         r(Category.BANKING, 2.2f, "Mentions investments", "demat", "ipo", "fpo", "sip", "mutual fund", "folio", "nav", "dividend", "allotment", "allotted",
-            "securities", "shares", "trading account", "order to (?:buy|sell)", "(?:buy|sell) order", "executed", "traded", "funds (?:of $MONEY )?(?:added|withdrawn|credited)", "margin"),
+            "securities", "shares", "trading account", "order to (?:buy|sell)", "(?:buy|sell) order", "executed", "traded", "funds (?:of $MONEY )?(?:added|withdrawn|credited)", "margin",
+            "trade confirmation", "(?:buy|sell) \\d+ [a-z]+", "brokerage", "payout of $MONEY", "(?:credit|debit) in (?:your )?demat"),
 
         r(Category.PAYMENTS, 2.5f, "Mentions a payment", "upi", "paid to", "paid $MONEY", "payment (?:of|received|successful|failed|is successful|done)", "sent to",
             "received from", "money request", "collect request", "wallet", "vpa", "transaction id", "txn id", "ref no", "upi ref", "utr", "autopay",
@@ -49,10 +52,12 @@ object CategoryRules {
             "balance (?:is|of)", "recharge (?:of|successful|is successful|done)", "fastag",
             "(?:has been |was |is )?charged (?:to|on) your", "charged $MONEY", "$MONEY (?:has been |was )?charged"),
 
-        r(Category.BILLS, 2.5f, "Mentions a bill or due date", "bill (?:of|for|is|amount|generated)", "due date", "due on", "is due", "amount due", "amt due", "overdue",
-            "postpaid", "electricity bill", "gas bill", "water bill", "broadband", "premium (?:of $MONEY )?(?:for|is|due)", "insurance premium", "autopay", "auto-debit",
+        r(Category.BILLS, 2.5f, "Mentions a bill or due date", "bill (?:of|for|is|amount|generated)", "amount due", "amt due", "overdue",
+            "postpaid", "electricity bill", "gas bill", "water bill", "premium (?:of $MONEY )?(?:for|is|due)", "insurance premium", "autopay", "auto-debit",
             "mandate", "subscription renew(?:s|al|ed)", "plan expires", "validity (?:ends|expires)",
             "emi (?:of|for|is|was)", "bounced", "pay immediately"),
+        // "Due" alone is weak: a vaccination, an assignment or a car service is due too.
+        r(Category.BILLS, 1.4f, "Mentions a due date", "due date", "due on", "is due"),
         r(Category.BILLS, 3.2f, "Mentions a traffic fine", "e-?challan", "challan (?:no\\.?|number|of|amount|issued|pending|has been)", "traffic (?:fine|violation)"),
 
         // ---- Orders, food, groceries, deliveries ------------------------------------------------
@@ -60,12 +65,14 @@ object CategoryRules {
             "order (?:has been |is |was )?(?:placed|confirmed|received|packed|ready|cancelled|canceled|returned|refunded|on (?:its|the) way)",
             "thank you for (?:ordering|shopping|your order|your purchase)", "thanks for (?:ordering|shopping)", "items? (?:in|from) your order",
             "order total", "order value", "invoice", "return (?:request|pickup|initiated|of)", "exchange (?:request|pickup)",
-            "replacement", "rate your (?:order|delivery|experience|meal|purchase)", "enjoy your (?:meal|food|order)", "being prepared", "is preparing your"),
+            "replacement", "rate your (?:order|delivery|experience|meal|purchase)", "enjoy your (?:meal|food|order)", "being prepared", "is preparing your",
+            "pre-?order", "installation (?:for|of) your", "(?:rate and )?review your purchase", "size not right", "you can (?:return|exchange)",
+            "exchange (?:[\\w'-]+ ){0,6}until"),
         r(Category.DELIVERY, 2.8f, "Mentions a shipment", "shipped", "out for delivery", "delivered", "dispatched", "in transit", "tracking", "track (?:your|it)",
-            "awb", "courier", "parcel", "package", "shipment", "delivery (?:partner|agent|executive|associate|attempt|scheduled|slot|boy)",
+            "awb", "courier", "parcel", "(?<!holiday |tour |travel |data |sports )package", "shipment", "delivery (?:partner|agent|executive|associate|attempt|scheduled|slot|boy)",
             "arriving (?:today|tomorrow|by|in)", "will (?:arrive|reach you)", "scheduled for delivery", "picked up",
             "unable to deliver", "could not deliver", "डिलीवर", "ऑर्डर", "couldn't deliver", "delivery (?:failed|attempted|was attempted|rescheduled)", "attempted delivery",
-            "on (?:its|the) way", "reached your location", "near your location", "valet"),
+            "on (?:its|the) way", "reached your location", "near your location", "valet", "delivery for (?:today|tomorrow)"),
 
         // ---- Travel ---------------------------------------------------------------------------
         r(Category.TRAVEL, 2.8f, "Mentions travel", "flight", "boarding", "pnr", "check-?in", "gate (?:no\\.? ?)?[a-z]?\\d+", "boarding gate", "departure", "arrival", "train", "coach", "berth", "hotel",
@@ -74,10 +81,12 @@ object CategoryRules {
             "pick ?up details", "drop details", "next pick ?up", "your pick(?:up)?", "vehicle ?(?:#|no\\.?|number|type)", "vehicle (?:has reached|is arriving|has arrived|assigned|is on)",
             "arriving now", "has reached [a-z]", "\\d seater", "eta ?:", "shuttle?", "boarding point", "drop (?:location|point|time|is scheduled)",
             "your (?:pick ?up|drop) (?:is|has|for)", "(?:login|logout) shift", "your (?:\\w+ )?bus (?:will|is|has)",
-            "assigned for your (?:pick ?up|pick|drop|trip|ride)", "(?:pick ?up|drop|trip|ride) (?:has )?started", "track (?:your |the )?(?:vehicle|cab|ride|driver|bus)"),
+            "assigned for your (?:pick ?up|pick|drop|trip|ride)", "(?:pick ?up|drop|trip|ride) (?:has )?started", "track (?:your |the )?(?:vehicle|cab|ride|driver|bus)",
+            "visa", "vfs", "metro", "qr ticket", "your (?:\\w+ )?trip (?:starts|begins|is|has)", "self-?drive", "your stay", "check-?out", "retiring room",
+            "holiday package", "tour package", "reservation (?:for|at|is)", "running (?:\\d+ \\w+ )?late", "train \\d{4,5}"),
 
         // ---- Marketing ------------------------------------------------------------------------
-        r(Category.PROMOTIONS, 2.6f, "Looks like marketing", "sale", "sale is live", "offer", "offers", "discount", "discounts", "\\d+ ?% ?off", "up ?to \\d+ ?%",
+        r(Category.PROMOTIONS, 2.6f, "Looks like marketing", "sale", "sale is live", "offer(?! letter)", "offers", "discount", "discounts", "\\d+ ?% ?off", "up ?to \\d+ ?%",
             "flat (?:$MONEY|\\d+ ?%)", "$MONEY off", "coupon", "promo ?code", "use code", "deal", "deals", "loot", "lowest price", "best price", "starting (?:at|from|@)",
             "cashback offer", "(?:get|earn|win|assured|extra) (?:up ?to )?(?:$MONEY |\\d+ ?% )?cashback", "cashback (?:of )?up ?to", "get \\d+ ?% back", "voucher", "freebie", "free (?:delivery|shipping|gift|trial)",
             "bogo", "buy (?:1|one) get (?:1|one)", "combo", "chhoot", "bumper", "bonanza", "big billion", "great indian festival", "end of (?:season|reason)", "eoss",
@@ -101,7 +110,11 @@ object CategoryRules {
             "refer (?:a friend|now|and earn)", "earn [\\d,]+ (?:\\w+ ){0,2}(?:points|coins)", "invest now", "\\bnfo\\b", "start (?:a|your) sip", "starting $MONEY",
             "get a quote", "insure your", "bonus (?:\\w+ )?points on joining", "is waiting for you", "upgrade",
             "(?:now |starting )?at (?:just |only )?$MONEY", "$MONEY only", "only $MONEY", "subscribe (?:now|today)", "free (?:delivery|movie|lounge)",
-            "ऑफ़र", "ऑफर", "छूट", "सेल", "पाएं", "अभी रिचार्ज", "धमाका"),
+            "ऑफ़र", "ऑफर", "छूट", "सेल", "पाएं", "अभी रिचार्ज", "धमाका",
+            "invest in", "subscription open", "new launch", "is back", "(?:coins|points|supercoins|rewards?) (?:are|is) (?:expiring|about to expire)", "use them before",
+            "free (?:demo|class|trial|webinar|session|consultation)", "register now", "zero brokerage", "open a free", "packages? from", "per person", "fly to",
+            "book by", "add the \\w+ pack", "extra data", "switch to", "\\d+ (?:days|months) free", "prices drop", "black friday", "sale (?:starts|ends|is on)",
+            "and get (?:\\d+ ?gb|$MONEY|\\d+ ?%)", "(?:pack|plan|pass) for $MONEY"),
         r(Category.PROMOTIONS, 1.2f, "Has an opt-out footer", "unsubscribe", "opt[- ]?out", "reply stop", "txt stop", "sms stop", "to stop (?:receiving|these)"),
 
         // ---- Service notices ------------------------------------------------------------------
@@ -122,10 +135,16 @@ object CategoryRules {
             // A card, account or plan ended: news about the account, not an order or a trip.
             "(?:card|account|a/c|policy|mandate|subscription|membership|plan|sim|connection|standing instruction|autopay|auto-?debit) (?:[\\w-]+ ){0,3}(?:has been |is |was |stands )?(?:cancelled|canceled|closed|terminated|suspended|deactivated|discontinued|surrendered|hotlisted)",
             "supply will be (?:disrupted|interrupted|affected)", "power (?:cut|outage|shutdown)", "for maintenance",
-            "statement (?:for [\\w /,-]+? )?(?:has been (?:emailed|sent|mailed)|is (?:now )?available)", "will expire (?:on|in)", "new card will be", "renewal card",
+            "statement (?:for [\\w /,-]+? )?(?:has been (?:generated and )?(?:emailed|sent|mailed)|is (?:now )?available)", "will expire (?:on|in)", "new card will be", "renewal card",
             "unlocked", "kyc is due", "complete (?:your |video )?kyc", "on its way", "(?:card|cheque ?book) (?:has been |is )?(?:dispatched|delivered|shipped)", "dispatched via",
             "(?:licen[cs]e|passport|rc|registration certificate|pan card|aadhaar|epic|voter id|welcome kit|smart card) (?:[\\w-]+ ){0,3}(?:has been |is |was )?(?:dispatched|delivered|printed|shipped)",
-            "nominee", "\\bnoc\\b", "under (?:police )?verification", "policy (?:has been )?issued", "will mature", "auto-?renewed", "kyc (?:has been|is) (?:completed|updated|verified)"),
+            "nominee", "\\bnoc\\b", "under (?:police )?verification", "policy (?:has been )?issued", "will mature", "auto-?renewed", "kyc (?:has been|is) (?:completed|updated|verified)",
+            "(?:closure|cancellation|deactivation|close|upgrade|limit) request", "request (?:has been |is )?received", "(?:will|to) complete in \\d+",
+            "has updated your", "(?:c)?kyc record", "save this link", "quick access", "manage your", "activate it", "(?:debit-?)?frozen",
+            "limit (?:has been |is )?(?:revised|increased|enhanced|reduced|changed|upgraded)", "has been opened", "(?:is|are) now (?:active|operative|linked)",
+            "mandate (?:[\\w ]+ )?(?:has been |is )?(?:registered|created|set up|revoked)", "plan is active", "welcome to", "service is restored", "restored",
+            "offer letter", "assignment", "homework", "vaccination", "dose \\d", "due for (?:its |your )?(?:\\d[\\d,]* ?km )?(?:service|vaccination|check-?up)",
+            "auth(?:entication)? code", "demographic auth"),
         // An application decided or under way ("We approved your HDFC Bank Credit Card (App No. …)"),
         // not one being sold: "pre-approved" and "eligible for" stay offers.
         r(Category.UPDATES, 2.6f, "About your application", "(?<!pre-)(?<!pre)approved your", "(?:we|has|have) (?:\\w+ )?(?:approved|sanctioned|rejected|declined) your",
@@ -146,12 +165,15 @@ object CategoryRules {
     private val MONEY_LEAD = Regex(
         "(?i)(?:debited|credited|deducted|refunded|refund (?:of|for|has|is|amount)|\\bpaid\\b|payment (?:of|received|successful|is successful|done|failed)|" +
             "\\bspent\\b|charged|transferred|withdrawn|gift card (?:has|of|worth|is)|(?:card|voucher) is here|voucher details|redemption (?:[\\w-]+ ){0,8}(?:is )?successful|\\b\\w+ money (?:is|has)|cashback (?:of|has been|credited|is credited)|" +
-            "added to your \\w* ?(?:balance|wallet|account)|has been executed|units allotted|\\bsip of|recharge (?:of (?:rs|inr|₹)|successful|is successful)|emi (?:of|for) (?:rs|inr|₹)|bounced|declined|levied|charges of (?:rs|inr|₹)|डेबिट|जमा)",
+            "added to your \\w* ?(?:balance|wallet|account)|has been executed|units allotted|recharge (?:of (?:rs|inr|₹)|successful|is successful)|payout of|spend of (?:rs|inr|₹)|" +
+            "received (?:rs\\.?|inr|₹) ?[\\d,.]+ towards|trade confirmation|(?:credit|debit) in (?:your )?(?:demat|a/c)|(?:was|has been|is) used for|online transaction of|" +
+            "\\bsip (?:installment |instalment )?of (?:rs|inr|₹)[^.]*(?:processed|debited|deducted|successful)|\\b(?:debit|credit) of (?:rs|inr|₹)|(?:nach|ecs|ach)(?:/nach)? debit|" +
+            "returned unpaid|disbursed|\\b(?:dr|cr) (?:rs\\.?|inr|₹)? ?\\d|shortfall of|dividend|(?:fd|fixed deposit|recurring deposit|rd) (?:of (?:rs|inr|₹)[\\d,.\\s]+)?(?:has been |is )?(?:booked|opened)|ডেবিট|জমা|வரவு|பற்று|డెబిట్|జమ|ಜಮಾ|ಡೆಬಿಟ್|emi (?:of|for) (?:rs|inr|₹)|bounced|declined|levied|charges of (?:rs|inr|₹)|डेबिट|जमा)",
     )
     private val ORDER_LEAD = Regex(
-        "(?i)(?:your (?!next |first )(?:\\w+ ){0,2}order(?!s| now| to (?:buy|sell))|order (?:#|no\\.|id|number|is|has|was|[a-z]{0,3}\\d)|shipped|shipment|dispatched|packed|" +
-            "return (?:request|pickup)|replacement request|" +
-            "out for delivery|return pickup|parcel|package|courier|unable to deliver|(?:has been|was|is|got) delivered|delivered (?:to|at|today|successfully)|order delivered)",
+        "(?i)(?:your (?!next |first )(?:\\w+ ){0,3}order(?!s| now| to (?:buy|sell))|order (?:#|no\\.|id|number|is|has|was|[a-z]{0,3}\\d)|pre-?order|shipped|shipment|dispatched|packed|" +
+            "return (?:request|pickup)|replacement request|installation (?:for|of) your|delivery for (?:today|tomorrow)|" +
+            "out for delivery|return pickup|parcel|(?<!holiday |tour |travel |data |sports )package|courier|unable to deliver|(?:has been|was|is|got) delivered|delivered (?:to|at|today|successfully)|order delivered)",
     )
     // Store credit handed out as a perk ("Rs. 1,000* credited to your Seiko Power Cash Wallet. Enjoy
     // your benefits."): an amount with conditions attached, or money that only spends at the brand.
@@ -161,9 +183,16 @@ object CategoryRules {
     )
     // A trip (a PNR, a ticket, a flight) that a refund or fare belongs to: "Your ticket for PNR … has been
     // cancelled. Refund of Rs …" is about the journey.
-    private val TRIP_LEAD = Regex("(?i)\\b(?:pnr|e-?ticket|your (?:\\w+ )?ticket|flight [a-z0-9]{2} ?\\d|boarding pass|your (?:\\w+ )?(?:trip|ride|journey)|booking (?:id|ref))\\b")
+    private val TRIP_LEAD = Regex("(?i)\\b(?:pnr|e-?ticket|your (?:\\w+ )?ticket|flight [a-z0-9]{2} ?\\d|boarding pass|your (?:\\w+ )?(?:trip|ride|journey)|booking (?:id|ref)|train \\d{4,5})\\b")
     // An official document on its way by post is a notice, not a parcel you ordered.
     private val DOCUMENT_POSTED = Regex("(?i)\\b(?:licen[cs]e|passport|rc|registration certificate|pan card|aadhaar|epic|voter id|welcome kit|smart card)\\b")
+    // A new limit, a registered mandate or standing instruction: an amount is named, nothing is paid.
+    private val SETUP_ONLY = Regex(
+        "(?i)mandate (?:[\\w ,.]+ )?(?:has been |is )?(?:registered|created|set up|approved)|autopay (?:has been |is )?(?:set up|registered|enabled)|" +
+            "standing instruction (?:[\\w ,.]+ )?(?:has been |is )?registered|limit (?:has been |is )?(?:revised|increased|enhanced|reduced|changed|upgraded)",
+    )
+    private val MOVED = Regex("(?i)debited|deducted|\\bpaid\\b|credited|withdrawn|transferred|spent")
+    private val BILL_WORD = Regex("(?i)\\b(?:bill|premium|emi|postpaid|dues?|invoice|fees?|rent|maintenance charges?|challan)\\b")
     private val DISCOUNT = Regex("(?i)\\d+ ?% ?(?:off|discount|cashback)|use (?:code|coupon)|promo ?code|flat $MONEY off|up ?to $MONEY off")
     private val SERVICE = listOf(Category.OTP, Category.BANKING, Category.PAYMENTS, Category.BILLS, Category.SHOPPING, Category.DELIVERY, Category.TRAVEL)
 
@@ -241,9 +270,12 @@ object CategoryRules {
         val perk = otp == null && PERK_CREDIT.containsMatchIn(text)
         if (perk) add(Category.PROMOTIONS, 5f, "Credits a store perk, not money")
         val hasAmount = entities.any { it.type == EntityType.AMOUNT }
-        val moneyEvidence = !perk && (MONEY_LEAD.containsMatchIn(text) || (get(Category.BILLS) >= 2.5f && hasAmount) ||
+        val setupOnly = SETUP_ONLY.containsMatchIn(text) && !MOVED.containsMatchIn(text)
+        val moneyEvidence = !perk && !setupOnly && (MONEY_LEAD.containsMatchIn(text) || (get(Category.BILLS) >= 2.5f && hasAmount) ||
             entities.any { it.type == EntityType.AMOUNT && it.attributes["direction"] in setOf("debit", "credit", "due", "balance") })
         if (otp == null && !moneyEvidence) { scale(Category.BANKING, 0.4f); scale(Category.PAYMENTS, 0.5f) }
+        // "Due" with no amount and no bill is a reminder (a vaccination, a car service), not a bill.
+        if (otp == null && !hasAmount && !BILL_WORD.containsMatchIn(text)) scale(Category.BILLS, 0.4f)
 
         // A discount or promo code is an advert, unless money moved or an order is under way.
         // People forward offers too ("Did you see the HDFC offer? 10% off"); only a business's discount is an advert.
@@ -256,13 +288,25 @@ object CategoryRules {
         val brand = SenderNames.brandCategory(sender.address)
         if (brand != null) {
             val name = SenderNames.pretty(sender.address)
-            val marketing = promo >= 2.6f && promo > service
+            // Brands' adverts are often low-key ("Your card is ready to apply", "Add the sports pack
+            // for Rs 49"): with no money moved, a little selling is enough to call it one.
+            val marketing = promo >= (if (!moneyEvidence && otp == null) 1.6f else 2.6f) && promo > service
             when {
                 marketing -> add(Category.PROMOTIONS, 1f, "Marketing from $name", fromText = false)
                 brand == Category.BANKING || brand == Category.PAYMENTS -> {
                     // A bank's name only tips money messages into Transactions; banks also send
                     // safety advice, service notices and adverts, which are filed by what they say.
-                    add(brand, if (moneyEvidence) 3f else 0.6f, "Sent by $name", fromText = false)
+                    if (moneyEvidence || otp != null) {
+                        add(brand, 3f, "Sent by $name", fromText = false)
+                    } else if (hasAmount && !setupOnly) {
+                        add(brand, 0.6f, "Sent by $name", fromText = false)
+                    } else {
+                        // "Card closure request received", "your CKYC record is updated", "manage your
+                        // card here": card and account words, but no money moved. That's a notice.
+                        scale(Category.BANKING, 0.35f)
+                        scale(Category.PAYMENTS, 0.35f)
+                        add(Category.UPDATES, 1.2f, "Account notice from $name", fromText = false)
+                    }
                 }
                 else -> add(brand, 1.2f, "Sent by $name", fromText = false)
             }

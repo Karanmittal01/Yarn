@@ -160,7 +160,8 @@ def add(want, senders, texts, copies=2):
             elif "-" in s:
                 sender = f"{R.choice(OPS)}-{s}"
             else:
-                sender = f"{R.choice(OPS)}-{s}-{R.choice(['S', 'S', 'T'])}"
+                suffixes = ['S', 'P'] if set(want) <= {'F', '|'} else ['S', 'S', 'T']
+                sender = f"{R.choice(OPS)}-{s}-{R.choice(suffixes)}"
             ROWS.append((sender, want, fill(t)))
 
 
@@ -756,6 +757,20 @@ add("X", ["+"], [
     "Hello sir, your son has been arrested by police. Send Rs 50,000 immediately on this number to release him. Don't tell anyone.",
     "I sent Rs 3000 to your number by mistake on Paytm, please send it back to {phone}. Please sir it's my hospital money.",
 ], 2)
+
+
+def people(texts, want, kinds=("c", "+")):
+    """Messages from people: each from a saved contact and from an unknown number."""
+    for t in texts:
+        for k in kinds:
+            for _ in range(COPIES):
+                ROWS.append(("c:+91" + phone() if k == "c" else "+91" + phone(), want, fill(t)))
+
+
+# Round three: hundreds more distinct formats (tools/corpus/round3.py).
+import round3  # noqa: E402
+
+round3.build(add, people)
 
 
 def main():

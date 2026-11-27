@@ -427,7 +427,7 @@ class EntityExtractor(
 
         private val OTP_KEYWORD = Regex(
             "(?i)\\b(otp|one[- ]time[- ](?:password|passcode|pin|code)|verification|verify|security code|login code|" +
-                "sign[- ]?in code|auth(?:entication|orization)? code|access code|confirmation code|passcode|pin|code|2fa|mfa|tan|dac)\\b|" +
+                "sign[- ]?in code|auth(?:entication|orization)? code|access code|confirmation code|passcode|pin|code|2fa|mfa|tan|dac|transaction password)\\b|" +
                 "(ओटीपी|सत्यापन कोड|वेरिफ़िकेशन कोड)",
         )
         /** Reference numbers (application, booking, ARN…) that sit next to the word "verification". */

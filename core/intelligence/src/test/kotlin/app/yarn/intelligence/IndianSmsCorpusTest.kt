@@ -89,7 +89,8 @@ class IndianSmsCorpusTest {
         c("AD-DOMINO-P", "Buy 1 Get 1 free on all medium pizzas this weekend! Order now: dominos.co.in", CategoryGroup.OFFERS),
         c("AX-LENSKT-P", "Flat 50% off on eyeglasses this week. Visit your nearest Lenskart store or shop online.", CategoryGroup.OFFERS),
         c("VK-HDFCBK-S", "Your HDFC Bank Credit Card XX1234 has been blocked as requested. A new card will be dispatched in 7 days.", CategoryGroup.TRANSACTIONS, CategoryGroup.UPDATES),
-        c("AD-SBIINB-S", "Dear Customer, periodic KYC update for your SBI account is due. Please visit your home branch with your documents.", CategoryGroup.TRANSACTIONS),
+        // No money moves: a notice, like the CKYC update a tester saw in Transactions.
+        c("AD-SBIINB-S", "Dear Customer, periodic KYC update for your SBI account is due. Please visit your home branch with your documents.", CategoryGroup.UPDATES),
         c("JD-OLACAB-S", "Your Ola ride is confirmed. Driver Suresh, KA01AB1234, arriving in 4 mins.", CategoryGroup.TRAVEL),
         c("VM-MMTRIP-P", "Flat 25% off on domestic flights! Use code MMTSALE. Book now on MakeMyTrip.", CategoryGroup.OFFERS),
         c("VM-BMSHOW-S", "Your BookMyShow booking for Pushpa 2 at PVR Forum on 12 Mar, 7:30 PM is confirmed. Booking ID ABC1234.", CategoryGroup.UPDATES, CategoryGroup.SHOPPING),

@@ -4,7 +4,7 @@ import kotlin.math.pow
 
 /** How aggressively to filter. Users choose this in settings. */
 enum class SpamSensitivity(val spamThreshold: Float, val scamThreshold: Float) {
-    LOW(0.75f, 0.85f),
+    LOW(0.65f, 0.8f),
     MEDIUM(0.55f, 0.7f),
     HIGH(0.4f, 0.55f),
 }
@@ -44,7 +44,20 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
             "(?:redelivery|customs|shipping|clearance) fee", "incomplete (?:address|shipping)", "update (?:your )?(?:delivery )?address"),
         s(0.4f, "Unpaid toll/fine or tax refund wording", true,
             "unpaid toll", "toll (?:balance|due|violation)", "outstanding (?:toll|fine|penalty)", "tax refund", "refund (?:is )?pending", "irs", "hmrc", "income tax refund",
-            "(?:pending|unpaid|outstanding|overdue) (?:traffic )?e-?challan", "avoid (?:legal action|court|penalty|arrest|fir)"),
+            "(?:pending|unpaid|outstanding|overdue) (?:traffic )?e-?challan", "avoid (?:legal action|court|penalty|arrest|fir)",
+            "e-?challan (?:[\\w.]+ ){0,6}(?:pending|due|unpaid|generated)", "(?:face|or) (?:court|legal) action"),
+        s(0.45f, "Promises money from a government scheme", true,
+            "(?:pm|pradhan mantri|modi|sarkari|government|govt) (?:\\w+ ){0,2}yojana", "free (?:laptop|scooty|mobile|tablet|smartphone|recharge) yojana",
+            "yojana[^.]{0,60}(?:claim|register|apply now|click)"),
+        s(0.6f, "Sells phone numbers", false,
+            "vip (?:mobile )?(?:no|nos|number|numbers)\\b", "fancy (?:mobile )?(?:no|nos|number|numbers)\\b", "similar (?:&|and) vip", "want similar",
+            "(?:golden|platinum|diamond|vip) numbers?", "numbers? (?:available|for sale)"),
+        s(0.5f, "Adult or dating spam", false,
+            "(?:want|wanna|like) to (?:be|make) friends?", "make friends", "saw your profile", "(?:hot|beautiful|sexy) (?:and \\w+ )?(?:girls?|ladies|women|bhabhi)",
+            "girls? available", "call girls?", "escort", "massage (?:service|parlour|parlor)"),
+        s(0.5f, "Pretends to be family on a new number", true,
+            "(?:this is my|mera|my) new number[\\s\\S]{0,100}?(?:send|bhej|transfer|upi|urgent|zarurat|jaldi)", "naya number[\\s\\S]{0,100}?(?:bhej|zarurat|jaldi|upi|paise)",
+            "(?:phone|mobile) (?:broke|is broken|got broken|kharab|kho gaya|lost)[\\s\\S]{0,100}?(?:send|bhej|transfer)"),
         s(0.5f, "Impersonates police, customs or a government officer", true,
             "illegal (?:items|drugs|goods|activity|activities|parcel)", "(?:drugs|narcotics) (?:found|in your)", "held by customs", "seized by",
             "(?:cbi|ncb|ed|cyber ?cell|crime branch|police|customs|narcotics|trai|rbi) officer", "digital arrest", "(?:will|could) be arrested",
@@ -52,11 +65,12 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
             "(?:son|daughter|husband|wife|brother|sister|father|mother) (?:has been|is|was|got) (?:arrested|detained|caught)", "in police custody"),
         s(0.45f, "Asks you to return money \"sent by mistake\"", true,
             "(?:sent|transferred|credited) (?:rs\\.? ?|₹ ?)?[\\d,]+ (?:to your (?:account|number|upi|wallet) )?by mistake",
-            "by mistake[^.]{0,60}(?:return|send (?:it )?back|refund)", "return (?:it|my money|the money) (?:to|on) my"),
+            "by mistake[^.]{0,60}(?:return|send (?:it )?back|refund)", "return (?:it|my money|the money) (?:to|on) my",
+            "galti se[^.]{0,80}(?:wapas|lauta|return|bhej)", "wapas (?:bhej|kar|de) (?:do|dijiye|dena)"),
         s(0.45f, "Asks you to install an app or share your screen", true,
             "(?:install|download) (?:the |this )?(?:app|apk)[^.]{0,40}(?:redeem|kyc|reward|points|refund|update)", "anydesk", "teamviewer", "quick ?support", "screen ?shar(?:e|ing) app"),
         s(0.4f, "Job or investment lure", true,
-            "work from home", "part[- ]time (?:job|work)", "earn (?:rs\\.?|₹|\\$)?\\s?\\d", "daily (?:income|earning|profit)", "guaranteed (?:returns?|profit)",
+            "work from home", "part[- ]time (?:job|work)", "registration fee", "direct joining", "no exam", "job vacancy", "earn (?:rs\\.?|₹|\\$)?\\s?\\d", "daily (?:income|earning|profit)", "guaranteed (?:returns?|profit)",
             "double your", "crypto(?:currency)? (?:investment|trading|profit)", "telegram", "task[- ]based", "stock tips", "trading signals",
             "vip (?:group|tips|signals|members?)", "(?:daily|weekly|monthly) \\d+ ?% (?:profit|returns?)", "\\d+ ?% (?:daily|weekly|monthly) (?:profit|returns?)",
             "(?:per|each) (?:review|like|task|rating)", "rate (?:hotels|restaurants|products) (?:on google )?(?:and|&) earn", "prepaid task"),
@@ -65,6 +79,7 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
             "bijli (?:\\w+ ){0,3}(?:kaat|kat|cut)"),
         hindi(0.4f, "Electricity/utility disconnection threat", true, "बिजली (?:\\S+ ){0,3}(?:काट|कट)", "कनेक्शन (?:\\S+ ){0,3}(?:काट|कट)"),
         hindi(0.45f, "Asks you to verify identity or update KYC via a link", true, "केवाईसी (?:\\S+ ){0,3}(?:अपडेट|पूरा|समाप्त)"),
+        hindi(0.4f, "Prize or lottery claim", true, "लॉटरी", "इनाम", "जीती है", "जीत लिया", "लकी ड्रा"),
         s(0.5f, "Threatens to shame you to your contacts", true,
             "(?:send|share|forward) (?:your )?(?:photos?|pictures?|images?|morphed) (?:\\w+ ){0,2}to (?:all )?(?:your )?(?:contacts|family|relatives)",
             "(?:all )?your contacts will (?:be informed|know|receive)"),
@@ -86,8 +101,10 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
     private val bankMention = Regex("(?i)\\b(?:bank|a/c|account|kyc|credit card|debit card)\\b")
 
     /** "Call 98765 43210", "contact officer on +91 9876543210", "सम्पर्क करें 9876543210". */
-    private val CALL_MOBILE = Regex("(?i)(?:call|contact|whatsapp|sampark|संपर्क|सम्पर्क|फोन)(?:\\S*\\s+){0,5}?(?:on |at |no\\.? ?)?(?:\\+?91[- ]?)?[6-9]\\d{4} ?\\d{5}\\b|(?:\\+?91[- ]?)?[6-9]\\d{9}\\s*(?:पर )?(?:call|सम्पर्क|संपर्क)")
-    private val MONEY_OR_ACCOUNT = Regex("(?i)debited|deducted|charged|auto-?renew|cancel|refund|blocked|deactivat|suspend|kyc|prize|lottery|claim|officer|adhikari|अधिकारी|बिजली|bijli|electricity|arrest|customs|parcel|courier|loan")
+    private val CALL_MOBILE = Regex("(?i)(?:call|contact|whatsapp|sampark|संपर्क|सम्पर्क|फोन)(?:\\S*\\s+){0,5}?(?:on |at |no\\.? ?)?(?:\\+?91[- ]?)?[6-9]\\d{4} ?\\d{5}\\b|(?:\\+?91[- ]?)?[6-9]\\d{9}\\s*(?:पर )?(?:call|कॉल|सम्पर्क|संपर्क)")
+    private val MONEY_OR_ACCOUNT = Regex("(?i)debited|deducted|charged|auto-?renew|cancel|refund|blocked|deactivat|suspend|kyc|prize|lottery|claim|officer|adhikari|अधिकारी|बिजली|bijli|electricity|arrest|customs|parcel|courier|loan|log-?in|helpline|customer care|won|winner|kbc|लॉटरी|इनाम")
+
+    private val PHONE_LIKE = Regex("(?<!\\d)(?:[6-9]\\d[\\d -]{7,12}\\d)(?!\\d)")
 
     fun assess(input: MessageInput, entities: List<Entity>): SpamAssessment {
         if (!input.isIncoming) return SpamAssessment(SpamVerdict.CLEAN, 0f, emptyList())
@@ -153,8 +170,11 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
             hit(0.45f, "Asks you to call a mobile number about your money or account", true)
             scamWords = true
         }
-        if (sender.kind == SenderKind.PHONE_NUMBER && (scamWords || lure && foreignLink)) {
-            hit(0.35f, "Comes from an unknown personal number", true)
+        val stranger = sender.kind == SenderKind.PHONE_NUMBER || sender.kind == SenderKind.EMAIL
+        // A list of phone numbers from a stranger is a number seller.
+        if (stranger && PHONE_LIKE.findAll(text).count() >= 4) hit(0.5f, "Sells phone numbers", false)
+        if (stranger && (scamWords || lure && foreignLink)) {
+            hit(0.4f, "Comes from an unknown personal number", true)
         }
         if (sender.kind == SenderKind.PHONE_NUMBER && hasUrl && urls.none { UrlTools.isOfficialBrandDomain(it.value) } && reasons.isNotEmpty()) {
             hit(0.2f, "Unknown number sent a link", false)
@@ -165,7 +185,7 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
         if (letters.length > 30 && letters.count { it.isUpperCase() } > letters.length * 0.7) hit(0.15f, "Written mostly in capitals", false)
 
         // Legit OTP/bank alerts carry "do not share" warnings; dampen unless a dangerous link exists.
-        if (safeHints.containsMatchIn(text) && risky.isEmpty()) {
+        if (safeHints.containsMatchIn(text) && risky.isEmpty() && sender.kind != SenderKind.PHONE_NUMBER && sender.kind != SenderKind.EMAIL) {
             notSpam = 1f - (1f - notSpam) * 0.4f
             notScam = 1f - (1f - notScam) * 0.3f
         }

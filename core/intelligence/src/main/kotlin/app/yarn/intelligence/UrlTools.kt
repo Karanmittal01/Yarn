@@ -49,6 +49,7 @@ object UrlTools {
         "indiapost" to setOf("indiapost.gov.in"),
         // Government services live on gov.in; anything else using their names is pretending.
         "parivahan" to setOf("parivahan.gov.in"),
+        "challan" to setOf("gov.in"),
         "incometax" to setOf("incometax.gov.in", "incometaxindia.gov.in"),
         "uidai" to setOf("uidai.gov.in"),
         "aadhaar" to setOf("uidai.gov.in"),
