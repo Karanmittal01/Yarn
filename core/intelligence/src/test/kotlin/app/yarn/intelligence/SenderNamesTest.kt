@@ -1,6 +1,7 @@
 package app.yarn.intelligence
 
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 
 class SenderNamesTest {
@@ -95,6 +96,18 @@ class SenderNamesTest {
         assertThat(SenderNames.pretty(encode("jiomart_ej2r1ufx_agent@rbm.goog") + "@rbm.goog")).isEqualTo("JioMart")
         // And an agent ID with capitals.
         assertThat(SenderNames.pretty("k5xxq43fnzpvk3tjozsxe43jor4v6ylhmvxhi@rbm.goog")).isEqualTo("Woxsen University")
+    }
+
+    @Test fun businessChatsInEveryShapePhonesStoreThem() {
+        val jio = encode("jiomart_ej2r1ufx_agent")
+        for (a in listOf(
+            "$jio@rbm.goog", jio, "sip:$jio@rbm.goog", "$jio%40rbm.goog", "$jio====@rbm.goog", "$jio.agent@rbm.goog", "${jio}0@rbm.goog",
+            encode("jiomart_ej2r1ufx_agent@rbm.goog"), encode("sip:jiomart_ej2r1ufx_agent@rbm.goog") + "@rbm.goog",
+            // Stored as it is, not encoded.
+            "jiomart_ej2r1ufx_agent@rbm.goog", "sip:jiomart_ej2r1ufx_agent@rbm.goog",
+        )) assertWithMessage(a).that(SenderNames.pretty(a)).isEqualTo("JioMart")
+        // Cut short mid-word, the business still reads whole words only.
+        assertThat(SenderNames.pretty(encode("woxsen_university_mba_agent").take(30) + "\u0001@rbm.goog")).isEqualTo("Woxsen University")
     }
 
     @Test fun ordinarySendersAreNotMistakenForBusinessChats() {

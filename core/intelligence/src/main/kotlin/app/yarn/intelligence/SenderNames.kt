@@ -1539,12 +1539,27 @@ object SenderNames {
      * "m5xw6z3mmvpxaylzl5yg…" for "google_pay…". Returns the decoded ID, or null for any other sender.
      */
     fun rcsAgent(address: String): String? {
-        val local = address.trim().removePrefix("sip:").substringBefore('@').lowercase().trimEnd('=')
-        if (local.length < 16 || !local.all { it in 'a'..'z' || it in '2'..'7' }) return null
-        val id = base32(local)?.removePrefix("sip:")?.substringBefore('@')?.lowercase()?.trimEnd { !it.isLetterOrDigit() } ?: return null
-        val allowed = id.all { it in 'a'..'z' || it in '0'..'9' || it == '_' || it == '-' || it == '.' }
-        return id.takeIf { allowed && it.length >= 4 && it.count(Char::isLetter) * 2 >= it.length }
+        val trimmed = address.trim().removePrefix("sip:")
+        val local = trimmed.substringBefore('@').substringBefore("%40").lowercase()
+        // Some phones keep the agent ID as it is ("jiomart_ej2r1ufx_agent@rbm.goog").
+        val domain = trimmed.substringAfter('@', "").lowercase()
+        if (domain.startsWith("rbm.") || domain.contains(".rbm.") || domain.endsWith("botplatform.com")) {
+            local.takeIf { it.length >= 4 && it.all(::isAgentChar) && it.any(Char::isLetter) && '_' in it }?.let { return it }
+        }
+        // Most keep it in Base32. Read the run of Base32 letters at the start, whatever follows it
+        // ("=" padding, "%40rbm.goog", a suffix), and the ID it spells until the text stops making sense.
+        val run = local.takeWhile { it in 'a'..'z' || it in '2'..'7' }
+        if (run.length < 16) return null
+        val (decoded, complete) = base32(run)
+        var id = decoded.removePrefix("sip:").substringBefore('@').lowercase().takeWhile(::isAgentChar)
+        val cut = !complete || id.length < decoded.removePrefix("sip:").substringBefore('@').length
+        // Cut short: the last word may be a fragment ("woxsen_university_mb…"); keep whole words.
+        if (cut && id.count { it == '_' || it == '-' || it == '.' } >= 1) id = id.substring(0, id.indexOfLast { it == '_' || it == '-' || it == '.' })
+        id = id.trimEnd { !it.isLetterOrDigit() }
+        return id.takeIf { it.length >= 4 && it.count(Char::isLetter) * 2 >= it.length && (!cut || it.length >= 6) }
     }
+
+    private fun isAgentChar(c: Char) = c in 'a'..'z' || c in '0'..'9' || c == '_' || c == '-' || c == '.'
 
     /** "jiosphere_ab12_agent" becomes "JioSphere": no hash-like parts, no "agent" or "bot". */
     fun agentName(id: String): String {
@@ -1570,8 +1585,11 @@ object SenderNames {
         "paytm" to "Paytm", "jio" to "Jio", "airtel" to "Airtel", "makemytrip" to "MakeMyTrip", "irctc" to "IRCTC",
     )
 
-    /** RFC 4648 Base32 (lower case, no padding); trailing bits that don't make a byte are dropped. */
-    private fun base32(s: String): String? {
+    /**
+     * RFC 4648 Base32 (lower case, no padding); trailing bits that don't make a byte are dropped.
+     * Decoding stops at the first byte that isn't printable text; the flag says whether it read to the end.
+     */
+    private fun base32(s: String): Pair<String, Boolean> {
         var buffer = 0
         var bits = 0
         val out = StringBuilder()
@@ -1579,17 +1597,17 @@ object SenderNames {
             val v = when (c) {
                 in 'a'..'z' -> c - 'a'
                 in '2'..'7' -> c - '2' + 26
-                else -> return null
+                else -> return out.toString() to false
             }
             buffer = (buffer shl 5) or v
             bits += 5
             if (bits >= 8) {
                 bits -= 8
                 val b = (buffer shr bits) and 0xFF
-                if (b < 0x20 || b > 0x7E) return null
+                if (b < 0x20 || b > 0x7E) return out.toString() to false
                 out.append(b.toChar())
             }
         }
-        return out.toString()
+        return out.toString() to true
     }
 }

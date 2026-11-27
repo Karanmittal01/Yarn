@@ -163,9 +163,17 @@ class ConversationRepository(
     /** Re-resolves contact names after the address book changes. */
     suspend fun refreshDisplayNames() {
         val iso = PhoneNumbers.countryIso(context)
+        var unread = 0
         for (c in db.conversations().all()) {
-            val name = contacts.displayName(c.addresses, iso)
+            // One odd address mustn't leave every chat after it with its old name.
+            val name = runCatching { contacts.displayName(c.addresses, iso) }.getOrElse { app.yarn.CrashLog.record(it, fatal = false); continue }
             if (name != c.displayName) db.conversations().setDisplayName(c.id, name)
+            // A business chat whose address Yarn couldn't read goes into the feedback report (a few per
+            // launch), so its exact shape can be supported. It's a business's address, nothing personal.
+            val a = c.addresses.singleOrNull().orEmpty()
+            if (name == a && '@' in a && a.substringBefore('@').count { it.isLetter() } >= 12 && unread++ < 3) {
+                app.yarn.CrashLog.record(IllegalStateException("Unreadable business chat address: $a"), fatal = false)
+            }
         }
     }
 
