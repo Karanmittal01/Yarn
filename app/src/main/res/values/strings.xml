@@ -746,7 +746,7 @@
     <string name="notify_mode_sound">Sound — pops up with a sound</string>
     <string name="notify_mode_silent">Silent — in the notification shade, no sound</string>
     <string name="notify_mode_off">Off — no notification</string>
-    <string name="notify_all_tabs">All tabs</string>
+    <string name="notify_all_tabs">All messages</string>
     <string name="notify_tabs_hint">Messages always arrive in Yarn. This only decides how each tab tells you.</string>
     <string name="recycle_bin">Recycle bin</string>
     <string name="bin_empty_state">Nothing in the bin</string>
@@ -890,7 +890,7 @@
     <string name="pro_yearly_note">Renews every year. Cancel anytime.</string>
     <string name="pro_lifetime">Lifetime</string>
     <string name="pro_lifetime_note">Pay once. Pro forever.</string>
-    <string name="pro_f_tabs">Smart tabs: Personal, Transactions, Shopping, Travel, Updates and Offers</string>
+    <string name="pro_f_tabs">Smart tabs: Personal, Updates, Offers and Spam, plus your own custom tabs</string>
     <string name="pro_f_spam">Spam filter and scam warnings</string>
     <string name="pro_f_logos">Logos for 1,000+ Indian businesses</string>
     <string name="pro_f_backup">Automatic daily backup to Google Drive</string>
@@ -914,7 +914,7 @@
     <string name="logo_already_requested">You\'ve already asked for this logo. It comes in an update.</string>
     <string name="logo_request_limit">That\'s enough requests for today. Try again tomorrow.</string>
     <string name="logo_request_failed">Couldn\'t send the request. Check your SIM and try again.</string>
-    <string name="notify_each_tab">Notifications for each tab</string>
+    <string name="notify_each_tab">Notifications for each kind of message</string>
     <string name="accent_colour">Accent colour</string>
     <string name="chat_wallpaper">Chat wallpaper</string>
     <string name="accent_yarn">Yarn blue</string>
@@ -957,4 +957,7 @@
     <string name="job_done">All messages re-sorted</string>
     <string name="send_now">Send now</string>
     <string name="send_options">Schedule or send now</string>
+    <string name="kind_money">Bank &amp; payments</string>
+    <string name="kind_orders">Orders &amp; deliveries</string>
+    <string name="kind_other_updates">Other updates</string>
 </resources>

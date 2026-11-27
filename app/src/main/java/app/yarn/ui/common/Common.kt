@@ -193,11 +193,31 @@ object CategoryUi {
     fun groupIcon(g: InboxGroup): ImageVector = when (g) {
         InboxGroup.PERSONAL -> Icons.Outlined.Person
         InboxGroup.OTP -> Icons.Outlined.Password
-        InboxGroup.TRANSACTIONS -> Icons.Outlined.AccountBalance
-        InboxGroup.SHOPPING -> Icons.Outlined.ShoppingBag
-        InboxGroup.TRAVEL -> Icons.Outlined.Luggage
         InboxGroup.UPDATES -> Icons.Outlined.Inventory2
         InboxGroup.OFFERS -> Icons.Outlined.LocalOffer
+    }
+
+    /** Icon for a kind of message: a business without a logo shows what it sent (a bank, a parcel, a trip). */
+    fun kindIcon(k: app.yarn.intelligence.CategoryGroup): ImageVector = when (k) {
+        app.yarn.intelligence.CategoryGroup.PERSONAL -> Icons.Outlined.Person
+        app.yarn.intelligence.CategoryGroup.OTP -> Icons.Outlined.Password
+        app.yarn.intelligence.CategoryGroup.TRANSACTIONS -> Icons.Outlined.AccountBalance
+        app.yarn.intelligence.CategoryGroup.SHOPPING -> Icons.Outlined.ShoppingBag
+        app.yarn.intelligence.CategoryGroup.TRAVEL -> Icons.Outlined.Luggage
+        app.yarn.intelligence.CategoryGroup.UPDATES -> Icons.Outlined.Inventory2
+        app.yarn.intelligence.CategoryGroup.OFFERS -> Icons.Outlined.LocalOffer
+    }
+
+    /** Name for a kind of message, in notification settings and custom tabs. */
+    @androidx.annotation.StringRes
+    fun kindLabel(k: app.yarn.intelligence.CategoryGroup): Int = when (k) {
+        app.yarn.intelligence.CategoryGroup.PERSONAL -> R.string.group_personal
+        app.yarn.intelligence.CategoryGroup.OTP -> R.string.group_otp
+        app.yarn.intelligence.CategoryGroup.TRANSACTIONS -> R.string.kind_money
+        app.yarn.intelligence.CategoryGroup.SHOPPING -> R.string.kind_orders
+        app.yarn.intelligence.CategoryGroup.TRAVEL -> R.string.group_travel
+        app.yarn.intelligence.CategoryGroup.UPDATES -> R.string.kind_other_updates
+        app.yarn.intelligence.CategoryGroup.OFFERS -> R.string.group_offers
     }
 }
 
@@ -278,7 +298,8 @@ fun CategoryPickerDialog(current: Category?, onPick: (Category, Boolean) -> Unit
                             .fillMaxWidth()
                             .clip(MaterialTheme.shapes.medium)
                             .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-                            .clickable { onPick(g.representative, always); onDismiss() }
+                            // Picking the tab it's already in keeps its kind (a bank alert stays a bank alert in Updates).
+                            .clickable { onPick(if (selected && current != null) current else g.representative, always); onDismiss() }
                             .padding(horizontal = 14.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

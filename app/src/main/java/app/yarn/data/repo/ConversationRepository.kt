@@ -37,23 +37,21 @@ enum class InboxView { ALL, IMPORTANT, UNREAD, CATEGORY, ARCHIVED, SPAM, BLOCKED
 data class InboxFilter(val view: InboxView = InboxView.ALL, val categories: Set<Category> = emptySet())
 
 /**
- * The six inbox groups people see. The analyser still works with finer categories internally
- * (useful for priority and notifications), but the UI keeps choices simple.
+ * The inbox tabs people see (with All and Spam): few, so a message has one obvious home. Money,
+ * orders and trips all sit in Updates; the analyser still tells them apart ([CategoryGroup]) for
+ * notifications and custom tabs.
  */
-enum class InboxGroup(@androidx.annotation.StringRes val label: Int, val kind: CategoryGroup, val representative: Category) {
-    PERSONAL(R.string.group_personal, CategoryGroup.PERSONAL, Category.PERSONAL),
-    OTP(R.string.group_otp, CategoryGroup.OTP, Category.OTP),
-    TRANSACTIONS(R.string.group_transactions, CategoryGroup.TRANSACTIONS, Category.BANKING),
-    SHOPPING(R.string.group_shopping, CategoryGroup.SHOPPING, Category.SHOPPING),
-    TRAVEL(R.string.group_travel, CategoryGroup.TRAVEL, Category.TRAVEL),
-    UPDATES(R.string.group_updates, CategoryGroup.UPDATES, Category.UPDATES),
-    OFFERS(R.string.group_offers, CategoryGroup.OFFERS, Category.PROMOTIONS);
+enum class InboxGroup(@androidx.annotation.StringRes val label: Int, val kinds: Set<CategoryGroup>, val representative: Category) {
+    PERSONAL(R.string.group_personal, setOf(CategoryGroup.PERSONAL), Category.PERSONAL),
+    OTP(R.string.group_otp, setOf(CategoryGroup.OTP), Category.OTP),
+    UPDATES(R.string.group_updates, setOf(CategoryGroup.TRANSACTIONS, CategoryGroup.SHOPPING, CategoryGroup.TRAVEL, CategoryGroup.UPDATES), Category.UPDATES),
+    OFFERS(R.string.group_offers, setOf(CategoryGroup.OFFERS), Category.PROMOTIONS);
 
-    val categories: Set<Category> get() = Category.entries.filter { it.group == kind }.toSet()
+    val categories: Set<Category> get() = Category.entries.filter { it.group in kinds }.toSet()
     val filter: InboxFilter get() = InboxFilter(InboxView.CATEGORY, categories)
 
     companion object {
-        fun of(category: Category?): InboxGroup? = category?.group?.let { k -> entries.firstOrNull { it.kind == k } }
+        fun of(category: Category?): InboxGroup? = category?.group?.let { k -> entries.firstOrNull { k in it.kinds } }
     }
 }
 

@@ -120,6 +120,7 @@ import app.yarn.data.prefs.SwipeAction
 import app.yarn.data.repo.InboxGroup
 import app.yarn.data.repo.InboxView
 import app.yarn.intelligence.Category
+import app.yarn.intelligence.group
 import app.yarn.telephony.DefaultSmsApp
 import app.yarn.ui.common.Avatar
 import app.yarn.ui.common.CategoryPickerDialog
@@ -694,7 +695,7 @@ fun ConversationRow(
             } else {
                 Avatar(
                     c.title, item.photoUri, size = 46.dp, isGroup = c.isGroup,
-                    icon = if (item.isBusiness) item.group?.let(CategoryUi::groupIcon) ?: CategoryUi.default else null,
+                    icon = if (item.isBusiness) Category.fromName(item.conversation.category)?.group?.let(CategoryUi::kindIcon) ?: CategoryUi.default else null,
                     neutral = item.isBusiness,
                 )
             }

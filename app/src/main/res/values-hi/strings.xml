@@ -744,7 +744,7 @@
     <string name="notify_mode_sound">आवाज़ — आवाज़ के साथ दिखे</string>
     <string name="notify_mode_silent">चुपचाप — सूचनाओं में दिखे, आवाज़ नहीं</string>
     <string name="notify_mode_off">बंद — कोई सूचना नहीं</string>
-    <string name="notify_all_tabs">सभी टैब</string>
+    <string name="notify_all_tabs">सभी मैसेज</string>
     <string name="notify_tabs_hint">मैसेज Yarn में हमेशा आएंगे। यह सिर्फ़ तय करता है कि हर टैब आपको कैसे बताए।</string>
     <string name="recycle_bin">रीसायकल बिन</string>
     <string name="bin_empty_state">बिन खाली है</string>
@@ -888,7 +888,7 @@
     <string name="pro_yearly_note">हर साल रिन्यू होता है। कभी भी रद्द करें।</string>
     <string name="pro_lifetime">लाइफ़टाइम</string>
     <string name="pro_lifetime_note">एक बार भुगतान, Pro हमेशा के लिए।</string>
-    <string name="pro_f_tabs">स्मार्ट टैब: पर्सनल, लेन-देन, शॉपिंग, यात्रा, अपडेट और ऑफ़र</string>
+    <string name="pro_f_tabs">स्मार्ट टैब: पर्सनल, अपडेट, ऑफ़र और स्पैम, साथ में अपने खुद के टैब</string>
     <string name="pro_f_spam">स्पैम फ़िल्टर और स्कैम चेतावनी</string>
     <string name="pro_f_logos">1,000+ भारतीय कंपनियों के लोगो</string>
     <string name="pro_f_backup">Google Drive पर अपने-आप रोज़ बैकअप</string>
@@ -912,7 +912,7 @@
     <string name="logo_already_requested">आप यह लोगो पहले ही मांग चुके हैं। यह किसी अपडेट में आएगा।</string>
     <string name="logo_request_limit">आज के लिए काफ़ी अनुरोध हो गए। कल फिर कोशिश करें।</string>
     <string name="logo_request_failed">अनुरोध नहीं भेजा जा सका। अपनी SIM जांचें और फिर कोशिश करें।</string>
-    <string name="notify_each_tab">हर टैब की सूचनाएं</string>
+    <string name="notify_each_tab">हर तरह के मैसेज की सूचनाएं</string>
     <string name="accent_colour">एक्सेंट रंग</string>
     <string name="chat_wallpaper">चैट वॉलपेपर</string>
     <string name="accent_yarn">Yarn नीला</string>
@@ -955,4 +955,7 @@
     <string name="job_done">सभी मैसेज फिर से छांट दिए गए</string>
     <string name="send_now">अभी भेजें</string>
     <string name="send_options">शेड्यूल करें या अभी भेजें</string>
+    <string name="kind_money">बैंक और पेमेंट</string>
+    <string name="kind_orders">ऑर्डर और डिलीवरी</string>
+    <string name="kind_other_updates">अन्य अपडेट</string>
 </resources>

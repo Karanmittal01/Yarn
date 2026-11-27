@@ -111,7 +111,23 @@ data class Analysis(
 }
 
 /** The six groups people see in the inbox; each fine-grained [Category] belongs to one. */
+/**
+ * The kinds of message Yarn tells apart. The inbox shows fewer tabs (money, orders and trips sit in
+ * Updates); these finer kinds drive notifications, custom tabs and the on-device model.
+ */
 enum class CategoryGroup { PERSONAL, OTP, TRANSACTIONS, SHOPPING, TRAVEL, UPDATES, OFFERS }
+
+/** The category a message gets when it's moved to [this] kind as a whole. */
+val CategoryGroup.representative: Category
+    get() = when (this) {
+        CategoryGroup.PERSONAL -> Category.PERSONAL
+        CategoryGroup.OTP -> Category.OTP
+        CategoryGroup.TRANSACTIONS -> Category.BANKING
+        CategoryGroup.SHOPPING -> Category.SHOPPING
+        CategoryGroup.TRAVEL -> Category.TRAVEL
+        CategoryGroup.UPDATES -> Category.UPDATES
+        CategoryGroup.OFFERS -> Category.PROMOTIONS
+    }
 
 val Category.group: CategoryGroup?
     get() = when (this) {

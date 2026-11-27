@@ -64,16 +64,16 @@ class UiSnapshotTest {
     private val inbox = listOf(
         item(1, "Karan Mittal", "Are we still on for dinner tonight?", "PERSONAL", 2, "+919812345678", false, InboxGroup.PERSONAL, pinned = true),
         item(2, "SBI Card", "423378 is the OTP for Trxn. of INR 375.00 at AMAZON with your SBI Card", "OTP", 1, "AD-SBICRD-T", true, InboxGroup.OTP, "423378"),
-        item(3, "HDFC Bank", "Rs.2,500.00 debited from A/c XX1234 to VPA swiggy@icici", "BANKING", 1, "VM-HDFCBK-S", true, InboxGroup.TRANSACTIONS),
-        item(4, "Zepto", "Thank you for ordering from Zepto. Your order is about to be delivered.", "SHOPPING", 0, "JM-ZEPTON-S", true, InboxGroup.SHOPPING),
-        item(5, "Swiggy", "Your Swiggy order from Behrouz Biryani is on the way!", "SHOPPING", 0, "AD-SWIGGY-S", true, InboxGroup.SHOPPING),
+        item(3, "HDFC Bank", "Rs.2,500.00 debited from A/c XX1234 to VPA swiggy@icici", "BANKING", 1, "VM-HDFCBK-S", true, InboxGroup.UPDATES),
+        item(4, "Zepto", "Thank you for ordering from Zepto. Your order is about to be delivered.", "SHOPPING", 0, "JM-ZEPTON-S", true, InboxGroup.UPDATES),
+        item(5, "Swiggy", "Your Swiggy order from Behrouz Biryani is on the way!", "SHOPPING", 0, "AD-SWIGGY-S", true, InboxGroup.UPDATES),
         item(6, "Mom", "Call me when you're free", "PERSONAL", 0, "+919800000002", false, InboxGroup.PERSONAL),
         item(7, "Zepto", "Sale is LIVE! Get flat 50% off on fruits & veggies. Order now", "PROMOTIONS", 0, "JM-ZEPTON-P", true, InboxGroup.OFFERS),
-        item(8, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.TRAVEL),
-        item(9, "CDSL", "Credit in a/c *89040843 through IPO/FPO for 107 shares", "BANKING", 0, "JX-CDSLTX-S", true, InboxGroup.TRANSACTIONS),
+        item(8, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.UPDATES),
+        item(9, "CDSL", "Credit in a/c *89040843 through IPO/FPO for 107 shares", "BANKING", 0, "JX-CDSLTX-S", true, InboxGroup.UPDATES),
     )
     private val chips = listOf(app.yarn.ui.inbox.InboxChip(app.yarn.R.string.chip_all, app.yarn.data.repo.InboxFilter(), unread = 4)) +
-        listOf(InboxGroup.PERSONAL to 2, InboxGroup.OTP to 1, InboxGroup.TRANSACTIONS to 1, InboxGroup.SHOPPING to 0, InboxGroup.TRAVEL to 1, InboxGroup.UPDATES to 0, InboxGroup.OFFERS to 0)
+        listOf(InboxGroup.PERSONAL to 2, InboxGroup.OTP to 1, InboxGroup.UPDATES to 2, InboxGroup.OFFERS to 0)
             .map { (g, n) -> app.yarn.ui.inbox.InboxChip(g.label, g.filter, g, n) } +
         app.yarn.ui.inbox.InboxChip(app.yarn.R.string.verdict_spam, app.yarn.data.repo.InboxFilter(app.yarn.data.repo.InboxView.SPAM), unread = 3)
 
@@ -135,10 +135,10 @@ class UiSnapshotTest {
         item(9, "Equitas Bank", "OTP 558210 for reward redemption of Amazon Pay E-Gift Card through Equitas Xchange.", "OTP", 0, "VM-EQUTAS-S", true, InboxGroup.OTP, "558210"),
         item(14, "PNB", "101073 is your OTP for purchase of INR 1,499.00 at FLIPKART", "OTP", 0, "AD-PNBSMS-S", true, InboxGroup.OTP, "101073"),
     )
-    private val travelTab = listOf(
-        item(3, "RMATIC", "Pickup Details for 09 Oct 13:30 ETA:11:37 Vehicle No HR55AB1234, Driver Ramesh", "TRAVEL", 0, "JX-RMATIC-S", true, InboxGroup.TRAVEL),
-        item(8, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.TRAVEL),
-        item(20, "Uber", "Your Uber trip receipt for Oct 8: Rs 312.40", "TRAVEL", 0, "VM-UBERIN-S", true, InboxGroup.TRAVEL),
+    private val updatesTab = listOf(
+        item(3, "RMATIC", "Pickup Details for 09 Oct 13:30 ETA:11:37 Vehicle No HR55AB1234, Driver Ramesh", "TRAVEL", 0, "JX-RMATIC-S", true, InboxGroup.UPDATES),
+        item(8, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.UPDATES),
+        item(20, "Uber", "Your Uber trip receipt for Oct 8: Rs 312.40", "TRAVEL", 0, "VM-UBERIN-S", true, InboxGroup.UPDATES),
     )
 
     @androidx.compose.runtime.Composable
@@ -159,7 +159,7 @@ class UiSnapshotTest {
     }
 
     @Test fun otpTabDark() = shot(true, "33_otp_tab_only_codes_dark") { TabMock(otpTab, InboxGroup.OTP) }
-    @Test fun travelTabCab() = shot(true, "34_travel_tab_same_cab_chat_dark") { TabMock(travelTab, InboxGroup.TRAVEL) }
+    @Test fun updatesTab() = shot(true, "34_updates_tab_dark") { TabMock(updatesTab, InboxGroup.UPDATES) }
     @Test fun otpTabLight() = shot(false, "35_otp_tab_only_codes_light") { TabMock(otpTab, InboxGroup.OTP) }
     @Test fun chatFromOtpTab() = shot(true, "36_chat_opened_from_otp_dark") {
         val noop = app.yarn.ui.conversation.BubbleCallbacks({}, {}, {}, {}, {}, { _, _ -> })
@@ -508,35 +508,35 @@ class UiSnapshotTest {
     private val logoInbox get() = withLogos(
         item(1, "TRAI", "स्पैम कॉल्स से परेशान है? TRAI DND ऐप पर स्पैम की शिकायत दर्ज करें।", "UPDATES", 0, "VM-TRAIND-G", true, InboxGroup.UPDATES),
         item(2, "Yes Bank", "Dear Customer, your request for Aadhaar Detail for YES BANK Customer ID 1234567 is received", "UPDATES", 0, "AX-YESBNK-S", true, InboxGroup.UPDATES),
-        item(3, "HDFC Bank", "Reward Points Credited: 3000 To HDFC Bank Credit Card 1111 On 16/NOV/2026", "BANKING", 0, "VM-HDFCBK-S", true, InboxGroup.TRANSACTIONS),
-        item(4, "HSBC", "HSBC: Rs 115.0 spent on your HSBC Credit Card ending 2222 at SWIGGY on 17 Nov 2026", "BANKING", 0, "JD-HSBCIN-S", true, InboxGroup.TRANSACTIONS),
-        item(5, "Swiggy Toing", "Your payment for Toing order #100000000000001 was not completed. Amount will be refunded", "SHOPPING", 0, "VM-SWGTNG-S", true, InboxGroup.SHOPPING),
-        item(6, "AU Bank", "Alert! INR 1.00 credited to AU Bank Credit Card XX3333 from Apollo Pharm on 16-11-2026", "BANKING", 0, "AD-AUBANK-S", true, InboxGroup.TRANSACTIONS),
+        item(3, "HDFC Bank", "Reward Points Credited: 3000 To HDFC Bank Credit Card 1111 On 16/NOV/2026", "BANKING", 0, "VM-HDFCBK-S", true, InboxGroup.UPDATES),
+        item(4, "HSBC", "HSBC: Rs 115.0 spent on your HSBC Credit Card ending 2222 at SWIGGY on 17 Nov 2026", "BANKING", 0, "JD-HSBCIN-S", true, InboxGroup.UPDATES),
+        item(5, "Swiggy Toing", "Your payment for Toing order #100000000000001 was not completed. Amount will be refunded", "SHOPPING", 0, "VM-SWGTNG-S", true, InboxGroup.UPDATES),
+        item(6, "AU Bank", "Alert! INR 1.00 credited to AU Bank Credit Card XX3333 from Apollo Pharm on 16-11-2026", "BANKING", 0, "AD-AUBANK-S", true, InboxGroup.UPDATES),
         item(7, "SBI Card", "Dear Cardholder, with the Balance Transfer on EMI facility on your SBI Card", "PROMOTIONS", 0, "AD-SBICRD-P", true, InboxGroup.OFFERS),
-        item(8, "SBI", "Dear Customer, transaction number 1234 for Rs 500 is successful", "BANKING", 0, "AD-SBIINB-S", true, InboxGroup.TRANSACTIONS),
-        item(9, "Amazon", "Your order of boAt Airdopes has been delivered", "SHOPPING", 0, "AX-AMAZON-S", true, InboxGroup.SHOPPING),
-        item(10, "IndiGo", "Web check-in is open for 6E 2134 BLR-DEL", "TRAVEL", 0, "JD-INDIGO-S", true, InboxGroup.TRAVEL),
+        item(8, "SBI", "Dear Customer, transaction number 1234 for Rs 500 is successful", "BANKING", 0, "AD-SBIINB-S", true, InboxGroup.UPDATES),
+        item(9, "Amazon", "Your order of boAt Airdopes has been delivered", "SHOPPING", 0, "AX-AMAZON-S", true, InboxGroup.UPDATES),
+        item(10, "IndiGo", "Web check-in is open for 6E 2134 BLR-DEL", "TRAVEL", 0, "JD-INDIGO-S", true, InboxGroup.UPDATES),
     )
     private val moreLogos get() = withLogos(
         item(1, "Jio", "Your Jio number xxxxxx1234 recharge of Rs 349 is successful", "BILLS", 0, "JM-JIOINF-S", true, InboxGroup.UPDATES),
-        item(2, "Blue Dart", "Your order with Blue Dart AWB# 12345678901 was delivered to SELF", "DELIVERY", 0, "BZ-BLUDRT-S", true, InboxGroup.SHOPPING),
+        item(2, "Blue Dart", "Your order with Blue Dart AWB# 12345678901 was delivered to SELF", "DELIVERY", 0, "BZ-BLUDRT-S", true, InboxGroup.UPDATES),
         item(3, "Shopwise", "Congratulations, your Amazon Pay E-Gift Voucher is here", "PROMOTIONS", 0, "VM-SHPWSE-S", true, InboxGroup.OFFERS),
-        item(4, "Union Bank", "Your A/c XX1234 is credited by Rs 5,000.00", "BANKING", 0, "AD-UNIONB-S", true, InboxGroup.TRANSACTIONS),
-        item(5, "Bandhan Bank", "Rs 1,200 debited from A/c XX5678 via UPI", "BANKING", 0, "VM-BANDHN-S", true, InboxGroup.TRANSACTIONS),
-        item(6, "CheQ", "Your credit card bill of Rs 3,357 has been paid via CheQ", "PAYMENTS", 0, "AD-CHEQAP-S", true, InboxGroup.TRANSACTIONS),
-        item(7, "IndiGo", "Your boarding pass for 6E 2134 is ready", "TRAVEL", 0, "JD-INDIGO-S", true, InboxGroup.TRAVEL),
-        item(8, "Zara", "Your Zara order has been shipped", "SHOPPING", 0, "AD-ZARAIN-S", true, InboxGroup.SHOPPING),
+        item(4, "Union Bank", "Your A/c XX1234 is credited by Rs 5,000.00", "BANKING", 0, "AD-UNIONB-S", true, InboxGroup.UPDATES),
+        item(5, "Bandhan Bank", "Rs 1,200 debited from A/c XX5678 via UPI", "BANKING", 0, "VM-BANDHN-S", true, InboxGroup.UPDATES),
+        item(6, "CheQ", "Your credit card bill of Rs 3,357 has been paid via CheQ", "PAYMENTS", 0, "AD-CHEQAP-S", true, InboxGroup.UPDATES),
+        item(7, "IndiGo", "Your boarding pass for 6E 2134 is ready", "TRAVEL", 0, "JD-INDIGO-S", true, InboxGroup.UPDATES),
+        item(8, "Zara", "Your Zara order has been shipped", "SHOPPING", 0, "AD-ZARAIN-S", true, InboxGroup.UPDATES),
         item(9, "Duolingo", "Keep your streak going! 5 minutes a day", "PROMOTIONS", 0, "VM-DUOLNG-P", true, InboxGroup.OFFERS),
         item(10, "BMW", "Your BMW service is due next week", "UPDATES", 0, "AD-BMWIND-S", true, InboxGroup.UPDATES),
     )
     @Test fun inboxMoreLogos() = shot(true, "58_inbox_more_logos_dark") { InboxMock(moreLogos) }
     private val lastLogos get() = withLogos(
-        item(1, "UCO Bank", "Your A/c XX1234 is debited by Rs 500.00", "BANKING", 0, "AD-UCOBNK-S", true, InboxGroup.TRANSACTIONS),
-        item(2, "Karnataka Bank", "Rs 2,000 credited to your A/c XX5678", "BANKING", 0, "VM-KARBNK-S", true, InboxGroup.TRANSACTIONS),
+        item(1, "UCO Bank", "Your A/c XX1234 is debited by Rs 500.00", "BANKING", 0, "AD-UCOBNK-S", true, InboxGroup.UPDATES),
+        item(2, "Karnataka Bank", "Rs 2,000 credited to your A/c XX5678", "BANKING", 0, "VM-KARBNK-S", true, InboxGroup.UPDATES),
         item(3, "BSNL", "Your BSNL bill of Rs 499 is generated", "BILLS", 0, "BZ-BSNLIN-S", true, InboxGroup.UPDATES),
-        item(4, "DTDC", "Your shipment D12345678 is out for delivery", "DELIVERY", 0, "JD-DTDCIN-S", true, InboxGroup.SHOPPING),
+        item(4, "DTDC", "Your shipment D12345678 is out for delivery", "DELIVERY", 0, "JD-DTDCIN-S", true, InboxGroup.UPDATES),
         item(5, "HP", "Your HP laptop warranty is expiring soon", "UPDATES", 0, "AD-HPINDA-S", true, InboxGroup.UPDATES),
-        item(6, "Lenovo", "Your Lenovo order has been shipped", "SHOPPING", 0, "VM-LENOVO-S", true, InboxGroup.SHOPPING),
+        item(6, "Lenovo", "Your Lenovo order has been shipped", "SHOPPING", 0, "VM-LENOVO-S", true, InboxGroup.UPDATES),
         item(7, "Tata Motors", "Your Nexon service is due on 25 Nov", "UPDATES", 0, "AD-TATAMT-S", true, InboxGroup.UPDATES),
         item(8, "Kalyan Jewellers", "Gold rate today: Rs 7,250/g. Visit your nearest showroom", "PROMOTIONS", 0, "VM-KALYAN-P", true, InboxGroup.OFFERS),
         item(9, "MRF", "Your MRF tyre warranty is registered", "UPDATES", 0, "AD-MRFLTD-S", true, InboxGroup.UPDATES),
@@ -545,24 +545,24 @@ class UiSnapshotTest {
     @Test fun inboxLastLogos() = shot(true, "59_inbox_found_logos_dark") { InboxMock(lastLogos) }
     // The top of the user's inbox: Smytten and Jio's number-only sender now have logos.
     private val topOfInbox get() = withLogos(
-        item(1, "Bank of Baroda", "Dear BOB UPI User: Your account is credited with INR 2.00", "BANKING", 0, "AD-BOBTXN-S", true, InboxGroup.TRANSACTIONS),
+        item(1, "Bank of Baroda", "Dear BOB UPI User: Your account is credited with INR 2.00", "BANKING", 0, "AD-BOBTXN-S", true, InboxGroup.UPDATES),
         item(2, "Smytten", "Flash Sale! Get Full-size trials from Foxtale, Novology & more at 4 trial points till midnight", "PROMOTIONS", 0, "JD-SMYTTN-P", true, InboxGroup.OFFERS),
         item(3, "Domino's", "<#>Your Domino's login OTP is 123456", "OTP", 0, "VM-DOMINO-S", true, InboxGroup.OTP, "123456"),
         item(4, "Jio", "क्या आप अपना Jio नंबर xxxxxx1234 चालू रखना चाहते हैं?", "UPDATES", 0, "JM-620021-S", true, InboxGroup.UPDATES),
-        item(5, "Tata CLiQ", "Hi, your order of Fitspire YOR Daily Rose Falooda is confirmed", "SHOPPING", 0, "JM-MYCLIQ-S", true, InboxGroup.SHOPPING),
+        item(5, "Tata CLiQ", "Hi, your order of Fitspire YOR Daily Rose Falooda is confirmed", "SHOPPING", 0, "JM-MYCLIQ-S", true, InboxGroup.UPDATES),
         item(6, "MobiKwik", "Your KYC is due for update by January 17, 2027", "UPDATES", 0, "AD-MOBIKW-S", true, InboxGroup.UPDATES),
     )
     @Test fun inboxTop() = shot(true, "60_inbox_smytten_jio_dark") { InboxMock(topOfInbox) }
     private val travelInbox get() = withLogos(
-        item(1, "Routematic", "SS-HR-1234 assigned for your pickup has started. You can track vehicle using mobile app", "TRAVEL", 0, "VK-RMATIC-S", true, InboxGroup.TRAVEL),
+        item(1, "Routematic", "SS-HR-1234 assigned for your pickup has started. You can track vehicle using mobile app", "TRAVEL", 0, "VK-RMATIC-S", true, InboxGroup.UPDATES),
         item(2, "Divya", "You: I miss him too.", "PERSONAL", 0, "+919800000003", false, InboxGroup.PERSONAL),
-        item(3, "Hoi", "Your Booking ID for Encalm Lounge, T3 INT DEP, Delhi is: HOI0000001. Booking valid for 3 hours", "TRAVEL", 0, "VM-HOIYTC-S", true, InboxGroup.TRAVEL),
+        item(3, "Hoi", "Your Booking ID for Encalm Lounge, T3 INT DEP, Delhi is: HOI0000001. Booking valid for 3 hours", "TRAVEL", 0, "VM-HOIYTC-S", true, InboxGroup.UPDATES),
     )
     @Test fun inboxHoiRoutematic() = shot(true, "62_inbox_hoi_routematic_dark") { InboxMock(travelInbox) }
     private val rewardsInbox get() = withLogos(
         item(1, "Qwikcilver", "Dear Customer, Your OTP for Flipkart SuperCoins gift card is 123456", "OTP", 0, "VM-QWKCLR-S", true, InboxGroup.OTP, "123456"),
         item(2, "UIDAI (Aadhaar)", "123456 is OTP for Aadhaar (XX1234) (valid for 10 mins)", "OTP", 0, "AD-ADHAAR-G", true, InboxGroup.OTP, "654321"),
-        item(3, "Pay with Rewards", "You have spent INR 174 using your Pay with Rewards account", "BANKING", 0, "JD-PAYRWD-S", true, InboxGroup.TRANSACTIONS),
+        item(3, "Pay with Rewards", "You have spent INR 174 using your Pay with Rewards account", "BANKING", 0, "JD-PAYRWD-S", true, InboxGroup.UPDATES),
     )
     @Test fun inboxRewards() = shot(true, "63_inbox_aadhaar_qwikcilver_rewards_dark") { InboxMock(rewardsInbox) }
     private val neuInbox get() = withLogos(
@@ -574,7 +574,7 @@ class UiSnapshotTest {
     private val maximizeInbox get() = withLogos(
         item(1, "Maximize", "<#> 1234 is your OTP to login to your Maximize account.", "OTP", 0, "JD-MAXMZE-S", true, InboxGroup.OTP, "1234"),
         item(2, "Maximize", "Your gift card purchase details are: Amount: 152.00, GC#: 6000000000000000", "UPDATES", 0, "JD-MAXMZE-S", true, InboxGroup.UPDATES),
-        item(3, "Kotak Bank", "Sent Rs.15.58 from Kotak Bank A/c X1234 to MAXIMIZE PAY SOLUTIO on 21-11-26.", "BANKING", 0, "AD-KOTAKB-S", true, InboxGroup.TRANSACTIONS),
+        item(3, "Kotak Bank", "Sent Rs.15.58 from Kotak Bank A/c X1234 to MAXIMIZE PAY SOLUTIO on 21-11-26.", "BANKING", 0, "AD-KOTAKB-S", true, InboxGroup.UPDATES),
     )
     @Test fun inboxMaximize() = shot(true, "65_inbox_maximize_dark") { InboxMock(maximizeInbox, storeMe) }
 
@@ -607,9 +607,9 @@ class UiSnapshotTest {
     @Test fun inboxFree() = shot(true, "75_inbox_free_dark") { InboxMock(inbox, chips = freeChips) }
     @Test fun inboxFreeLight() = shot(false, "76_inbox_free_light") { InboxMock(inbox, chips = freeChips) }
     private val apolloInbox get() = withLogos(
-        item(1, "Apollo Pharmacy", "Dear Customer, Thank you for your purchase @ Apollo Pharmacy. Click here to download your bill for Rs.266.80", "SHOPPING", 1, "CP-APLPHR-S", true, InboxGroup.SHOPPING),
+        item(1, "Apollo Pharmacy", "Dear Customer, Thank you for your purchase @ Apollo Pharmacy. Click here to download your bill for Rs.266.80", "SHOPPING", 1, "CP-APLPHR-S", true, InboxGroup.UPDATES),
         item(2, "MFine", "Your consultation with Dr. Rao is confirmed for 6:30 PM today.", "UPDATES", 0, "JD-HMFINE-S", true, InboxGroup.UPDATES),
-        item(3, "NEWBRD", "Your order #A1234 has been shipped and will arrive tomorrow.", "SHOPPING", 0, "VM-NEWBRD-S", true, InboxGroup.SHOPPING),
+        item(3, "NEWBRD", "Your order #A1234 has been shipped and will arrive tomorrow.", "SHOPPING", 0, "VM-NEWBRD-S", true, InboxGroup.UPDATES),
     ).map { it.copy(logoMissing = it.photoUri == null) }
     @Test fun inboxApollo() = shot(true, "77_inbox_apollo_pharmacy_dark") { InboxMock(apolloInbox) }
     // Appearance: Pro's accent colours and chat wallpapers, and how Yarn Free sees them.
@@ -806,17 +806,17 @@ class UiSnapshotTest {
     @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
     @Test fun travelTab() = shot(true, "32_travel_tab_dark") {
         val travel = listOf(
-            item(21, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed. Dep 16:55", "TRAVEL", 1, "AD-IRCTCI-S", true, InboxGroup.TRAVEL),
-            item(22, "IndiGo", "Web check-in is open for your flight 6E 2134 DEL-BOM on 06 Oct.", "TRAVEL", 0, "JM-INDIGO-S", true, InboxGroup.TRAVEL),
-            item(23, "Uber", "Your Uber driver Sunil has arrived. Look for a grey WagonR DL1CA1234.", "TRAVEL", 0, "VM-UBERIN-S", true, InboxGroup.TRAVEL),
-            item(24, "MakeMyTrip", "Your hotel booking at Taj Fort Aguada is confirmed for 10-12 Oct.", "TRAVEL", 0, "VK-MKMTRP-S", true, InboxGroup.TRAVEL),
+            item(21, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed. Dep 16:55", "TRAVEL", 1, "AD-IRCTCI-S", true, InboxGroup.UPDATES),
+            item(22, "IndiGo", "Web check-in is open for your flight 6E 2134 DEL-BOM on 06 Oct.", "TRAVEL", 0, "JM-INDIGO-S", true, InboxGroup.UPDATES),
+            item(23, "Uber", "Your Uber driver Sunil has arrived. Look for a grey WagonR DL1CA1234.", "TRAVEL", 0, "VM-UBERIN-S", true, InboxGroup.UPDATES),
+            item(24, "MakeMyTrip", "Your hotel booking at Taj Fort Aguada is confirmed for 10-12 Oct.", "TRAVEL", 0, "VK-MKMTRP-S", true, InboxGroup.UPDATES),
         )
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(top = 24.dp)) {
             androidx.compose.foundation.layout.FlowRow(
                 Modifier.padding(horizontal = 16.dp),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
                 verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-            ) { chips.forEach { c -> app.yarn.ui.inbox.GroupChip(c, selected = c.group == InboxGroup.TRAVEL) {} } }
+            ) { chips.forEach { c -> app.yarn.ui.inbox.GroupChip(c, selected = c.group == InboxGroup.UPDATES) {} } }
             androidx.compose.foundation.layout.Spacer(Modifier.size(16.dp))
             travel.forEach { ConversationRow(it, false, false, {}, {}) }
         }
@@ -830,13 +830,13 @@ class UiSnapshotTest {
     private val storeInbox get() = withLogos(
         item(1, "Priya Sharma", "Are we still on for dinner tonight?", "PERSONAL", 2, "+919812345678", false, InboxGroup.PERSONAL, pinned = true),
         item(2, "SBI Card", "423378 is the OTP for Trxn. of INR 375.00 at AMAZON with your SBI Card", "OTP", 1, "AD-SBICRD-T", true, InboxGroup.OTP, "423378"),
-        item(3, "HDFC Bank", "Rs.2,500.00 debited from A/c XX1234 to VPA swiggy@icici", "BANKING", 1, "VM-HDFCBK-S", true, InboxGroup.TRANSACTIONS),
-        item(4, "Swiggy", "Your Swiggy order from Behrouz Biryani is on the way!", "SHOPPING", 0, "AD-SWIGGY-S", true, InboxGroup.SHOPPING),
-        item(5, "IndiGo", "Web check-in is open for your flight 6E 2134 BLR-DEL", "TRAVEL", 0, "JD-INDIGO-S", true, InboxGroup.TRAVEL),
+        item(3, "HDFC Bank", "Rs.2,500.00 debited from A/c XX1234 to VPA swiggy@icici", "BANKING", 1, "VM-HDFCBK-S", true, InboxGroup.UPDATES),
+        item(4, "Swiggy", "Your Swiggy order from Behrouz Biryani is on the way!", "SHOPPING", 0, "AD-SWIGGY-S", true, InboxGroup.UPDATES),
+        item(5, "IndiGo", "Web check-in is open for your flight 6E 2134 BLR-DEL", "TRAVEL", 0, "JD-INDIGO-S", true, InboxGroup.UPDATES),
         item(6, "Mom", "Call me when you're free", "PERSONAL", 0, "+919800000002", false, InboxGroup.PERSONAL),
-        item(7, "Amazon", "Your order of boAt Airdopes has been delivered", "SHOPPING", 0, "AX-AMAZON-S", true, InboxGroup.SHOPPING),
+        item(7, "Amazon", "Your order of boAt Airdopes has been delivered", "SHOPPING", 0, "AX-AMAZON-S", true, InboxGroup.UPDATES),
         item(8, "Jio", "Your Jio recharge of Rs 349 is successful. Enjoy unlimited 5G.", "BILLS", 0, "JM-JIOINF-S", true, InboxGroup.UPDATES),
-        item(9, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.TRAVEL),
+        item(9, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.UPDATES),
         item(10, "Zepto", "Sale is LIVE! Get flat 50% off on fruits & veggies. Order now", "PROMOTIONS", 0, "JM-ZEPTON-P", true, InboxGroup.OFFERS),
     )
     private val storeOtps get() = withLogos(
@@ -938,25 +938,25 @@ class UiSnapshotTest {
 
     // ---- Demo video (tools/store/video.py): the screens it shows, made-up people and numbers ----
     private val videoTxn get() = withLogos(
-        item(1, "HDFC Bank", "Rs.2,500.00 debited from A/c XX1234 to VPA swiggy@icici on 24-11-26.", "BANKING", 1, "VM-HDFCBK-S", true, InboxGroup.TRANSACTIONS),
-        item(2, "SBI Card", "Rs 1,299.00 spent on your SBI Credit Card ending 4821 at MYNTRA.", "BANKING", 1, "AD-SBICRD-S", true, InboxGroup.TRANSACTIONS),
-        item(3, "Kotak Bank", "Rs 45,000.00 credited to A/c XX9876 on 24-11-26. Avl bal Rs 61,240.50", "BANKING", 0, "AD-KOTAKB-S", true, InboxGroup.TRANSACTIONS),
-        item(4, "PhonePe", "Paid Rs 349 to Jio Prepaid. UPI Ref 432109876543.", "PAYMENTS", 0, "VM-PHONPE-S", true, InboxGroup.TRANSACTIONS),
-        item(5, "CRED", "Your credit card bill of Rs 12,480 is paid. You earned 1,248 CRED coins.", "BILLS", 0, "JD-CREDIN-S", true, InboxGroup.TRANSACTIONS),
+        item(1, "HDFC Bank", "Rs.2,500.00 debited from A/c XX1234 to VPA swiggy@icici on 24-11-26.", "BANKING", 1, "VM-HDFCBK-S", true, InboxGroup.UPDATES),
+        item(2, "SBI Card", "Rs 1,299.00 spent on your SBI Credit Card ending 4821 at MYNTRA.", "BANKING", 1, "AD-SBICRD-S", true, InboxGroup.UPDATES),
+        item(3, "Kotak Bank", "Rs 45,000.00 credited to A/c XX9876 on 24-11-26. Avl bal Rs 61,240.50", "BANKING", 0, "AD-KOTAKB-S", true, InboxGroup.UPDATES),
+        item(4, "PhonePe", "Paid Rs 349 to Jio Prepaid. UPI Ref 432109876543.", "PAYMENTS", 0, "VM-PHONPE-S", true, InboxGroup.UPDATES),
+        item(5, "CRED", "Your credit card bill of Rs 12,480 is paid. You earned 1,248 CRED coins.", "BILLS", 0, "JD-CREDIN-S", true, InboxGroup.UPDATES),
     )
     private val videoShop get() = withLogos(
-        item(1, "Swiggy", "Your Swiggy order from Behrouz Biryani is on the way!", "DELIVERY", 1, "AD-SWIGGY-S", true, InboxGroup.SHOPPING),
-        item(2, "Blinkit", "Your order will arrive in 8 minutes. Track it in the app.", "DELIVERY", 1, "VM-BLNKIT-S", true, InboxGroup.SHOPPING),
-        item(3, "Amazon", "Your order of boAt Airdopes has been delivered.", "SHOPPING", 0, "AX-AMAZON-S", true, InboxGroup.SHOPPING),
-        item(4, "Myntra", "Refund of Rs 899 for your return has been processed.", "SHOPPING", 0, "AD-MYNTRA-S", true, InboxGroup.SHOPPING),
-        item(5, "Flipkart", "Your order for Realme Buds is shipped and arrives Thursday.", "SHOPPING", 0, "VM-FLPKRT-S", true, InboxGroup.SHOPPING),
+        item(1, "Swiggy", "Your Swiggy order from Behrouz Biryani is on the way!", "DELIVERY", 1, "AD-SWIGGY-S", true, InboxGroup.UPDATES),
+        item(2, "Blinkit", "Your order will arrive in 8 minutes. Track it in the app.", "DELIVERY", 1, "VM-BLNKIT-S", true, InboxGroup.UPDATES),
+        item(3, "Amazon", "Your order of boAt Airdopes has been delivered.", "SHOPPING", 0, "AX-AMAZON-S", true, InboxGroup.UPDATES),
+        item(4, "Myntra", "Refund of Rs 899 for your return has been processed.", "SHOPPING", 0, "AD-MYNTRA-S", true, InboxGroup.UPDATES),
+        item(5, "Flipkart", "Your order for Realme Buds is shipped and arrives Thursday.", "SHOPPING", 0, "VM-FLPKRT-S", true, InboxGroup.UPDATES),
     )
     private val videoTravel get() = withLogos(
-        item(1, "IndiGo", "Web check-in is open for your flight 6E 2134 BLR-DEL on 28 Nov.", "TRAVEL", 1, "JD-INDIGO-S", true, InboxGroup.TRAVEL),
-        item(2, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.TRAVEL),
-        item(3, "Uber", "Your Uber is arriving in 3 min. Ravi, white Dzire KA 01 AB 1234.", "TRAVEL", 0, "VM-UBERIN-S", true, InboxGroup.TRAVEL),
-        item(4, "MakeMyTrip", "Your stay at Taj Goa is confirmed for 12-14 Dec. Booking ID NH71234.", "TRAVEL", 0, "VM-MMTRIP-S", true, InboxGroup.TRAVEL),
-        item(5, "Rapido", "Your ride is complete. Fare Rs 86 paid via UPI.", "TRAVEL", 0, "VM-RAPIDO-S", true, InboxGroup.TRAVEL),
+        item(1, "IndiGo", "Web check-in is open for your flight 6E 2134 BLR-DEL on 28 Nov.", "TRAVEL", 1, "JD-INDIGO-S", true, InboxGroup.UPDATES),
+        item(2, "IRCTC", "PNR 4521367890: Train 12951 Coach B2 Berth 34 confirmed.", "TRAVEL", 0, "AD-IRCTCI-S", true, InboxGroup.UPDATES),
+        item(3, "Uber", "Your Uber is arriving in 3 min. Ravi, white Dzire KA 01 AB 1234.", "TRAVEL", 0, "VM-UBERIN-S", true, InboxGroup.UPDATES),
+        item(4, "MakeMyTrip", "Your stay at Taj Goa is confirmed for 12-14 Dec. Booking ID NH71234.", "TRAVEL", 0, "VM-MMTRIP-S", true, InboxGroup.UPDATES),
+        item(5, "Rapido", "Your ride is complete. Fare Rs 86 paid via UPI.", "TRAVEL", 0, "VM-RAPIDO-S", true, InboxGroup.UPDATES),
     )
     private val videoOffers get() = withLogos(
         item(1, "Zepto", "Sale is LIVE! Get flat 50% off on fruits & veggies. Order now", "PROMOTIONS", 0, "JM-ZEPTON-P", true, InboxGroup.OFFERS),
@@ -996,9 +996,9 @@ class UiSnapshotTest {
     }
     @Test fun video08Inbox() = shot(false, "video_08_inbox") { InboxMock(storeInbox, storeMe) }
     @Test fun video09Otp() = shot(false, "video_09_tab_otp") { VideoTabs(storeOtps, InboxGroup.OTP) }
-    @Test fun video10Txn() = shot(false, "video_10_tab_transactions") { VideoTabs(videoTxn, InboxGroup.TRANSACTIONS) }
-    @Test fun video11Shop() = shot(false, "video_11_tab_shopping") { VideoTabs(videoShop, InboxGroup.SHOPPING) }
-    @Test fun video12Travel() = shot(false, "video_12_tab_travel") { VideoTabs(videoTravel, InboxGroup.TRAVEL) }
+    @Test fun video10Txn() = shot(false, "video_10_tab_transactions") { VideoTabs(videoTxn, InboxGroup.UPDATES) }
+    @Test fun video11Shop() = shot(false, "video_11_tab_shopping") { VideoTabs(videoShop, InboxGroup.UPDATES) }
+    @Test fun video12Travel() = shot(false, "video_12_tab_travel") { VideoTabs(videoTravel, InboxGroup.UPDATES) }
     @Test fun video13Offers() = shot(false, "video_13_tab_offers") { VideoTabs(videoOffers, InboxGroup.OFFERS) }
     @Test fun video14Chat() = shot(false, "video_14_chat") { StoreChat() }
     @Test fun video15Spam() = shot(false, "video_15_spam") { SpamMock(storeMe) }

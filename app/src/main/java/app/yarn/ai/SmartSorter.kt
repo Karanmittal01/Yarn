@@ -3,8 +3,10 @@ package app.yarn.ai
 import app.yarn.data.db.MessageEntity
 import app.yarn.data.db.YarnDatabase
 import app.yarn.data.prefs.SettingsRepository
-import app.yarn.data.repo.InboxGroup
 import app.yarn.intelligence.Category
+import app.yarn.intelligence.CategoryGroup
+import app.yarn.intelligence.group
+import app.yarn.intelligence.representative
 import app.yarn.intelligence.CommercialSuffix
 import app.yarn.intelligence.SenderAnalyzer
 import app.yarn.intelligence.SenderNames
@@ -55,15 +57,16 @@ class SmartSorter(
         if (SenderAnalyzer.commercialSuffix(m.address) == CommercialSuffix.PROMOTIONAL) return false
         val sender = SenderNames.pretty(m.address) ?: m.address
         val answer = nano.classify(sender, m.address, m.body)
-        val group = answer?.let { runCatching { InboxGroup.valueOf(it) }.getOrNull() }
+        // The model picks among the finer kinds (money, orders, trips…), which the tabs then group.
+        val group = answer?.let { runCatching { CategoryGroup.valueOf(it) }.getOrNull() }
             // The model may only call something an OTP when the extractor found a code.
-            ?.takeUnless { it == InboxGroup.OTP }
+            ?.takeUnless { it == CategoryGroup.OTP }
             // Nor move a message somewhere its own words give no sign of ("We approved your
             // credit card" is not an offer, "your pickup has started" is not shopping).
-            ?.takeIf { engine.mayFileAs(m, it.kind) }
+            ?.takeIf { engine.mayFileAs(m, it) }
         val newCategory = when {
             group == null -> current ?: Category.PERSONAL
-            InboxGroup.of(current) == group -> current!!
+            current?.group == group -> current
             else -> group.representative
         }
         db.messages().update(

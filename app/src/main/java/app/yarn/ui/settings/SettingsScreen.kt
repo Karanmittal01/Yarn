@@ -282,14 +282,16 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.notificationItems(
             if (s.sortingOn && !pro) {
                 ProLockedRow(stringResource(R.string.notify_each_tab), stringResource(R.string.pro_f_notify), Icons.Outlined.Notifications)
             } else if (s.sortingOn) {
-                // Sets every tab at once; shows a value only while all tabs agree.
-                val all = InboxGroup.entries.map { s.notifyFor(it.kind) }.distinct().singleOrNull()
+                // By kind of message, finer than the tabs: a bank alert can ring while other updates stay quiet.
+                // "All kinds" sets every one at once and shows a value only while they agree.
+                val kinds = app.yarn.intelligence.CategoryGroup.entries
+                val all = kinds.map { s.notifyFor(it) }.distinct().singleOrNull()
                 ChoiceRow<NotifyMode?>(stringResource(R.string.notify_all_tabs), modes, all, icon = Icons.Outlined.Notifications) { m ->
-                    if (m != null) update { it.copy(notifyTabs = InboxGroup.entries.associate { g -> g.kind to m }) }
+                    if (m != null) update { it.copy(notifyTabs = kinds.associateWith { m }) }
                 }
-                InboxGroup.entries.forEach { g ->
-                    ChoiceRow(stringResource(g.label), modes, s.notifyFor(g.kind), icon = CategoryUi.groupIcon(g)) { m ->
-                        update { it.copy(notifyTabs = it.notifyTabs + (g.kind to m)) }
+                kinds.forEach { k ->
+                    ChoiceRow(stringResource(CategoryUi.kindLabel(k)), modes, s.notifyFor(k), icon = CategoryUi.kindIcon(k)) { m ->
+                        update { it.copy(notifyTabs = it.notifyTabs + (k to m)) }
                     }
                 }
             }
