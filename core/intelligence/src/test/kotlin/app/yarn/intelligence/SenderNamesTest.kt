@@ -103,6 +103,7 @@ class SenderNamesTest {
         for (a in listOf(
             "$jio@rbm.goog", jio, "sip:$jio@rbm.goog", "$jio%40rbm.goog", "$jio====@rbm.goog", "$jio.agent@rbm.goog", "${jio}0@rbm.goog",
             encode("jiomart_ej2r1ufx_agent@rbm.goog"), encode("sip:jiomart_ej2r1ufx_agent@rbm.goog") + "@rbm.goog",
+            "\u200E$jio@rbm.goog", "\u202A$jio@rbm.goog\u202C", "+$jio@rbm.goog", "<sip:$jio@rbm.goog>", "tel:$jio@rbm.goog", jio.uppercase() + "@RBM.GOOG",
             // Stored as it is, not encoded.
             "jiomart_ej2r1ufx_agent@rbm.goog", "sip:jiomart_ej2r1ufx_agent@rbm.goog",
         )) assertWithMessage(a).that(SenderNames.pretty(a)).isEqualTo("JioMart")

@@ -1539,7 +1539,10 @@ object SenderNames {
      * "m5xw6z3mmvpxaylzl5yg…" for "google_pay…". Returns the decoded ID, or null for any other sender.
      */
     fun rcsAgent(address: String): String? {
-        val trimmed = address.trim().removePrefix("sip:")
+        // Invisible direction marks, "+", "<" or "tel:"/"sip:" before the address look the same on screen
+        // but would stop the decoding.
+        val trimmed = address.filterNot { Character.getType(it) == Character.FORMAT.toInt() }.trim()
+            .trimStart { !it.isLetterOrDigit() }.removeSuffix(">").lowercase().removePrefix("sip:").removePrefix("tel:")
         val local = trimmed.substringBefore('@').substringBefore("%40").lowercase()
         // Some phones keep the agent ID as it is ("jiomart_ej2r1ufx_agent@rbm.goog").
         val domain = trimmed.substringAfter('@', "").lowercase()
