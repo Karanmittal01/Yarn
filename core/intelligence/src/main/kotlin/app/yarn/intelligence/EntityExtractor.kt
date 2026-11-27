@@ -433,7 +433,8 @@ class EntityExtractor(
         /** Reference numbers (application, booking, ARN…) that sit next to the word "verification". */
         private val REFERENCE_NUMBER_BEFORE = Regex("(?i)(?:\\barn|\\bref(?:erence)?|application|booking|pnr|ticket|\\bid|\\d-)\\s*(?:no\\.?|number)?\\s*[:#.]?\\s*$")
         // A colon right before the code is fine ("is:769966", "OTP:1234"); after a digit it's a time.
-        private val OTP_CANDIDATE = Regex("(?<![\\d.,/])(?<!\\d:)(?:[A-Z]-)?(\\d{4,8})(?![\\d.,/]\\d)|(?<![\\d.,])(\\d{3})[- ](\\d{3})(?![\\d])")
+        // Not part of a longer token: "DL79AB5361" is a vehicle number, not a code.
+        private val OTP_CANDIDATE = Regex("(?<![\\d.,/])(?<!\\d:)(?<![A-Za-z])(?:[A-Z]-)?(\\d{4,8})(?![\\d.,/]\\d)(?![A-Za-z])|(?<![\\d.,])(\\d{3})[- ](\\d{3})(?![\\d])")
         /** "… is 448812", "… is:769966", "… is-7781". */
         private val ANNOUNCED_BEFORE = Regex("(?i)\\b(?:is|are)\\s*[:\\-]?\\s*$")
         private val STRONG_OTP = Regex(

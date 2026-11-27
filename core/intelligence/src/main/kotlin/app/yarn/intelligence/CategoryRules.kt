@@ -134,6 +134,7 @@ object CategoryRules {
             "as (?:per )?your (?:request|instructions?)",
             // A card, account or plan ended: news about the account, not an order or a trip.
             "(?:card|account|a/c|policy|mandate|subscription|membership|plan|sim|connection|standing instruction|autopay|auto-?debit) (?:[\\w-]+ ){0,3}(?:has been |is |was |stands )?(?:cancelled|canceled|closed|terminated|suspended|deactivated|discontinued|surrendered|hotlisted)",
+            "(?:standing instruction|mandate|autopay)[\\s\\S]{0,80}?(?:has been |is |was )(?:registered|cancell?ed|canceled|revoked|paused)",
             "supply will be (?:disrupted|interrupted|affected)", "power (?:cut|outage|shutdown)", "for maintenance",
             "statement (?:for [\\w /,-]+? )?(?:has been (?:generated and )?(?:emailed|sent|mailed)|is (?:now )?available)", "will expire (?:on|in)", "new card will be", "renewal card",
             "unlocked", "kyc is due", "complete (?:your |video )?kyc", "on its way", "(?:card|cheque ?book) (?:has been |is )?(?:dispatched|delivered|shipped)", "dispatched via",
@@ -171,7 +172,7 @@ object CategoryRules {
             "returned unpaid|disbursed|\\b(?:dr|cr) (?:rs\\.?|inr|₹)? ?\\d|shortfall of|dividend|(?:fd|fixed deposit|recurring deposit|rd) (?:of (?:rs|inr|₹)[\\d,.\\s]+)?(?:has been |is )?(?:booked|opened)|ডেবিট|জমা|வரவு|பற்று|డెబిట్|జమ|ಜಮಾ|ಡೆಬಿಟ್|emi (?:of|for) (?:rs|inr|₹)|bounced|declined|levied|charges of (?:rs|inr|₹)|डेबिट|जमा)",
     )
     private val ORDER_LEAD = Regex(
-        "(?i)(?:your (?!next |first )(?:\\w+ ){0,3}order(?!s| now| to (?:buy|sell))|order (?:#|no\\.|id|number|is|has|was|[a-z]{0,3}\\d)|pre-?order|shipped|shipment|dispatched|packed|" +
+        "(?i)(?:your (?!next |first )(?:\\w+ ){0,3}order(?!s| now| to (?:buy|sell))|order (?:#|no\\.|id|number|is|has|was|[a-z]{0,3}\\d|(?=[a-z0-9]*\\d)[a-z0-9]{8,}\\b)|pre-?order|shipped|shipment|dispatched|packed|" +
             "return (?:request|pickup)|replacement request|installation (?:for|of) your|delivery for (?:today|tomorrow)|" +
             "out for delivery|return pickup|parcel|(?<!holiday |tour |travel |data |sports )package|courier|unable to deliver|(?:has been|was|is|got) delivered|delivered (?:to|at|today|successfully)|order delivered)",
     )
@@ -188,10 +189,10 @@ object CategoryRules {
     private val DOCUMENT_POSTED = Regex("(?i)\\b(?:licen[cs]e|passport|rc|registration certificate|pan card|aadhaar|epic|voter id|welcome kit|smart card)\\b")
     // A new limit, a registered mandate or standing instruction: an amount is named, nothing is paid.
     private val SETUP_ONLY = Regex(
-        "(?i)mandate (?:[\\w ,.]+ )?(?:has been |is )?(?:registered|created|set up|approved)|autopay (?:has been |is )?(?:set up|registered|enabled)|" +
-            "standing instruction (?:[\\w ,.]+ )?(?:has been |is )?registered|limit (?:has been |is )?(?:revised|increased|enhanced|reduced|changed|upgraded)",
+        "(?i)(?:mandate|standing instruction|autopay|auto-?debit)[\\s\\S]{0,80}?(?:has been |is |was )?(?:registered|created|set up|approved|enabled|cancell?ed|canceled|revoked|deregistered|paused)|limit (?:has been |is )?(?:revised|increased|enhanced|reduced|changed|upgraded)",
     )
     private val MOVED = Regex("(?i)debited|deducted|\\bpaid\\b|credited|withdrawn|transferred|spent")
+    private val PROMO_NUMBER = Regex("\\d{6}")
     private val BILL_WORD = Regex("(?i)\\b(?:bill|premium|emi|postpaid|dues?|invoice|fees?|rent|maintenance charges?|challan)\\b")
     private val DISCOUNT = Regex("(?i)\\d+ ?% ?(?:off|discount|cashback)|use (?:code|coupon)|promo ?code|flat $MONEY off|up ?to $MONEY off")
     private val SERVICE = listOf(Category.OTP, Category.BANKING, Category.PAYMENTS, Category.BILLS, Category.SHOPPING, Category.DELIVERY, Category.TRAVEL)
@@ -312,6 +313,10 @@ object CategoryRules {
             }
         }
 
+        // India's promotional numbers are six digits ("VM-550835"): only adverts come from them.
+        if (sender.commercialSuffix == null && PROMO_NUMBER.matches(SenderAnalyzer.brandToken(sender.address)) && brand == null && otp == null && !moneyEvidence) {
+            add(Category.PROMOTIONS, 5f, "Sent from a promotional number", fromText = false)
+        }
         when (sender.commercialSuffix) {
             CommercialSuffix.PROMOTIONAL -> {
                 // Operators only allow advertising on -P headers, so this is always an offer.

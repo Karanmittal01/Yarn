@@ -42,6 +42,7 @@ object UrlTools {
         "wellsfargo" to setOf("wellsfargo.com"),
         "bankofamerica" to setOf("bankofamerica.com", "bofa.com"),
         "whatsapp" to setOf("whatsapp.com", "wa.me"),
+        "telegram" to setOf("telegram.org", "t.me"),
         "youtube" to setOf("youtube.com", "youtu.be"),
         "instagram" to setOf("instagram.com"),
         "facebook" to setOf("facebook.com", "fb.com", "fb.me"),

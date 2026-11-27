@@ -772,6 +772,11 @@ import round3  # noqa: E402
 
 round3.build(add, people)
 
+# Round four: formats from a 5,000-message test inbox (tools/corpus/round4.py).
+import round4  # noqa: E402
+
+round4.build(add)
+
 
 def main():
     seen = set()

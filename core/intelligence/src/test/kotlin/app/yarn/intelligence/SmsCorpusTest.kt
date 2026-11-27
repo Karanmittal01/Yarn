@@ -48,6 +48,25 @@ class SmsCorpusTest {
         assertWithMessage("${filtered.size} real messages filtered on High:\n" + filtered.joinToString("\n")).that(filtered).isEmpty()
     }
 
+    /**
+     * Messages from before 2025 carry no -S/-T/-P/-G suffix ("VM-HDFCBK"), and re-sorting reaches
+     * years of them: without it, every real message still stays out of Spam, even on High.
+     */
+    @Test
+    fun oldSenderIdsWithoutSuffixAreNeverFiltered() {
+        val suffix = Regex("-[STPG]$")
+        for (sensitivity in listOf(SpamSensitivity.MEDIUM, SpamSensitivity.HIGH)) {
+            val strict = MessageAnalyzer(AnalyzerConfig(spamSensitivity = sensitivity))
+            val filtered = rows.filter { 'X' !in it.want && suffix.containsMatchIn(it.sender) }.mapNotNull { row ->
+                val r = row.copy(sender = row.sender.replace(suffix, ""))
+                val a = analyze(r, strict)
+                if (!a.spam.verdict.isFiltered) null
+                else "${r.sender}: ${a.spam.verdict} ${"%.2f".format(a.spam.score)} ${a.spam.reasons} — “${r.text.take(110).replace('\n', ' ')}”"
+            }
+            assertWithMessage("${filtered.size} real messages filtered on $sensitivity without a suffix:\n" + filtered.joinToString("\n")).that(filtered).isEmpty()
+        }
+    }
+
     /** Low filters only what it's surest of, and that still covers the large majority of scams. */
     @Test
     fun lowSensitivityStillCatchesScams() {

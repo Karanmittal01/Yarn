@@ -620,6 +620,7 @@ object SenderNames {
         Brand("FBOOKI", "Facebook"),
         Brand("INSTGM", "Instagram"),
         Brand("INSTAG", "Instagram"),
+        Brand("TELEGR", "Telegram"),
         Brand("TELGRM", "Telegram"),
         Brand("TGRAMM", "Telegram"),
         Brand("SHRCHT", "ShareChat"),
@@ -1472,6 +1473,7 @@ object SenderNames {
         Brand("NETFLX", "Netflix", Category.UPDATES),
         Brand("HOTSTR", "Hotstar", Category.UPDATES),
         Brand("SPOTFY", "Spotify", Category.UPDATES),
+        Brand("SPOTIF", "Spotify", Category.UPDATES),
         Brand("APOLLO", "Apollo", Category.UPDATES),
         Brand("PRACTO", "Practo", Category.UPDATES),
         Brand("URBNCO", "Urban Company", Category.UPDATES),
@@ -1495,9 +1497,13 @@ object SenderNames {
         val token = SenderAnalyzer.brandToken(a)
         // Numeric headers also arrive with the carrier's prefix ("JM-620021-S"): the number is what counts.
         if (token.isNotEmpty() && token.all(Char::isDigit)) return SHORT_CODES[token]
+        // Plain words that happen to start like a brand ("CREDIT" isn't CRED) belong to no one.
+        if (token in NOT_BRANDS) return null
         val hit = found.getOrPut(token) { KNOWN.firstOrNull { token.startsWith(it.prefix) } ?: NONE }
         return hit.takeIf { it !== NONE }
     }
+
+    private val NOT_BRANDS = setOf("CREDIT", "CREDITS", "CREDITCARD")
 
     fun isBusiness(address: String): Boolean {
         val a = address.trim()
