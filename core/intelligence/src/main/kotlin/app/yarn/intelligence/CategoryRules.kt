@@ -185,7 +185,7 @@ object CategoryRules {
     // Real money never carries an asterisk.
     private val PERK_CREDIT = Regex(
         "(?i)$MONEY\\*|enjoy (?:your |the |these |exclusive )?(?:benefits|perks|privileges)|power ?cash|bonus cash|promo(?:tional)? (?:cash|credits?|balance)|scratch ?cards?|" +
-            "\\d+ ?(?:gb|mb) (?:\\w+ ){0,2}(?:credited|added)",
+            "(?<!\\d)\\d+ ?(?:gb|mb) (?:\\w+ ){0,2}(?:credited|added)",
     )
     // A trip (a PNR, a ticket, a flight) that a refund or fare belongs to: "Your ticket for PNR … has been
     // cancelled. Refund of Rs …" is about the journey.
@@ -201,7 +201,7 @@ object CategoryRules {
     private val MOVED = Regex("(?i)debited|deducted|\\bpaid\\b|credited|withdrawn|transferred|spent")
     private val PROMO_NUMBER = Regex("\\d{6}")
     private val BILL_WORD = Regex("(?i)\\b(?:bill|premium|emi|postpaid|dues?|invoice|fees?|rent|maintenance charges?|challan)\\b")
-    private val DISCOUNT = Regex("(?i)\\d+ ?% ?(?:off|discount|cashback)|use (?:code|coupon)|promo ?code|flat $MONEY off|up ?to $MONEY off")
+    private val DISCOUNT = Regex("(?i)(?<!\\d)\\d+ ?% ?(?:off|discount|cashback)|use (?:code|coupon)|promo ?code|flat $MONEY off|up ?to $MONEY off")
     private val SERVICE = listOf(Category.OTP, Category.BANKING, Category.PAYMENTS, Category.BILLS, Category.SHOPPING, Category.DELIVERY, Category.TRAVEL)
 
     /**

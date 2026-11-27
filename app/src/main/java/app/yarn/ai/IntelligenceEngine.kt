@@ -13,6 +13,7 @@ import app.yarn.intelligence.AnalyzerConfig
 import app.yarn.intelligence.Analysis
 import app.yarn.intelligence.Category
 import app.yarn.intelligence.Classification
+import app.yarn.intelligence.SenderNames
 import app.yarn.intelligence.Correction
 import app.yarn.intelligence.Entity
 import app.yarn.intelligence.EntityType
@@ -170,6 +171,13 @@ class IntelligenceEngine(
         )
         return updated to a.entities.map { it.toRow(m.id, "rules") }
     }
+
+    /** [m] filed plainly, for when analysing it failed: a business's message to Updates, a person's to Personal. */
+    fun fallback(m: MessageEntity): MessageEntity = m.copy(
+        category = if (m.outgoing) m.category else if (SenderNames.isBusiness(m.address)) Category.UPDATES.name else Category.PERSONAL.name,
+        categorySource = Classification.Source.RULES.name,
+        analyzed = true,
+    )
 
     /** Analyses and persists a stored message (entities included). */
     suspend fun analyzeAndStore(messageId: Long, context: PriorityContext = PriorityContext()): MessageEntity? {

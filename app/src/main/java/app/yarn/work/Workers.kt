@@ -27,6 +27,23 @@ private fun foregroundInfo(context: Context, text: String): ForegroundInfo {
     return ForegroundInfo(Notifier.BACKGROUND_ID, n)
 }
 
+/**
+ * Analyses and saves one message. If analysing it fails, it's filed plainly (and the error kept for
+ * the feedback report) so a single odd message can never hold up sorting the rest of the inbox.
+ */
+private suspend fun annotateSafely(c: app.yarn.AppContainer, m: app.yarn.data.db.MessageEntity) {
+    val result = try {
+        c.engine.annotate(m)
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (t: Throwable) {
+        app.yarn.CrashLog.record(t, fatal = false)
+        c.engine.fallback(m) to emptyList()
+    }
+    c.db.messages().update(result.first)
+    c.db.messages().replaceEntities(m.id, "rules", result.second)
+}
+
 /** Drains the outgoing queue. Needs no network constraint: SMS uses the cellular radio. */
 class SendWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
@@ -94,22 +111,23 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         c.engine.ensureFilters()
         var processed = 0
         val toSort = c.db.messages().unanalyzedCount()
-        while (!isStopped) {
-            val batch = c.db.messages().unanalyzed(200)
-            if (batch.isEmpty()) break
-            c.progress.update(JobKind.SORTING, processed, toSort)
-            val touched = HashSet<Long>()
-            for (m in batch) {
-                val (updated, entities) = c.engine.annotate(m)
-                c.db.messages().update(updated)
-                c.db.messages().replaceEntities(m.id, "rules", entities)
-                touched += m.conversationId
+        try {
+            while (!isStopped) {
+                val batch = c.db.messages().unanalyzed(200)
+                if (batch.isEmpty()) break
+                c.progress.update(JobKind.SORTING, processed, toSort)
+                val touched = HashSet<Long>()
+                for (m in batch) {
+                    annotateSafely(c, m)
+                    touched += m.conversationId
+                }
+                touched.forEach { c.db.conversations().refresh(it) }
+                processed += batch.size
+                c.progress.update(JobKind.SORTING, processed, maxOf(toSort, processed))
             }
-            touched.forEach { c.db.conversations().refresh(it) }
-            processed += batch.size
-            c.progress.update(JobKind.SORTING, processed, maxOf(toSort, processed))
+        } finally {
+            c.progress.finish(JobKind.SORTING)
         }
-        c.progress.finish(JobKind.SORTING)
         runCatching { c.smartSorter.sortRecent(limit = 60) }
         val firstImport = !c.settings.current().initialImportDone
         // The first import sorted everything with this version's rules: no re-sort needed until the next update.
@@ -158,9 +176,7 @@ class ReanalyzeWorker(context: Context, params: WorkerParameters) : CoroutineWor
                 c.db.withTransaction {
                     for (m in page) {
                         if (m.outgoing) continue
-                        val (updated, entities) = c.engine.annotate(m)
-                        c.db.messages().update(updated)
-                        c.db.messages().replaceEntities(m.id, "rules", entities)
+                        annotateSafely(c, m)
                         touched += m.conversationId
                     }
                     touched.forEach { c.db.conversations().refresh(it) }

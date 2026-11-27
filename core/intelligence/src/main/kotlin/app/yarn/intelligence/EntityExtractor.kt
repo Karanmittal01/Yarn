@@ -415,7 +415,7 @@ class EntityExtractor(
         )
 
         private val URL = Regex(
-            "(?i)(?<![@\\w.-])(?:(?:https?://|www\\.)[^\\s<>\"]+|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,24}(?:/[^\\s<>\"]*)?)",
+            "(?i)(?<![@\\w.-])(?:(?:https?://|www\\.)[^\\s<>\"]+|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.){1,10}[a-z]{2,24}(?:/[^\\s<>\"]*)?)",
         )
         private val EMAIL = Regex("(?i)\\b[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,24}\\b")
         private val UPI = Regex("\\b([a-zA-Z0-9._-]{2,64})@([a-zA-Z]{2,32})\\b(?!\\w|\\.\\w)")
@@ -451,7 +451,7 @@ class EntityExtractor(
         private val CURRENCY_BEFORE = Regex("(₹|rs\\.?|inr|\\$|usd|€|£|eur|gbp)\\s*$")
         private val ACCOUNT_BEFORE = Regex("(a/c|acct|account|card|ending|xx|\\*\\*|no\\.)\\s*[:#]?\\s*$")
 
-        private const val NUM = "(\\d{1,3}(?:,\\d{2,3})+(?:\\.\\d{1,2})?|\\d+(?:\\.\\d{1,2})?)"
+        private const val NUM = "(\\d{1,3}(?:,\\d{2,3}){1,8}(?:\\.\\d{1,2})?|\\d+(?:\\.\\d{1,2})?)"
         private val AMOUNT_PREFIX = Regex("(?i)(₹|(?<![a-z])(?:rs\\.?|inr|us\\$|usd|eur|gbp|jpy|aed|sgd|s\\$|cad|c\\$|aud|a\\$)|\\$|€|£|¥)\\s?$NUM(?![\\d])")
         private val AMOUNT_SUFFIX = Regex("(?i)(?<![\\w.])$NUM\\s?(inr|usd|eur|gbp|rupees?|dollars?|euros?)\\b")
         private val DEBIT = Regex("\\b(debited|spent|paid|sent|withdrawn|purchase|charged|deducted|txn of|payment of|transferred)\\b")

@@ -115,7 +115,8 @@ class ContactsRepository(private val context: Context) {
 
     fun displayName(addresses: List<String>, iso: String): String =
         addresses.joinToString(", ") { a ->
-            lookup(a)?.name?.takeIf { it.isNotBlank() } ?: SenderNames.pretty(a) ?: PhoneNumbers.format(a, iso)
+            lookup(a)?.name?.takeIf { it.isNotBlank() && !it.equals(a, ignoreCase = true) && SenderNames.rcsAgent(it) == null }
+                ?: SenderNames.pretty(a) ?: PhoneNumbers.format(a, iso)
         }
 
     /** Phone numbers matching [query] by name or number, starred first. */

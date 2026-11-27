@@ -1541,7 +1541,7 @@ object SenderNames {
     fun rcsAgent(address: String): String? {
         val local = address.trim().removePrefix("sip:").substringBefore('@').lowercase().trimEnd('=')
         if (local.length < 16 || !local.all { it in 'a'..'z' || it in '2'..'7' }) return null
-        val id = base32(local)?.trimEnd { !it.isLetterOrDigit() } ?: return null
+        val id = base32(local)?.removePrefix("sip:")?.substringBefore('@')?.lowercase()?.trimEnd { !it.isLetterOrDigit() } ?: return null
         val allowed = id.all { it in 'a'..'z' || it in '0'..'9' || it == '_' || it == '-' || it == '.' }
         return id.takeIf { allowed && it.length >= 4 && it.count(Char::isLetter) * 2 >= it.length }
     }

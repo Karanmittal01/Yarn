@@ -89,6 +89,14 @@ class SenderNamesTest {
         assertThat(SenderNames.pretty(encode("woxen_university_7k2p") + "@rbm.goog")).isEqualTo("Woxen University")
     }
 
+    @Test fun businessChatsWhoseAddressCarriesTheirDomain() {
+        // A second tester's inbox: the whole agent address, domain included, encoded ("tata_aig_car_in…").
+        assertThat(SenderNames.pretty("orqxiyk7mfuwox3dmfzf62loon2xeylomnsv66dlgnvdsx3bm5sw45caojrg2lthn5xwo@rbm.goog")).isEqualTo("Tata AIG")
+        assertThat(SenderNames.pretty(encode("jiomart_ej2r1ufx_agent@rbm.goog") + "@rbm.goog")).isEqualTo("JioMart")
+        // And an agent ID with capitals.
+        assertThat(SenderNames.pretty("k5xxq43fnzpvk3tjozsxe43jor4v6ylhmvxhi@rbm.goog")).isEqualTo("Woxsen University")
+    }
+
     @Test fun ordinarySendersAreNotMistakenForBusinessChats() {
         for (a in listOf("VM-HDFCBK-S", "+919812345678", "59039149", "notificationsalerts@example.com", "abcdefghijklmnopqrstu")) {
             assertThat(SenderNames.rcsAgent(a)).isNull()

@@ -48,7 +48,7 @@ class SpamDetector(private val sensitivity: SpamSensitivity = SpamSensitivity.ME
             "(?:share|send|tell|forward|reply with) (?:me |us )?(?:the |your |ur )?(?:otp|code|pin|password|cvv|card number)",
             "enter (?:your )?(?:upi )?pin to (?:receive|get|claim)", "(?:share|give) (?:the )?otp \\d* ?with (?:our|the) "),
         s(0.55f, "Asks for your ID or card details", true,
-            "(?:send|submit|share|update|provide) (?:your )?(?:aadhaa?r|pan|card|bank|kyc)(?:,? (?:and |& )?(?:aadhaa?r|pan|card|bank|kyc))* (?:details|number|copy|card)",
+            "(?:send|submit|share|update|provide) (?:your )?(?:aadhaa?r|pan|card|bank|kyc)(?:,? (?:and |& )?(?:aadhaa?r|pan|card|bank|kyc)){0,4} (?:details|number|copy|card)",
             "(?:send|submit|share) (?:your )?(?:aadhaa?r|pan)\\b"),
         s(0.35f, "Claims unusual or unauthorised activity", true,
             "unusual (?:activity|sign-?in|login)", "unauthori[sz]ed (?:transaction|access|login|attempt)", "suspicious (?:activity|login|transaction)"),

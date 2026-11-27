@@ -26,9 +26,12 @@ class MessageAnalyzer(
     private val extractor = EntityExtractor(dayFirst = config.dayFirstDates)
     private val spamDetector = SpamDetector(config.spamSensitivity)
 
-    fun extract(text: String, time: Long): List<Entity> = extractor.extract(text, time)
+    fun extract(text: String, time: Long): List<Entity> = extractor.extract(text.take(MAX_TEXT), time)
 
-    fun analyze(input: MessageInput, context: PriorityContext = PriorityContext(), extraEntities: List<Entity> = emptyList()): Analysis {
+    fun analyze(full: MessageInput, context: PriorityContext = PriorityContext(), extraEntities: List<Entity> = emptyList()): Analysis {
+        // What a message is shows in its opening; a business card or a pasted essay of 50,000
+        // characters must not hold up sorting the rest of the inbox.
+        val input = if (full.text.length > MAX_TEXT) full.copy(text = full.text.take(MAX_TEXT)) else full
         val entities = merge(extractor.extract(input.text, input.timestampMillis), extraEntities)
         val spam = applySpamLearning(input, spamDetector.assess(input, entities))
         val classification = classify(input, entities)
@@ -117,6 +120,11 @@ class MessageAnalyzer(
         val out = primary.toMutableList()
         for (e in extra) if (out.none { it.start < e.end && e.start < it.end }) out += e
         return out.sortedBy { it.start }
+    }
+
+    companion object {
+        /** Characters of a message that analysis reads. */
+        const val MAX_TEXT = 5_000
     }
 }
 
