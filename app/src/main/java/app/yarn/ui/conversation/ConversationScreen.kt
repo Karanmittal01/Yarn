@@ -139,7 +139,7 @@ fun ConversationScreen(
     val appLanguage = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language
     val translateInto = settings.translateTarget.ifBlank { appLanguage }
     val multiSim = sims.size > 1
-    val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { context.container.refreshPlatformState() }
+    val setDefault = app.yarn.ui.common.rememberSetDefaultApp(context) { context.container.refreshPlatformState() }
 
     // Mark as read while visible; stop when the screen goes to the background.
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -332,7 +332,7 @@ fun ConversationScreen(
             Box(Modifier.imePadding()) {
                 when {
                     !isDefault -> ReplyBlocker(stringResource(R.string.blocker_not_default), stringResource(R.string.set_default)) {
-                        DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) }
+                        setDefault()
                     }
                     conv.blocked -> ReplyBlocker(stringResource(R.string.blocker_blocked), stringResource(R.string.unblock)) { vm.unblock() }
                     !canReply -> ReplyBlocker(stringResource(R.string.blocker_no_reply), null, null)

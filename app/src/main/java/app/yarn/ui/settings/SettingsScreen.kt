@@ -112,10 +112,10 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, onOpen: (SettingsP
     val s by vm.settings.collectAsStateWithLifecycle()
     val isDefault by vm.c.isDefaultSmsApp.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { context.container.refreshPlatformState() }
+    val setDefault = app.yarn.ui.common.rememberSetDefaultApp(context) { context.container.refreshPlatformState() }
 
     SettingsScaffold(stringResource(R.string.settings), onBack) {
-        settingsHubItems(s, isDefault, onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } }, onOpen = onOpen)
+        settingsHubItems(s, isDefault, onSetDefault = setDefault, onOpen = onOpen)
     }
 }
 

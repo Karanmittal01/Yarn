@@ -66,9 +66,9 @@ SETUP = ("Set up in a minute", "Make Yarn your SMS app, bring your chats back, d
 TABS = ("Jump to what matters", "OTP · Transactions · Shopping · Travel · Offers")
 TIMELINE = [
     dict(img="video_01_welcome", t0=5.4, t1=7.3, enter="rise", cap=SETUP, taps=[(1.45, 616, 2408)]),
-    dict(img="video_02_default", t0=7.3, t1=8.9, enter="slide", cap=SETUP, taps=[(1.15, 616, 2408)]),
-    dict(img="video_03_permissions", t0=8.9, t1=10.3, enter="slide", cap=SETUP, taps=[(1.0, 616, 2408)]),
-    dict(img="video_04_backup", t0=10.3, t1=11.9, enter="slide", cap=SETUP, taps=[(1.15, 616, 2408)]),
+    # No permissions page: becoming the default SMS app is the only setup step that asks anything.
+    dict(img="video_02_default", t0=7.3, t1=9.6, enter="slide", cap=SETUP, taps=[(1.6, 616, 2408)]),
+    dict(img="video_04_backup", t0=9.6, t1=11.9, enter="slide", cap=SETUP, taps=[(1.6, 616, 2408)]),
     dict(img="video_05_you", t0=11.9, t1=13.5, enter="slide", cap=SETUP, taps=[(1.15, 616, 2408)]),
     dict(img="video_06_clean", t0=13.5, t1=15.1, enter="slide", cap=SETUP, taps=[(1.15, 616, 2408)]),
     dict(img="video_07_inbox_welcome", t0=15.1, t1=18.3, enter="fade", cap=("Yarn Pro, free for 30 days", "Every feature, unlocked from day one"),

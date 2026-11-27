@@ -623,14 +623,8 @@
     <string name="ob_default_body">Android lets only your default SMS app send and receive texts. You can switch back any time — your messages stay on the phone.</string>
     <string name="continue_">Continue</string>
     <string name="ob_is_default">Yarn is your default SMS app</string>
-    <string name="ob_permissions">A few permissions</string>
-    <string name="ob_permissions_body">So Yarn can show names, use the right SIM and tell you about new messages.</string>
     <string name="skip">Skip</string>
     <string name="contacts">Contacts</string>
-    <string name="ob_contacts_body">Names and photos instead of numbers. Contacts never leave your phone.</string>
-    <string name="phone">Phone</string>
-    <string name="ob_phone_body">Know which SIM a message came to, and pick the SIM you send from.</string>
-    <string name="ob_notif_body">New messages, with Reply and Mark read buttons.</string>
     <string name="ob_clean">Keep your inbox clean</string>
     <string name="ob_clean_body">Yarn can clear junk on its own, so old codes and offers never pile up.</string>
     <string name="turn_on_auto_clean">Turn on auto-clean</string>
@@ -961,4 +955,6 @@
     <string name="reaction_sent_as_text">Sent as a text, so they see it on any phone</string>
     <string name="job_updating">Re-sorting all messages with the updated smart sorting</string>
     <string name="job_done">All messages re-sorted</string>
+    <string name="send_now">Send now</string>
+    <string name="send_options">Schedule or send now</string>
 </resources>

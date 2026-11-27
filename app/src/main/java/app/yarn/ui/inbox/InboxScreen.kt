@@ -205,12 +205,12 @@ fun InboxScreen(
         }
     }
 
-    val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { vm.refreshPlatformState() }
+    val setDefault = app.yarn.ui.common.rememberSetDefaultApp(context) { vm.refreshPlatformState() }
     // Asked once per app launch; "Not now" keeps the small banner as a way back.
     var defaultPromptDismissed by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     if (onBack == null && !status.isDefault && !defaultPromptDismissed) {
         DefaultAppPrompt(
-            onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) }; defaultPromptDismissed = true },
+            onSetDefault = { setDefault(); defaultPromptDismissed = true },
             onDismiss = { defaultPromptDismissed = true },
         )
     }
@@ -313,7 +313,7 @@ fun InboxScreen(
                             onDismiss = vm::dismissCrash,
                         )
                     }
-                    StatusBanners(status, onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } })
+                    StatusBanners(status, onSetDefault = setDefault)
                     WorkBanners(null, backupState, importing = status.sync.running)
                     CleanBanners(
                         report = settings.autoCleanReport, junk = if (status.isDefault) junk else 0,

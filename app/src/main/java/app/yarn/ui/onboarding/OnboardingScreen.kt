@@ -142,10 +142,18 @@ fun OnboardingScreen(onDone: (AutoCleanChoice?) -> Unit) {
     var clean by remember { mutableStateOf(AutoCleanChoice()) }
     // Null until filled in from a restored backup or your contact card.
     var name by rememberSaveable { mutableStateOf<String?>(null) }
+    // Notifications are the one thing Yarn asks for itself: as the default SMS app, Android already
+    // gives it contacts (for names) and SIM details, and photos come through Android's own picker.
+    val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        context.container.refreshPlatformState()
+        step = 3
+    }
     val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         isDefault = DefaultSmsApp.isDefault(context)
         context.container.refreshPlatformState()
-        if (isDefault) step = 2
+        if (isDefault) {
+            if (app.yarn.ui.common.NotificationPermission.needed(context)) notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) else step = 3
+        }
     }
 
     // ---- Google Drive: choose an account, and bring back a backup from another phone ----
@@ -234,17 +242,6 @@ fun OnboardingScreen(onDone: (AutoCleanChoice?) -> Unit) {
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) scope.launch(app.yarn.CrashLog.handler) { cropping = withContext(Dispatchers.IO) { ProfilePhoto.load(context, uri) } }
     }
-    val permissions = buildList {
-        add(Manifest.permission.READ_CONTACTS)
-        add(Manifest.permission.READ_PHONE_STATE)
-        add(Manifest.permission.READ_PHONE_NUMBERS)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
-        if (!isDefault) add(Manifest.permission.READ_SMS)
-    }.toTypedArray()
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-        context.container.refreshPlatformState()
-        step = 3
-    }
     cropping?.let { source ->
         PhotoCropper(source, onCancel = { cropping = null }, onDone = { photo = it; cropping = null })
         return
@@ -258,7 +255,6 @@ fun OnboardingScreen(onDone: (AutoCleanChoice?) -> Unit) {
         onClean = { clean = it },
         onNext = { step = it },
         onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } },
-        onPermissions = { permissionLauncher.launch(permissions) },
         onFinish = onDone,
         backup = OnboardingBackup(account, found, busy, progress, driveError),
         onChooseAccount = { driveError = null; accountPicker.launch(c.drive.accountPickerIntent()) },
@@ -291,7 +287,6 @@ fun OnboardingContent(
     onClean: (AutoCleanChoice) -> Unit,
     onNext: (Int) -> Unit,
     onSetDefault: () -> Unit,
-    onPermissions: () -> Unit,
     onFinish: (AutoCleanChoice?) -> Unit,
     backup: OnboardingBackup = OnboardingBackup(),
     onChooseAccount: () -> Unit = {},
@@ -308,7 +303,8 @@ fun OnboardingContent(
     else Brush.verticalGradient(listOf(Color(0xFFDCE8FF), Color(0xFFFFFFFF), Color(0xFFFFFFFF)))
     Box(Modifier.fillMaxSize().background(bg)) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-            StepDots(step, total = 6, modifier = Modifier.padding(top = 16.dp).align(Alignment.CenterHorizontally))
+            // Five steps: welcome, default app, backup, you, clean-up (there's no permissions page).
+            StepDots(if (step >= 3) step - 1 else step, total = 5, modifier = Modifier.padding(top = 16.dp).align(Alignment.CenterHorizontally))
             AnimatedContent(
                 step,
                 transitionSpec = {
@@ -336,8 +332,8 @@ fun OnboardingContent(
                         hero = { HeroIcon(Icons.Outlined.CheckCircle, Color(0xFF1A73E8)) },
                         title = stringResource(R.string.make_default_title),
                         body = stringResource(R.string.ob_default_body),
-                        primary = if (isDefault) stringResource(R.string.continue_) to { onNext(2) } else stringResource(R.string.set_default_sms) to onSetDefault,
-                        secondary = if (isDefault) null else stringResource(R.string.not_now) to { onNext(2) },
+                        primary = if (isDefault) stringResource(R.string.continue_) to { onNext(3) } else stringResource(R.string.set_default_sms) to onSetDefault,
+                        secondary = if (isDefault) null else stringResource(R.string.not_now) to { onNext(3) },
                     ) {
                         if (isDefault) {
                             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -346,17 +342,6 @@ fun OnboardingContent(
                                 Text(stringResource(R.string.ob_is_default), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
-                    }
-                    2 -> Page(
-                        hero = { HeroIcon(Icons.Outlined.Contacts, Color(0xFF00A3A3)) },
-                        title = stringResource(R.string.ob_permissions),
-                        body = stringResource(R.string.ob_permissions_body),
-                        primary = stringResource(R.string.continue_) to onPermissions,
-                        secondary = stringResource(R.string.skip) to { onNext(3) },
-                    ) {
-                        Feature(Icons.Outlined.Contacts, Color(0xFF00A3A3), stringResource(R.string.contacts), stringResource(R.string.ob_contacts_body))
-                        Feature(Icons.Outlined.SimCard, Color(0xFFE8710A), stringResource(R.string.phone), stringResource(R.string.ob_phone_body))
-                        Feature(Icons.Outlined.Notifications, Color(0xFFF2453D), stringResource(R.string.notifications), stringResource(R.string.ob_notif_body))
                     }
                     3 -> {
                         val found = backup.found

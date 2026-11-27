@@ -21,6 +21,11 @@ import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import app.yarn.data.db.ConversationEntity
 import app.yarn.data.prefs.ThemeMode
 import app.yarn.data.repo.InboxGroup
@@ -377,6 +382,38 @@ class UiSnapshotTest {
 
     private val karan = app.yarn.data.contacts.ContactInfo("Karan Mittal", null, null, false)
 
+    /** Long-pressing Send: a small menu just above it to schedule or send now (drawn in place; popups aren't in the window capture). */
+    @Test fun sendMenu() = shot(true, "95_send_menu_dark") {
+        val dark = app.yarn.ui.theme.LocalDarkTheme.current
+        Column(Modifier.fillMaxSize().chatWallpaper()) {
+            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().padding(end = 14.dp, bottom = 4.dp), contentAlignment = androidx.compose.ui.Alignment.CenterEnd) {
+                androidx.compose.material3.Surface(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp), shadowElevation = 10.dp,
+                    color = if (dark) androidx.compose.ui.graphics.Color(0xFF2B2C30) else androidx.compose.ui.graphics.Color.White,
+                ) {
+                    Column(Modifier.width(androidx.compose.foundation.layout.IntrinsicSize.Max).widthIn(min = 240.dp).padding(vertical = 8.dp)) {
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(app.yarn.R.string.schedule_message), style = MaterialTheme.typography.bodyLarge) },
+                            leadingIcon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Schedule, null) }, onClick = {},
+                            modifier = Modifier.heightIn(min = 52.dp),
+                        )
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(app.yarn.R.string.send_now), style = MaterialTheme.typography.bodyLarge) },
+                            leadingIcon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.Send, null) }, onClick = {},
+                            modifier = Modifier.heightIn(min = 52.dp),
+                        )
+                    }
+                }
+            }
+            app.yarn.ui.conversation.Composer(
+                text = "Running 10 mins late, see you at 7", onText = {}, attachments = emptyList(), onAddAttachments = {}, onRemoveAttachment = {},
+                sims = emptyList(), subId = -1, onSim = {}, smartReplies = emptyList(), onSmartReply = {},
+                onSend = {}, onSchedule = {}, onRewrite = {}, isGroupMms = false,
+            )
+        }
+    }
+
     /** A real-looking thread: runs of messages, a day break, an online translation and "Delivered". */
     @androidx.compose.runtime.Composable
     private fun RunsMock() {
@@ -703,13 +740,13 @@ class UiSnapshotTest {
     }
 
     private fun onboarding(step: Int, dark: Boolean, name: String) = shot(dark, name) {
-        app.yarn.ui.onboarding.OnboardingContent(step, false, "", {}, app.yarn.ui.onboarding.AutoCleanChoice(), {}, {}, {}, {}, {})
+        app.yarn.ui.onboarding.OnboardingContent(step, false, "", {}, app.yarn.ui.onboarding.AutoCleanChoice(), {}, {}, {}, {})
     }
 
     @Test fun onboardingWelcome() = onboarding(0, false, "20_onboarding_welcome")
     @Test fun onboardingClean() = onboarding(5, true, "21_onboarding_auto_clean_dark")
     private fun onboardingPage(step: Int, dark: Boolean, name: String, backup: app.yarn.ui.onboarding.OnboardingBackup = app.yarn.ui.onboarding.OnboardingBackup(), you: String = "") = shot(dark, name) {
-        app.yarn.ui.onboarding.OnboardingContent(step, true, "", {}, app.yarn.ui.onboarding.AutoCleanChoice(), {}, {}, {}, {}, {}, backup = backup, name = you)
+        app.yarn.ui.onboarding.OnboardingContent(step, true, "", {}, app.yarn.ui.onboarding.AutoCleanChoice(), {}, {}, {}, {}, backup = backup, name = you)
     }
     @Test fun onboardingBackup() = onboardingPage(3, false, "75_onboarding_backup")
     @Test fun onboardingBackupFound() = onboardingPage(3, true, "76_onboarding_backup_found_dark",
@@ -728,7 +765,7 @@ class UiSnapshotTest {
         app.yarn.ui.cleaner.CleanerContent(app.yarn.ui.cleaner.CleanerState(scanning = false, found = found), app.yarn.ui.cleaner.AutoClean(10, 30, 7), true, false, true, {}, {}, {}, {}, {}, {})
     }
     @Test @Config(qualifiers = "hi-w411dp-h891dp-xxhdpi") fun hindiOnboarding() = shot(false, "26_hi_onboarding") {
-        app.yarn.ui.onboarding.OnboardingContent(0, false, "hi", {}, app.yarn.ui.onboarding.AutoCleanChoice(), {}, {}, {}, {}, {})
+        app.yarn.ui.onboarding.OnboardingContent(0, false, "hi", {}, app.yarn.ui.onboarding.AutoCleanChoice(), {}, {}, {}, {})
     }
 
     // ---- Clean up with Apply, re-sort, progress bars ---------------------------------------------
@@ -932,11 +969,10 @@ class UiSnapshotTest {
     private fun VideoTabs(rows: List<InboxItem>, group: InboxGroup) = TabMock(rows, group, storeMe)
     private fun videoOnboarding(step: Int, name: String, isDefault: Boolean = true, backup: app.yarn.ui.onboarding.OnboardingBackup = app.yarn.ui.onboarding.OnboardingBackup(), you: String = "") =
         shot(false, name) {
-            app.yarn.ui.onboarding.OnboardingContent(step, isDefault, "", {}, app.yarn.ui.onboarding.AutoCleanChoice(), {}, {}, {}, {}, {}, backup = backup, name = you)
+            app.yarn.ui.onboarding.OnboardingContent(step, isDefault, "", {}, app.yarn.ui.onboarding.AutoCleanChoice(), {}, {}, {}, {}, backup = backup, name = you)
         }
     @Test fun video01Welcome() = videoOnboarding(0, "video_01_welcome", isDefault = false)
     @Test fun video02Default() = videoOnboarding(1, "video_02_default", isDefault = false)
-    @Test fun video03Permissions() = videoOnboarding(2, "video_03_permissions")
     @Test fun video04Backup() = videoOnboarding(3, "video_04_backup",
         backup = app.yarn.ui.onboarding.OnboardingBackup("asha.verma@gmail.com", app.yarn.backup.DriveBackup("x", now - 2 * 86_400_000L, 48_000_000, 12306)))
     @Test fun video05You() = videoOnboarding(4, "video_05_you", you = "Asha Verma")

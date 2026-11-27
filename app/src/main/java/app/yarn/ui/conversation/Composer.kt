@@ -182,11 +182,12 @@ fun Composer(
                 val scheduleLabel = stringResource(R.string.schedule_message)
                 val multiSim = sims.size > 1 && sim != null
                 val sendDesc = if (multiSim) stringResource(R.string.send_desc_sim, app.yarn.ui.common.simLabel(sim!!)) else stringResource(R.string.send_desc)
-                val longLabel = if (multiSim) stringResource(R.string.change_sim_or_schedule) else scheduleLabel
+                val longLabel = if (multiSim) stringResource(R.string.change_sim_or_schedule) else stringResource(R.string.send_options)
                 val sendColor by androidx.compose.animation.animateColorAsState(
                     if (canSend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest, app.yarn.ui.theme.Motion.fade(220), label = "send",
                 )
-                // Long press: pick the SIM (dual SIM) or schedule the message.
+                // Long press: a small menu just above the button to schedule or send now (and, with
+                // two SIMs, which one to send from).
                 Box {
                 Surface(
                     shape = CircleShape,
@@ -198,7 +199,7 @@ fun Composer(
                         .combinedClickable(
                             enabled = canSend || multiSim,
                             onClick = { if (canSend) onSend() },
-                            onLongClick = { if (multiSim) simMenu = true else if (pro) schedule = true else onPro() },
+                            onLongClick = { simMenu = true },
                             onClickLabel = sendLabel, onLongClickLabel = longLabel,
                         )
                         .semantics { contentDescription = sendDesc },
@@ -226,12 +227,19 @@ fun Composer(
                         )
                     }
                     if (canSend) {
-                        app.yarn.ui.common.YarnMenuDivider()
+                        if (multiSim) app.yarn.ui.common.YarnMenuDivider()
                         DropdownMenuItem(
                             text = { Text(scheduleLabel, style = MaterialTheme.typography.bodyLarge) },
                             leadingIcon = { Icon(Icons.Outlined.Schedule, null) },
                             trailingIcon = if (pro) null else ({ app.yarn.ui.paywall.ProBadge() }),
                             onClick = { simMenu = false; if (pro) schedule = true else onPro() },
+                            modifier = Modifier.heightIn(min = 52.dp),
+                        )
+                        // Nearest the button, where your thumb already is.
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.send_now), style = MaterialTheme.typography.bodyLarge) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, null) },
+                            onClick = { simMenu = false; onSend() },
                             modifier = Modifier.heightIn(min = 52.dp),
                         )
                     }

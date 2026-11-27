@@ -161,7 +161,7 @@ fun CleanerScreen(vm: CleanerViewModel, onBack: () -> Unit, onOpenBin: () -> Uni
     val settings by vm.settings.collectAsStateWithLifecycle()
     val isDefault by vm.isDefault.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { context.container.refreshPlatformState() }
+    val setDefault = app.yarn.ui.common.rememberSetDefaultApp(context) { context.container.refreshPlatformState() }
     var confirm by remember { mutableStateOf(false) }
     // Auto-clean choices are a draft until Apply, so leaving the screen never changes them silently.
     var draft by remember { mutableStateOf<AutoClean?>(null) }
@@ -175,7 +175,7 @@ fun CleanerScreen(vm: CleanerViewModel, onBack: () -> Unit, onOpenBin: () -> Uni
         state = state, auto = current, dirty = dirty, justSaved = justSaved, isDefault = isDefault,
         onToggle = vm::toggle,
         onClean = { confirm = true },
-        onSetDefault = { DefaultSmsApp.requestIntent(context)?.let { roleLauncher.launch(it) } },
+        onSetDefault = { setDefault() },
         onAuto = { draft = it; justSaved = false },
         onApply = {
             val d = draft ?: return@CleanerContent
