@@ -958,9 +958,9 @@
     <string name="kind_money">बैंक और पेमेंट</string>
     <string name="kind_orders">ऑर्डर और डिलीवरी</string>
     <string name="kind_other_updates">अन्य अपडेट</string>
-    <string name="chip_new_tab">नया टैब</string>
+    <string name="chip_new_tab">टैब बदलें</string>
     <string name="custom_tab_title">टैब बनाएं</string>
-    <string name="custom_tab_intro">चुनें कि इसमें क्या दिखे। आप अपने 3 टैब तक बना सकते हैं; हटाने के लिए टैब को देर तक दबाएं।</string>
+    <string name="custom_tab_intro">चुनें कि इसमें क्या दिखे। आप 5 टैब तक बना सकते हैं; किसी टैब को हटाने के लिए उसे देर तक दबाएं।</string>
     <string name="custom_tab_money_desc">डेबिट, क्रेडिट, UPI, कार्ड और बिल</string>
     <string name="custom_tab_orders_desc">ऑर्डर, डिलीवरी और रिटर्न</string>
     <string name="custom_tab_travel_desc">टिकट, PNR, फ़्लाइट और कैब</string>
@@ -974,6 +974,14 @@
     <string name="custom_tab_pick_chats">चैट चुनें</string>
     <string name="custom_tab_add">टैब जोड़ें</string>
     <string name="custom_tab_remove_title">“%1$s” टैब हटाएं?</string>
-    <string name="custom_tab_remove_text">सिर्फ़ टैब हटेगा। आपके मैसेज जहां हैं वहीं रहेंगे।</string>
+    <string name="custom_tab_remove_text">सिर्फ़ टैब हटेगा; इसके मैसेज \'सभी\' में रहेंगे। + से इसे कभी भी फिर बनाएं।</string>
     <string name="custom_tab_remove">हटाएं</string>
+    <string name="done">हो गया</string>
+    <string name="tabs_title">आपके टैब</string>
+    <string name="tabs_intro">टैब चालू या बंद करें। बंद टैब के मैसेज \'सभी\' में रहते हैं।</string>
+    <string name="tabs_make">टैब बनाएं</string>
+    <string name="tabs_limit">आपके अपने %1$d टैब हैं, जितने हो सकते हैं। नया बनाने के लिए एक बंद करें।</string>
+    <string name="hide_tab_title">“%1$s” टैब छिपाएं?</string>
+    <string name="hide_tab_text">इसके मैसेज \'सभी\' में रहेंगे। टैब के आख़िर में + से इसे फिर चालू करें।</string>
+    <string name="hide_tab">छिपाएं</string>
 </resources>

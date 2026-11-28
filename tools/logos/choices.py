@@ -255,6 +255,10 @@ TUNE["awign"] = {"ops": [("crop", 0.28, 0.06, 0.72, 0.56)]}
 # its 1800114000 / 1915 numbers and red "NCH" band from its Play icon (the website's icon is the State
 # Emblem, which isn't a logo to borrow).
 pick(P, "nationalconsumerhelpline")
+# Cashify (CASHIY), buys and sells used phones: the white "C" with its tick from the Play icon. Poshvine
+# (PSHVNE), which runs banks' card reward stores: its navy and blue mark from poshvine.com (no Play app).
+pick(P, "cashify")
+pick(W, "poshvine")
 
 # Maximize (MAXMZE), gift cards and rewards: the white mark from its site icon on its green, not the
 # festive Play icon with string lights.

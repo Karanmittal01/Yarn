@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.TextFields
+import androidx.compose.material.icons.outlined.Report
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
@@ -168,6 +169,74 @@ fun RemoveTabDialog(tab: CustomTab, onRemove: () -> Unit, onDismiss: () -> Unit)
         title = { Text(stringResource(R.string.custom_tab_remove_title, tab.name)) },
         text = { Text(stringResource(R.string.custom_tab_remove_text)) },
         confirmButton = { TextButton(onClick = { onRemove(); onDismiss() }) { Text(stringResource(R.string.custom_tab_remove)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+/**
+ * The "+" at the end of the tabs: every tab with a switch to show or hide it (tabs the user made
+ * are removed when switched off), and the way to make a new one.
+ */
+@Composable
+fun TabsDialog(
+    builtIn: List<BuiltInTab>,
+    custom: List<CustomTab>,
+    onShow: (String, Boolean) -> Unit,
+    onRemove: (CustomTab) -> Unit,
+    onMake: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.tabs_title)) },
+        text = { TabsList(builtIn, custom, onShow, onRemove) },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) } },
+        dismissButton = {
+            if (custom.size < CustomTab.MAX) TextButton(onClick = { onDismiss(); onMake() }) { Text(stringResource(R.string.tabs_make)) }
+        },
+    )
+}
+
+/** The tab editor's list, also drawn in place for screenshots. */
+@Composable
+internal fun TabsList(builtIn: List<BuiltInTab>, custom: List<CustomTab>, onShow: (String, Boolean) -> Unit, onRemove: (CustomTab) -> Unit) {
+    LazyColumn(Modifier.heightIn(max = 420.dp)) {
+        item { Text(stringResource(R.string.tabs_intro), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp)) }
+        items(builtIn, key = { it.key }) { t ->
+            val icon = app.yarn.data.repo.InboxGroup.entries.firstOrNull { it.name == t.key }?.let(CategoryUi::groupIcon) ?: Icons.Outlined.Report
+            SwitchLine(icon, stringResource(t.label), t.shown) { onShow(t.key, it) }
+        }
+        items(custom, key = { it.id }) { t ->
+            val icon = t.kind?.let(CategoryUi::kindIcon) ?: if (t.chats.isNotEmpty()) Icons.Outlined.Forum else Icons.Outlined.TextFields
+            SwitchLine(icon, t.name, true) { if (!it) onRemove(t) }
+        }
+        if (custom.size >= CustomTab.MAX) item {
+            Text(stringResource(R.string.tabs_limit, CustomTab.MAX), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+        }
+    }
+}
+
+@Composable
+private fun SwitchLine(icon: ImageVector, title: String, on: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).clickable { onChange(!on) }.padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(14.dp))
+        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        androidx.compose.material3.Switch(on, onCheckedChange = onChange)
+    }
+}
+
+/** Long-pressing a built-in tab: hide it (its messages stay in All; "+" brings it back). */
+@Composable
+fun HideTabDialog(name: String, onHide: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.hide_tab_title, name)) },
+        text = { Text(stringResource(R.string.hide_tab_text)) },
+        confirmButton = { TextButton(onClick = { onHide(); onDismiss() }) { Text(stringResource(R.string.hide_tab)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }

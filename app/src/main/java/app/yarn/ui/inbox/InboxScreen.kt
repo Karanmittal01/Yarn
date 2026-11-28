@@ -256,10 +256,19 @@ fun InboxScreen(
                 }
                 }
                 if (showChips && chips.size > 1) {
-                    // A new tab starts at the top of its list.
-                    LaunchedEffect(filter) { listState.scrollToItem(0) }
+                    // A new tab starts at the top of its list. Coming back from a chat rebuilds this screen,
+                    // so remember which tab was showing: only switching tabs scrolls, never returning.
+                    var shownTab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(filter.toString()) }
+                    LaunchedEffect(filter) {
+                        if (filter.toString() != shownTab) {
+                            shownTab = filter.toString()
+                            listState.scrollToItem(0)
+                        }
+                    }
+                    var editingTabs by remember { mutableStateOf(false) }
                     var makingTab by remember { mutableStateOf(false) }
                     var removing by remember { mutableStateOf<app.yarn.data.prefs.CustomTab?>(null) }
+                    var hiding by remember { mutableStateOf<InboxChip?>(null) }
                     LazyRow(
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -267,18 +276,24 @@ fun InboxScreen(
                         items(chips, key = { it.key }) { chip ->
                             GroupChip(
                                 chip, selected = !chip.pro && !chip.add && chip.filter == filter,
-                                onLongClick = chip.custom?.let { t -> { removing = t } },
+                                onLongClick = chip.custom?.let { t -> { removing = t } } ?: chip.hideKey?.let { { hiding = chip } },
                             ) {
                                 when {
                                     chip.pro -> context.container.licence.requestPro()
-                                    chip.add -> makingTab = true
+                                    chip.add -> editingTabs = true
                                     else -> vm.setFilter(chip.filter)
                                 }
                             }
                         }
                     }
+                    if (editingTabs) {
+                        val builtIn by vm.builtInTabs.collectAsStateWithLifecycle()
+                        val custom by vm.customTabs.collectAsStateWithLifecycle()
+                        TabsDialog(builtIn, custom, onShow = vm::setTabShown, onRemove = { vm.removeCustomTab(it) }, onMake = { makingTab = true }, onDismiss = { editingTabs = false })
+                    }
                     if (makingTab) NewTabDialog(loadChats = vm::recentChats, onCreate = { vm.addCustomTab(it) }, onDismiss = { makingTab = false })
                     removing?.let { t -> RemoveTabDialog(t, onRemove = { vm.removeCustomTab(t) }, onDismiss = { removing = null }) }
+                    hiding?.let { chip -> HideTabDialog(stringResource(chip.label), onHide = { chip.hideKey?.let { vm.setTabShown(it, false) } }, onDismiss = { hiding = null }) }
                 } else {
                     Spacer(Modifier.height(6.dp))
                 }
@@ -553,11 +568,8 @@ internal fun GroupChip(chip: InboxChip, selected: Boolean, onLongClick: (() -> U
             Icon(Icons.Outlined.AutoAwesome, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(6.dp))
         }
-        if (chip.add) {
-            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp), tint = fg)
-            Spacer(Modifier.width(6.dp))
-        }
-        Text(label, style = MaterialTheme.typography.labelLarge, color = fg, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium)
+        if (chip.add) Icon(Icons.Outlined.Add, label, Modifier.size(20.dp), tint = fg)
+        else Text(label, style = MaterialTheme.typography.labelLarge, color = fg, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium)
         if (chip.pro) {
             Spacer(Modifier.width(6.dp))
             app.yarn.ui.paywall.ProBadge()

@@ -66,8 +66,8 @@ data class CustomTab(
     val words: List<String> = emptyList(),
 ) {
     companion object {
-        /** At most this many, so the tab row stays short. */
-        const val MAX = 3
+        /** At most this many, so the tab row stays easy to scan. */
+        const val MAX = 5
 
         fun toJson(tabs: List<CustomTab>): String = org.json.JSONArray(tabs.map { t ->
             org.json.JSONObject()
@@ -95,6 +95,8 @@ data class AppSettings(
     val onboardingDone: Boolean = false,
     /** Tabs the user made, after the built-in ones (Yarn Pro). */
     val customTabs: List<CustomTab> = emptyList(),
+    /** Built-in tabs the user turned off ("PERSONAL", "OFFERS", "SPAM"…); their messages stay in All. */
+    val hiddenTabs: Set<String> = emptySet(),
     /** Your name and picture as set in Yarn; blank falls back to your "Me" card in Contacts. */
     val profileName: String = "",
     val profilePhoto: String = "",
@@ -187,6 +189,7 @@ class SettingsRepository(private val context: Context) {
         val notifyPromotions = booleanPreferencesKey("notify_promotions")
         val notifyTabs = stringPreferencesKey("notify_tabs")
         val customTabs = stringPreferencesKey("custom_tabs")
+        val hiddenTabs = stringPreferencesKey("hidden_tabs")
         val notifySpam = booleanPreferencesKey("notify_spam")
         val otpCopy = booleanPreferencesKey("otp_copy")
         val aiEnabled = booleanPreferencesKey("ai_enabled")
@@ -250,6 +253,7 @@ class SettingsRepository(private val context: Context) {
             p[K.previews] = s.showNotificationPreviews
             p[K.notifyTabs] = s.notifyTabs.entries.joinToString(",") { "${it.key.name}:${it.value.name}" }
             p[K.customTabs] = CustomTab.toJson(s.customTabs)
+            p[K.hiddenTabs] = s.hiddenTabs.joinToString(",")
             p[K.notifySpam] = s.notifySpam
             p[K.otpCopy] = s.otpCopyAction
             p[K.aiEnabled] = s.aiEnabled
@@ -305,6 +309,7 @@ class SettingsRepository(private val context: Context) {
     private fun readFrom(p: Preferences, d: AppSettings): AppSettings = AppSettings(
         onboardingDone = p[K.onboardingDone] ?: d.onboardingDone,
         customTabs = p[K.customTabs]?.let { CustomTab.fromJson(it) } ?: d.customTabs,
+        hiddenTabs = p[K.hiddenTabs]?.split(',')?.filter { it.isNotBlank() }?.toSet() ?: d.hiddenTabs,
         profileName = p[K.profileName] ?: d.profileName,
         profilePhoto = p[K.profilePhoto] ?: d.profilePhoto,
         theme = p[K.theme]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: d.theme,

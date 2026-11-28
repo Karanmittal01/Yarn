@@ -960,9 +960,9 @@
     <string name="kind_money">Bank &amp; payments</string>
     <string name="kind_orders">Orders &amp; deliveries</string>
     <string name="kind_other_updates">Other updates</string>
-    <string name="chip_new_tab">New tab</string>
+    <string name="chip_new_tab">Edit tabs</string>
     <string name="custom_tab_title">Make a tab</string>
-    <string name="custom_tab_intro">Pick what it should show. You can have up to 3 of your own tabs; long-press one to remove it.</string>
+    <string name="custom_tab_intro">Pick what it should show. You can make up to 5 tabs; long-press any tab to remove it.</string>
     <string name="custom_tab_money_desc">Debits, credits, UPI, cards and bills</string>
     <string name="custom_tab_orders_desc">Orders, deliveries and returns</string>
     <string name="custom_tab_travel_desc">Tickets, PNR, flights and cabs</string>
@@ -976,6 +976,14 @@
     <string name="custom_tab_pick_chats">Choose chats</string>
     <string name="custom_tab_add">Add tab</string>
     <string name="custom_tab_remove_title">Remove the “%1$s” tab?</string>
-    <string name="custom_tab_remove_text">Only the tab goes. Your messages stay where they are.</string>
+    <string name="custom_tab_remove_text">Only the tab goes; its messages stay in All. Make it again any time from +.</string>
     <string name="custom_tab_remove">Remove</string>
+    <string name="done">Done</string>
+    <string name="tabs_title">Your tabs</string>
+    <string name="tabs_intro">Switch tabs on or off. Messages in a tab you turn off stay in All.</string>
+    <string name="tabs_make">Make a tab</string>
+    <string name="tabs_limit">You have %1$d tabs of your own, the most there can be. Switch one off to make another.</string>
+    <string name="hide_tab_title">Hide the “%1$s” tab?</string>
+    <string name="hide_tab_text">Its messages stay in All. Turn it back on from + at the end of the tabs.</string>
+    <string name="hide_tab">Hide</string>
 </resources>

@@ -27,6 +27,8 @@ class SenderNamesTest {
         assertThat(SenderNames.brandKey("VD-NESLIU-S")).isEqualTo("nesl")
         assertThat(SenderNames.brandKey("TX-EAWIGN-S")).isEqualTo("awign")
         assertThat(SenderNames.brandKey("AD-NCHSMS-S")).isEqualTo("nationalconsumerhelpline")
+        assertThat(SenderNames.brandKey("CP-CASHIY-S")).isEqualTo("cashify")
+        assertThat(SenderNames.brandKey("JX-PSHVNE-S")).isEqualTo("poshvine")
         assertThat(SenderNames.brandKey("AD-VAAHAN-S")).isEqualTo("parivahan")
     }
 

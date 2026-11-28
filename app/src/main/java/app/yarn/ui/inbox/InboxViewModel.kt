@@ -63,11 +63,16 @@ data class InboxChip(
     val pro: Boolean = false,
     /** A tab the user made: shown by its own name, removed with a long press. */
     val custom: app.yarn.data.prefs.CustomTab? = null,
-    /** The "New tab" chip, which opens the tab maker instead of a list. */
+    /** The "+" chip, which opens the tab editor instead of a list. */
     val add: Boolean = false,
+    /** A built-in tab that a long press can hide ("PERSONAL", "SPAM"…); null for All and Unread. */
+    val hideKey: String? = null,
 ) {
     val key: String get() = custom?.id ?: if (add) "add" else label.toString()
 }
+
+/** One built-in tab in the tab editor: its key, name and whether it's shown. */
+data class BuiltInTab(val key: String, @androidx.annotation.StringRes val label: Int, val shown: Boolean)
 
 data class InboxStatus(
     val isDefault: Boolean = true,
@@ -146,13 +151,23 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     private val spamTab = combine(c.db.conversations().spamCount(), c.db.conversations().unreadSpam()) { total, unread -> total to unread }
 
     /** Whether tabs are on (sorting) and which ones: Yarn Free has All and OTP; Pro has them all. */
+    private data class TabSetup(val sorting: Boolean, val pro: Boolean, val custom: List<app.yarn.data.prefs.CustomTab>, val hidden: Set<String>)
+
     private val tabs = combine(
-        c.settings.settings.map { it.sortingOn to it.customTabs }, c.licence.access.map { it.isPro },
-    ) { (sorting, custom), pro -> Triple(sorting, pro, custom) }.distinctUntilChanged()
+        c.settings.settings.map { Triple(it.sortingOn, it.customTabs, it.hiddenTabs) }, c.licence.access.map { it.isPro },
+    ) { (sorting, custom, hidden), pro -> TabSetup(sorting, pro, custom, hidden) }.distinctUntilChanged()
+
+    /** Every built-in tab, shown or not, for the tab editor. */
+    val builtInTabs: StateFlow<List<BuiltInTab>> = c.settings.settings.map { s ->
+        InboxGroup.entries.map { BuiltInTab(it.name, it.label, it.name !in s.hiddenTabs) } + BuiltInTab(SPAM_TAB, R.string.verdict_spam, SPAM_TAB !in s.hiddenTabs)
+    }.stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val customTabs: StateFlow<List<app.yarn.data.prefs.CustomTab>> = c.settings.settings.map { it.customTabs }
+        .stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val chips: StateFlow<List<InboxChip>> = combine(
         c.db.conversations().totalsByCategory(), c.db.conversations().sectionCategories(), spamTab, _filter, tabs,
-    ) { totals, sections, spam, current, (sorting, pro, custom) ->
+    ) { totals, sections, spam, current, (sorting, pro, custom, hidden) ->
         val unreadAll = totals.sumOf { it.unread }
         // A chat counts once per section it has messages in, and as unread there only if that part is unread.
         val bySection = sections.groupBy { Category.fromName(it.category)?.let(InboxGroup::of) }
@@ -170,10 +185,10 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
             }
             if (unreadAll > 0 || current.view == InboxView.UNREAD) add(InboxChip(R.string.filter_unread, InboxFilter(InboxView.UNREAD), unread = unreadAll))
             // With sorting off there are no tabs: one list, plus Unread and Spam.
-            if (sorting) InboxGroup.entries.forEach { g ->
+            if (sorting) InboxGroup.entries.filter { it.name !in hidden }.forEach { g ->
                 val rows = bySection[g].orEmpty()
                 val unread = rows.filter { it.unread > 0 }.map { it.conversationId }.toSet().size
-                if (rows.isNotEmpty() || current == g.filter) add(InboxChip(g.label, g.filter, g, unread))
+                if (rows.isNotEmpty() || current == g.filter) add(InboxChip(g.label, g.filter, g, unread, hideKey = g.name))
             }
             // Tabs the user made, after the built-in ones. One of a kind counts unread like a section.
             if (sorting) custom.forEach { t ->
@@ -184,8 +199,9 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
             }
             // Spam is a tab like the others, last in the row.
             val spamFilter = InboxFilter(InboxView.SPAM)
-            if (spam.first > 0 || current == spamFilter) add(InboxChip(R.string.verdict_spam, spamFilter, unread = spam.second))
-            if (sorting && custom.size < app.yarn.data.prefs.CustomTab.MAX) add(InboxChip(R.string.chip_new_tab, InboxFilter(), add = true))
+            if ((spam.first > 0 || current == spamFilter) && SPAM_TAB !in hidden) add(InboxChip(R.string.verdict_spam, spamFilter, unread = spam.second, hideKey = SPAM_TAB))
+            // Always last: makes tabs and turns any of them on or off.
+            if (sorting) add(InboxChip(R.string.chip_new_tab, InboxFilter(), add = true))
         }
     }.stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), listOf(InboxChip(R.string.chip_all, InboxFilter())))
 
@@ -258,6 +274,14 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     fun addCustomTab(tab: app.yarn.data.prefs.CustomTab) = viewModelScope.launch(app.yarn.CrashLog.handler) {
         c.settings.update { s -> if (s.customTabs.size >= app.yarn.data.prefs.CustomTab.MAX) s else s.copy(customTabs = s.customTabs + tab) }
         setFilter(tab.filter)
+    }
+
+    /** Turns a built-in tab on or off; its messages stay in All either way. */
+    fun setTabShown(key: String, shown: Boolean) = viewModelScope.launch(app.yarn.CrashLog.handler) {
+        c.settings.update { s -> s.copy(hiddenTabs = if (shown) s.hiddenTabs - key else s.hiddenTabs + key) }
+        val f = _filter.value
+        val showing = if (key == SPAM_TAB) f.view == InboxView.SPAM else InboxGroup.entries.firstOrNull { it.filter == f }?.name == key
+        if (!shown && showing) setFilter(InboxFilter())
     }
 
     fun removeCustomTab(tab: app.yarn.data.prefs.CustomTab) = viewModelScope.launch(app.yarn.CrashLog.handler) {
@@ -383,6 +407,9 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     fun runUndo(e: UndoEvent) { e.undo?.let { u -> viewModelScope.launch(app.yarn.CrashLog.handler) { u() } } }
 
     companion object {
+        /** The Spam tab's key among the tabs a user can turn off. */
+        const val SPAM_TAB = "SPAM"
+
         fun sectionOf(f: InboxFilter): InboxGroup? =
             if (f.view != InboxView.CATEGORY) null
             else InboxGroup.entries.firstOrNull { it.categories == f.categories && it != InboxGroup.PERSONAL }

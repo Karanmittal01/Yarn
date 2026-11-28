@@ -970,6 +970,8 @@ NEW += [
     ("NeSL", "nesl.co.in", ["NESL"]),
     ("Awign", "awign.com", ["EAWIGN", "MAWIGN", "AWIGN"]),
     ("National Consumer Helpline", "consumerhelpline.gov.in", ["NCHSMS"]),
+    ("Cashify", "cashify.in", ["CASHIY", "CASHFY"]),
+    ("Poshvine", "poshvine.com", ["PSHVNE", "POSHVN"]),
 ]
 ALIASES += [
     ("UIDAI (Aadhaar)", ["ADHAAR"]),

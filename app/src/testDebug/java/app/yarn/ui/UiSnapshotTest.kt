@@ -177,14 +177,14 @@ class UiSnapshotTest {
     )
 
     @androidx.compose.runtime.Composable
-    private fun CustomTabMock(rows: List<InboxItem>, selectedKey: String) {
+    private fun CustomTabMock(rows: List<InboxItem>, selectedKey: String, firstChip: Int = 3) {
         val header = app.yarn.ui.inbox.inboxHeaderColor()
         Column(Modifier.fillMaxSize().background(header)) {
             app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = karan, onProfile = {})
             androidx.compose.foundation.lazy.LazyRow(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-                state = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = 3),
+                state = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = firstChip),
             ) { items(customChips.size) { i -> app.yarn.ui.inbox.GroupChip(customChips[i], selected = customChips[i].key == selectedKey) {} } }
             Column(
                 Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
@@ -217,7 +217,20 @@ class UiSnapshotTest {
         }
     }
 
+    @Test fun tabsEditor() = shot(true, "100_tabs_editor_dark") {
+        val builtIn = listOf(
+            app.yarn.ui.inbox.BuiltInTab("PERSONAL", app.yarn.R.string.group_personal, true),
+            app.yarn.ui.inbox.BuiltInTab("OTP", app.yarn.R.string.group_otp, true),
+            app.yarn.ui.inbox.BuiltInTab("UPDATES", app.yarn.R.string.group_updates, true),
+            app.yarn.ui.inbox.BuiltInTab("OFFERS", app.yarn.R.string.group_offers, false),
+            app.yarn.ui.inbox.BuiltInTab("SPAM", app.yarn.R.string.verdict_spam, true),
+        )
+        DialogMock(app.yarn.R.string.tabs_title, app.yarn.R.string.done, app.yarn.R.string.tabs_make) {
+            app.yarn.ui.inbox.TabsList(builtIn, listOf(moneyTab, familyTab), { _, _ -> }, {})
+        }
+    }
     @Test fun customTabRow() = shot(true, "96_custom_tabs_dark") { CustomTabMock(moneyRows, "money") }
+    @Test fun tabRowEnd() = shot(true, "101_tabs_row_end_dark") { CustomTabMock(moneyRows, "money", firstChip = 5) }
     @Test fun customTabRowLight() = shot(false, "97_custom_tabs_light") { CustomTabMock(moneyRows, "money") }
     @Test fun newTabChoices() = shot(true, "98_new_tab_dark") {
         DialogMock(app.yarn.R.string.custom_tab_title, null, app.yarn.R.string.cancel) { app.yarn.ui.inbox.NewTabChoices({}, {}, {}) }
