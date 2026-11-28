@@ -980,7 +980,7 @@
     <string name="custom_tab_remove">Remove</string>
     <string name="done">Done</string>
     <string name="tabs_title">Your tabs</string>
-    <string name="tabs_intro">Switch tabs on or off. Messages in a tab you turn off stay in All.</string>
+    <string name="tabs_intro">Each message sits in one tab: the first of your own tabs that wants it, otherwise its usual one. All shows everything, including tabs you switch off.</string>
     <string name="tabs_make">Make a tab</string>
     <string name="tabs_limit">You have %1$d tabs of your own, the most there can be. Switch one off to make another.</string>
     <string name="hide_tab_title">Hide the “%1$s” tab?</string>

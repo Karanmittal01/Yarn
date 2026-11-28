@@ -978,7 +978,7 @@
     <string name="custom_tab_remove">हटाएं</string>
     <string name="done">हो गया</string>
     <string name="tabs_title">आपके टैब</string>
-    <string name="tabs_intro">टैब चालू या बंद करें। बंद टैब के मैसेज \'सभी\' में रहते हैं।</string>
+    <string name="tabs_intro">हर मैसेज एक ही टैब में रहता है: आपके बनाए टैबों में से पहला जो उसे चाहे, नहीं तो उसका सामान्य टैब। \'सभी\' में सब कुछ दिखता है, बंद टैब के मैसेज भी।</string>
     <string name="tabs_make">टैब बनाएं</string>
     <string name="tabs_limit">आपके अपने %1$d टैब हैं, जितने हो सकते हैं। नया बनाने के लिए एक बंद करें।</string>
     <string name="hide_tab_title">“%1$s” टैब छिपाएं?</string>

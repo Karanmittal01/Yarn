@@ -100,8 +100,12 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
     val section: StateFlow<InboxGroup?> = _filter.map { sectionOf(it) }
         .stateIn(safeScope, SharingStarted.Eagerly, sectionOf(initial))
 
-    val items: StateFlow<List<InboxItem>?> = _filter
-        .flatMapLatest { f -> c.conversations.observe(f).map { sectionOf(f) to it } }
+    /** The user's own tabs while they have Pro (without it they're hidden, so they take nothing from the others). */
+    private val ownTabs = combine(c.settings.settings.map { it.customTabs }, c.licence.access.map { it.isPro }) { tabs, pro -> if (pro) tabs else emptyList() }
+        .distinctUntilChanged()
+
+    val items: StateFlow<List<InboxItem>?> = combine(_filter, ownTabs) { f, tabs -> f to tabs }
+        .flatMapLatest { (f, tabs) -> c.conversations.observe(f, tabs).map { sectionOf(f) to it } }
         .combine(c.contacts.version) { list, _ -> list }
         .combine(freshCodes) { list, codes -> list to codes }
         .combine(c.sims.sims) { (pair, codes), sims -> Triple(pair, codes, sims) }
@@ -166,19 +170,16 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
         .stateIn(safeScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val chips: StateFlow<List<InboxChip>> = combine(
-        c.db.conversations().totalsByCategory(), c.db.conversations().sectionCategories(), spamTab, _filter, tabs,
-    ) { totals, sections, spam, current, (sorting, pro, custom, hidden) ->
+        c.db.conversations().totalsByCategory(), ownTabs.flatMapLatest { c.conversations.observeTabCounts(InboxGroup.entries, it) }, spamTab, _filter, tabs,
+    ) { totals, counts, spam, current, (sorting, pro, custom, hidden) ->
         val unreadAll = totals.sumOf { it.unread }
-        // A chat counts once per section it has messages in, and as unread there only if that part is unread.
-        val bySection = sections.groupBy { Category.fromName(it.category)?.let(InboxGroup::of) }
+        // A chat counts once per tab it has messages in, and as unread there only if that part is unread.
         buildList {
             add(InboxChip(R.string.chip_all, InboxFilter()))
             if (!pro) {
                 // Yarn Free: All and OTP, and a way to Pro's other tabs.
                 if (sorting) {
-                    val rows = bySection[InboxGroup.OTP].orEmpty()
-                    val unread = rows.filter { it.unread > 0 }.map { it.conversationId }.toSet().size
-                    add(InboxChip(InboxGroup.OTP.label, InboxGroup.OTP.filter, InboxGroup.OTP, unread))
+                    add(InboxChip(InboxGroup.OTP.label, InboxGroup.OTP.filter, InboxGroup.OTP, counts[InboxGroup.OTP.name]?.unread ?: 0))
                     add(InboxChip(R.string.chip_pro_tabs, InboxFilter(), pro = true))
                 }
                 return@buildList
@@ -186,17 +187,11 @@ class InboxViewModel(private val c: AppContainer, private val initial: InboxFilt
             if (unreadAll > 0 || current.view == InboxView.UNREAD) add(InboxChip(R.string.filter_unread, InboxFilter(InboxView.UNREAD), unread = unreadAll))
             // With sorting off there are no tabs: one list, plus Unread and Spam.
             if (sorting) InboxGroup.entries.filter { it.name !in hidden }.forEach { g ->
-                val rows = bySection[g].orEmpty()
-                val unread = rows.filter { it.unread > 0 }.map { it.conversationId }.toSet().size
-                if (rows.isNotEmpty() || current == g.filter) add(InboxChip(g.label, g.filter, g, unread, hideKey = g.name))
+                val n = counts[g.name]
+                if ((n?.chats ?: 0) > 0 || g == InboxGroup.PERSONAL || current == g.filter) add(InboxChip(g.label, g.filter, g, n?.unread ?: 0, hideKey = g.name))
             }
             // Tabs the user made, after the built-in ones. One of a kind counts unread like a section.
-            if (sorting) custom.forEach { t ->
-                val unread = t.kind?.let { k ->
-                    sections.filter { s -> Category.fromName(s.category)?.group == k && s.unread > 0 }.map { it.conversationId }.toSet().size
-                } ?: 0
-                add(InboxChip(0, t.filter, unread = unread, custom = t))
-            }
+            if (sorting) custom.forEach { t -> add(InboxChip(0, t.filter, unread = counts[t.id]?.unread ?: 0, custom = t)) }
             // Spam is a tab like the others, last in the row.
             val spamFilter = InboxFilter(InboxView.SPAM)
             if ((spam.first > 0 || current == spamFilter) && SPAM_TAB !in hidden) add(InboxChip(R.string.verdict_spam, spamFilter, unread = spam.second, hideKey = SPAM_TAB))

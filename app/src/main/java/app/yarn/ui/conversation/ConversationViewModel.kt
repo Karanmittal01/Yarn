@@ -104,9 +104,18 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
 
     private val _section = MutableStateFlow(openedFrom)
 
+    /** The user's own tabs while they have Pro: a chat opened from Updates leaves out what "Bank & payments" took. */
+    private val ownTabs: StateFlow<List<app.yarn.data.prefs.CustomTab>> =
+        combine(c.settings.settings.map { it.customTabs }, c.licence.access.map { it.isPro }) { tabs, pro -> if (pro) tabs else emptyList() }
+            .stateIn(safeScope, SharingStarted.Eagerly, emptyList())
+
     /** The section being shown, or null for the whole chat. A chat the user moved to a category is always whole. */
     val section: StateFlow<InboxGroup?> = combine(_section, conversation) { s, conv -> s?.takeUnless { conv?.categoryLocked == true } }
         .stateIn(safeScope, SharingStarted.Eagerly, openedFrom)
+
+    /** A tab's own messages: what its built-in kinds hold, less what the user's own tabs (Bank & payments…) took. */
+    private fun shown(s: InboxGroup): Set<Category> =
+        (s.categories - app.yarn.data.repo.TabRules.claimedCategories(ownTabs.value)).ifEmpty { s.categories }
 
     fun showWholeChat() {
         _section.value = null
@@ -119,9 +128,9 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
         .flowOn(Dispatchers.IO)
         .shareIn(safeScope, SharingStarted.Eagerly, replay = 1)
 
-    private val pages: Flow<PagingData<MessageWithAttachments>> = section.flatMapLatest { s ->
+    private val pages: Flow<PagingData<MessageWithAttachments>> = combine(section, ownTabs) { s, _ -> s }.flatMapLatest { s ->
         Pager(PagingConfig(pageSize = 40, prefetchDistance = 40, enablePlaceholders = true, initialLoadSize = 80)) {
-            if (s == null) c.db.messages().paging(conversationId) else c.db.messages().pagingIn(conversationId, s.categories.map { it.name })
+            if (s == null) c.db.messages().paging(conversationId) else c.db.messages().pagingIn(conversationId, shown(s).map { it.name })
         }.flow
     }.cachedIn(viewModelScope)
 
@@ -196,7 +205,7 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
         viewModelScope.launch(app.yarn.CrashLog.handler) {
             // Keyed on the messages, not lastMessageAt: saving the draft while typing bumps that every pause.
             conversation.filterNotNull().map { it.messagesKey() }.distinctUntilChanged().collect { key ->
-                if (visible && key.unread > 0) c.conversations.markRead(listOf(conversationId), section.value?.categories.orEmpty())
+                if (visible && key.unread > 0) c.conversations.markRead(listOf(conversationId), section.value?.let(::shown).orEmpty())
                 refreshInsights()
             }
         }
@@ -210,7 +219,7 @@ class ConversationViewModel(private val c: AppContainer, val conversationId: Lon
     }
 
     private fun markReadNow() {
-        val categories = section.value?.categories.orEmpty()
+        val categories = section.value?.let(::shown).orEmpty()
         c.scope.launch {
             c.conversations.markRead(listOf(conversationId), categories)
             if (categories.isEmpty()) c.notifier.cancel(conversationId)

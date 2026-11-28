@@ -29,6 +29,9 @@ data class SectionRow(
     val sectionAttachments: Boolean,
 )
 
+/** One tab's size: chats it lists and chats with unread messages there ([tab] is a tab's name or id). */
+data class TabCount(val tab: String, val chats: Int, val unread: Int)
+
 /** How many of a chat's received messages, and unread ones, sit in [category]. */
 data class ConversationCategory(val conversationId: Long, val category: String, val unread: Int)
 
@@ -39,6 +42,9 @@ abstract class ConversationDao {
 
     @RawQuery(observedEntities = [ConversationEntity::class, MessageEntity::class])
     abstract fun observeSections(query: SupportSQLiteQuery): Flow<List<SectionRow>>
+
+    @RawQuery(observedEntities = [ConversationEntity::class, MessageEntity::class])
+    abstract fun observeTabCounts(query: SupportSQLiteQuery): Flow<List<TabCount>>
 
     /**
      * Which categories each live chat's received messages fall into, for the section chips. A chat
