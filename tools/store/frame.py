@@ -24,9 +24,9 @@ STOPS = [(0.0, (37, 124, 211)), (0.35, (16, 69, 149)), (0.65, (6, 35, 97)), (1.0
 SCREENS = [
     ("store_1_inbox", "Your inbox, sorted", "Every brand with its logo, every message in its tab"),
     ("store_2_otp", "Codes never get lost", "One-tap copy for every OTP"),
+    ("store_11_tabs", "Tabs your way", "Bank, orders, travel or any word, with Yarn Pro"),
     ("store_3_chat", "Chats that understand you", "Translation, smart replies and dual SIM"),
     ("store_4_spam", "Scams stay out", "Fake prizes, KYC and loan scams go to Spam"),
-    ("store_9_look", "Make it yours", "Accent colours and chat wallpapers with Yarn Pro"),
     ("store_7_backup", "Safe in your Google Drive", "Encrypted backup, restore on any phone"),
     ("store_8_private", "Private by design", "Sorting and smart features run on your phone"),
     ("store_10_pro", "Free to use", "Yarn Pro free for 30 days, then \u20b9199 a year"),

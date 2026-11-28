@@ -177,10 +177,10 @@ class UiSnapshotTest {
     )
 
     @androidx.compose.runtime.Composable
-    private fun CustomTabMock(rows: List<InboxItem>, selectedKey: String, firstChip: Int = 3) {
+    private fun CustomTabMock(rows: List<InboxItem>, selectedKey: String, firstChip: Int = 3, me: app.yarn.data.contacts.ContactInfo? = karan) {
         val header = app.yarn.ui.inbox.inboxHeaderColor()
         Column(Modifier.fillMaxSize().background(header)) {
-            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = karan, onProfile = {})
+            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = me, onProfile = {})
             androidx.compose.foundation.lazy.LazyRow(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
@@ -1015,6 +1015,8 @@ class UiSnapshotTest {
     @Test @Config(qualifiers = "w411dp-h760dp-xxhdpi") fun store10Pro() = shot(false, "store_10_pro") {
         Paywall(app.yarn.billing.Access.Trial(30), back = false)
     }
+    // Tabs of your own (Pro): "Bank & payments" holds every debit and credit, and no other tab repeats them.
+    @Test fun store11Tabs() = shot(false, "store_11_tabs") { CustomTabMock(videoTxn, "money", firstChip = 3, me = storeMe) }
     @Test fun store8Private() = shot(true, "store_8_private") {
         app.yarn.ui.settings.SettingsScaffold("Smart features", {}) { smartFeatureItems(app.yarn.data.prefs.AppSettings(), {}, {}, {}) }
     }
