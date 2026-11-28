@@ -3,7 +3,8 @@
 Render the screens first (made-up people and numbers only):
     ./gradlew :app:testDebugUnitTest --tests '*UiSnapshotTest.video*'
 then, from the repository root, with Pillow and NumPy installed and ffmpeg on the PATH:
-    python tools/store/voiceover.py <voice_dir>   # optional narration, see that file
+    python tools/store/voiceover.py <voice_dir>   # narration, see that file
+    python tools/store/music.py                   # music, mixed with the narration
     python tools/store/video.py [output.mp4]
 
 The story: a messy-inbox hook, the logo, signing up, then each main feature in the phone with
@@ -64,44 +65,80 @@ def back_out(t):
 # Screens in the phone. t0/t1 in seconds; enter: rise (phone comes up), slide (next screen, like
 # Android), fade, cut. taps: (seconds into the shot, x, y in screen pixels of the 1233-wide render).
 SETUP = ("Set up in a minute", "Make Yarn your SMS app, bring your chats back, done")
-TABS = ("Jump to what matters", "OTP · Transactions · Shopping · Travel · Offers")
-TIMELINE = [
-    dict(img="video_01_welcome", t0=5.4, t1=7.3, enter="rise", cap=SETUP, taps=[(1.45, 616, 2408)]),
+TABS = ("Jump to what matters", "OTP · Updates · Offers")
+OWN = ("Tabs your way", "Bank & payments, chats you pick, any word")
+LOOK = ("Make it yours", "Accent colours and chat wallpapers")
+
+# The music runs at 120 beats a minute (tools/store/music.py) and every scene lasts a whole number of
+# beats, so each cut lands on the beat. `say` is the scene's narration (tools/store/voiceover.py),
+# spoken from a quarter-second in, or (seconds in, words[, "hindi"]) pieces; taps are seconds in.
+BPM = 120
+BEAT = 60 / BPM
+HOOK_END = 6.0  # a bar line: the phone rises on the downbeat after the logo's
+HOOK_SAY = [(0.3, "One messy inbox. Codes, offers, scams."), (4.1, "Meet Yarn.")]
+OUTRO_BEATS = 10
+OUTRO_SAY = [(0.6, "Get Yarn, free, on Google Play.")]
+SCENES = [
+    dict(img="video_01_welcome", beats=4, enter="rise", cap=SETUP, taps=[(1.5, 616, 2408)],
+         say="Setting up takes a minute. Make Yarn your messaging app, bring back your chats, and you're done."),
     # No permissions page: becoming the default SMS app is the only setup step that asks anything.
-    dict(img="video_02_default", t0=7.3, t1=9.6, enter="slide", cap=SETUP, taps=[(1.6, 616, 2408)]),
-    dict(img="video_04_backup", t0=9.6, t1=11.9, enter="slide", cap=SETUP, taps=[(1.6, 616, 2408)]),
-    dict(img="video_05_you", t0=11.9, t1=13.5, enter="slide", cap=SETUP, taps=[(1.15, 616, 2408)]),
-    dict(img="video_06_clean", t0=13.5, t1=15.1, enter="slide", cap=SETUP, taps=[(1.15, 616, 2408)]),
-    dict(img="video_07_inbox_welcome", t0=15.1, t1=18.3, enter="fade", cap=("Yarn Pro, free for 30 days", "Every feature, unlocked from day one"),
-         zoom=(1.0, 1.1, 616, 640)),
-    dict(img="video_08_inbox", t0=18.3, t1=21.8, enter="fade", cap=("Your inbox, sorted", "Every message in its tab, every brand with its logo"),
-         zoom=(1.0, 1.06, 616, 1150), taps=[(3.2, 486, 299)]),
-    dict(img="video_09_tab_otp", t0=21.8, t1=23.1, enter="cut", cap=TABS, taps=[(1.0, 482, 299)]),
-    dict(img="video_10_tab_transactions", t0=23.1, t1=24.4, enter="cut", cap=TABS, taps=[(1.0, 597, 299)]),
-    dict(img="video_11_tab_shopping", t0=24.4, t1=25.7, enter="cut", cap=TABS, taps=[(1.0, 482, 299)]),
-    dict(img="video_12_tab_travel", t0=25.7, t1=27.0, enter="cut", cap=TABS, taps=[(1.0, 799, 299)]),
-    dict(img="video_13_tab_offers", t0=27.0, t1=28.4, enter="cut", cap=TABS),
-    dict(img="video_09_tab_otp", t0=28.4, t1=32.0, enter="fade", cap=("Codes never get lost", "Copy any OTP in one tap"),
-         taps=[(1.3, 407, 573)], toast=(1.45, 2.9, "Code copied"), zoom=(1.0, 1.18, 430, 720)),
-    dict(img="video_14_chat", t0=32.0, t1=37.0, enter="fade", cap=("Chats that understand you", "Translate Hinglish, smart replies, dual SIM"),
-         zoom=(1.0, 1.15, 500, 1000)),
-    dict(img="video_15_spam", t0=37.0, t1=41.0, enter="fade", cap=("Scams stay out", "Fake prizes, KYC and loan scams go to Spam"),
-         zoom=(1.0, 1.07, 616, 900)),
-    dict(img="video_16_look", t0=41.0, t1=43.6, enter="fade", cap=("Make it yours", "Accent colours and chat wallpapers"),
-         taps=[(0.8, 548, 805), (1.7, 1065, 1185)]),
-    dict(img="video_17_look_chat", t0=43.6, t1=46.0, enter="fade", cap=("Make it yours", "Accent colours and chat wallpapers")),
-    dict(img="video_18_clean", t0=46.0, t1=49.4, enter="fade", cap=("A clean inbox in one tap", "Clear thousands of old OTPs and offers"),
-         taps=[(1.9, 616, 2103)], zoom=(1.0, 1.06, 616, 1300)),
-    dict(img="video_19_backup", t0=49.4, t1=52.6, enter="fade", cap=("Safe in your Google Drive", "Encrypted backup, restore on any phone"),
-         taps=[(1.6, 616, 815)]),
-    dict(img="video_20_private", t0=52.6, t1=55.6, enter="fade", cap=("Private by design", "Runs on your phone. No ads, no tracking.")),
-    dict(img="video_21_hindi", t0=55.6, t1=58.0, enter="fade", cap=("Speaks your language", "In English and Hindi")),
-    dict(img="video_22_pro", t0=58.0, t1=62.6, enter="fade", cap=("Free to use", "Yarn Pro free for 30 days, then ₹199 a year"),
-         zoom=(1.0, 1.1, 616, 1250)),
+    dict(img="video_02_default", beats=4, enter="slide", cap=SETUP, taps=[(1.5, 616, 2408)]),
+    dict(img="video_04_backup", beats=3, enter="slide", cap=SETUP, taps=[(1.0, 616, 2408)]),
+    dict(img="video_05_you", beats=3, enter="slide", cap=SETUP, taps=[(1.0, 616, 2408)]),
+    dict(img="video_06_clean", beats=3, enter="slide", cap=SETUP, taps=[(1.0, 616, 2408)]),
+    dict(img="video_07_inbox_welcome", beats=6, enter="fade", cap=("Yarn Pro, free for 30 days", "Every feature, unlocked from day one"),
+         zoom=(1.0, 1.1, 616, 640), say="Pro is free for your first thirty days."),
+    dict(img="video_08_inbox", beats=8, enter="fade", cap=("Your inbox, sorted", "Every message in its tab, every brand with its logo"),
+         zoom=(1.0, 1.06, 616, 1150), taps=[(3.5, 700, 299)], say="Every message, sorted, with real logos."),
+    # The tab tour: each scene taps the next tab.
+    dict(img="video_09_tab_otp", beats=3, enter="cut", cap=TABS, taps=[(1.0, 770, 299)], say="Jump straight to O T Ps, updates or offers."),
+    dict(img="video_10_tab_updates", beats=3, enter="cut", cap=TABS, taps=[(1.0, 1057, 299)]),
+    dict(img="video_13_tab_offers", beats=3, enter="cut", cap=TABS, taps=[(1.0, 1050, 299)]),
+    dict(img="video_11_tab_bank", beats=6, enter="cut", cap=OWN, taps=[(2.0, 1148, 299)],
+         say="Or make tabs of your own, like bank and payments. Each message lives in just one tab."),
+    dict(img="video_12_tabs_editor", beats=7, enter="fade", cap=OWN),
+    dict(img="video_09_tab_otp", beats=7, enter="fade", cap=("Codes never get lost", "Copy any OTP in one tap"),
+         taps=[(1.0, 407, 573)], toast=(1.15, 2.6, "Code copied"), zoom=(1.0, 1.18, 430, 720), say="Copy any code in one tap."),
+    dict(img="video_14_chat", beats=10, enter="fade", cap=("Chats that understand you", "Translate Hinglish, smart replies, dual SIM"),
+         zoom=(1.0, 1.15, 500, 1000), say="Translate Hinglish, get smart replies, and pick your SIM."),
+    dict(img="video_15_spam", beats=8, enter="fade", cap=("Scams stay out", "Fake prizes, KYC and loan scams go to Spam"),
+         zoom=(1.0, 1.07, 616, 900), say="Fake prize, K Y C and loan scams go to Spam."),
+    dict(img="video_16_look", beats=5, enter="fade", cap=LOOK, taps=[(1.0, 548, 805), (2.0, 1065, 1185)],
+         say="Make it yours, with accent colours and chat wallpapers."),
+    dict(img="video_17_look_chat", beats=4, enter="fade", cap=LOOK),
+    dict(img="video_18_clean", beats=7, enter="fade", cap=("A clean inbox in one tap", "Clear thousands of old OTPs and offers"),
+         taps=[(2.0, 616, 2103)], zoom=(1.0, 1.06, 616, 1300), say="Clear thousands of old codes in one tap."),
+    dict(img="video_19_backup", beats=7, enter="fade", cap=("Safe in your Google Drive", "Encrypted backup, restore on any phone"),
+         taps=[(1.5, 616, 815)], say="Backed up, encrypted, in your Google Drive."),
+    dict(img="video_20_private", beats=7, enter="fade", cap=("Private by design", "Runs on your phone. No ads, no tracking."),
+         say="All on your phone. No ads. No tracking."),
+    dict(img="video_21_hindi", beats=6, enter="fade", cap=("Speaks your language", "In English and Hindi"),
+         say=[(0.25, "In English,"), (1.3, "और हिंदी में भी।", "hindi")]),
+    dict(img="video_22_pro", beats=10, enter="fade", cap=("Free to use", "Yarn Pro free for 30 days, then ₹199 a year"),
+         zoom=(1.0, 1.1, 616, 1250), say="Free to use. Pro is just a hundred and ninety-nine rupees a year."),
 ]
-HOOK_END = 5.4
-OUTRO_START = 62.6
-END = 68.0
+
+# Seconds, from the beats.
+TIMELINE = []
+_t = HOOK_END
+for _s in SCENES:
+    TIMELINE.append(dict(_s, t0=_t, t1=_t + _s["beats"] * BEAT))
+    _t += _s["beats"] * BEAT
+OUTRO_START = _t
+END = OUTRO_START + OUTRO_BEATS * BEAT
+
+
+def narration():
+    """Every spoken line as (start in seconds, words, voice), voice being "narrator" or "hindi"."""
+    out = [(t, w, "narrator") for t, w in HOOK_SAY]
+    for s in TIMELINE:
+        say = s.get("say")
+        if isinstance(say, str):
+            out.append((s["t0"] + 0.25, say, "narrator"))
+        elif say:
+            out += [(s["t0"] + p[0], p[1], p[2] if len(p) > 2 else "narrator") for p in say]
+    out += [(OUTRO_START + t, w, "narrator") for t, w in OUTRO_SAY]
+    return out
 
 
 # ---- Fixed layers -------------------------------------------------------------------------------
@@ -425,13 +462,20 @@ def main():
         for s in only.split(","):
             v.frame(float(s)).convert("RGB").save(out.replace(".mp4", f"-{s}.png"))
         return
-    # The voiceover from tools/store/voiceover.py when it's there, else silence.
+    # Sound: the soundtrack from tools/store/music.py (music and voice, mixed), else the voiceover
+    # alone, else silence.
+    track = os.path.join(ROOT, "app", "build", "yarn-soundtrack.wav")
     voice = os.path.join(ROOT, "app", "build", "yarn-voiceover.wav")
-    audio = ["-i", voice] if os.path.exists(voice) else ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000"]
+    if os.path.exists(track):
+        audio, af = ["-i", track], "aresample=48000"
+    elif os.path.exists(voice):
+        audio, af = ["-i", voice], "aresample=48000,pan=stereo|c0=c0|c1=c0"
+    else:
+        audio, af = ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000"], "anull"
     cmd = [
         "ffmpeg", "-y", "-loglevel", "error",
         "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-        *audio, "-af", "aresample=48000,pan=stereo|c0=c0|c1=c0" if os.path.exists(voice) else "anull",
+        *audio, "-af", af,
         "-shortest", "-c:v", "libx264", "-preset", "slow", "-crf", "20", "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", out,
     ]

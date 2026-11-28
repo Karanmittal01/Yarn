@@ -195,9 +195,9 @@ class UiSnapshotTest {
 
     /** A dialog drawn in place over the inbox (dialogs open in their own window, which the capture doesn't see). */
     @androidx.compose.runtime.Composable
-    private fun DialogMock(title: Int, confirm: Int?, dismiss: Int, body: @androidx.compose.runtime.Composable () -> Unit) {
+    private fun DialogMock(title: Int, confirm: Int?, dismiss: Int, rows: List<InboxItem> = inbox, me: app.yarn.data.contacts.ContactInfo? = karan, body: @androidx.compose.runtime.Composable () -> Unit) {
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
-            InboxMock()
+            InboxMock(rows, me)
             androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.45f)), contentAlignment = androidx.compose.ui.Alignment.Center) {
                 androidx.compose.material3.Surface(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -1080,11 +1080,35 @@ class UiSnapshotTest {
         }
     }
     @Test fun video08Inbox() = shot(false, "video_08_inbox") { InboxMock(storeInbox, storeMe) }
-    @Test fun video09Otp() = shot(false, "video_09_tab_otp") { VideoTabs(storeOtps, InboxGroup.OTP) }
-    @Test fun video10Txn() = shot(false, "video_10_tab_transactions") { VideoTabs(videoTxn, InboxGroup.UPDATES) }
-    @Test fun video11Shop() = shot(false, "video_11_tab_shopping") { VideoTabs(videoShop, InboxGroup.UPDATES) }
-    @Test fun video12Travel() = shot(false, "video_12_tab_travel") { VideoTabs(videoTravel, InboxGroup.UPDATES) }
-    @Test fun video13Offers() = shot(false, "video_13_tab_offers") { VideoTabs(videoOffers, InboxGroup.OFFERS) }
+    // The tab tour: one row of tabs throughout (the built-in ones, two of your own, Spam and +).
+    @androidx.compose.runtime.Composable
+    private fun VideoTour(rows: List<InboxItem>, selected: (app.yarn.ui.inbox.InboxChip) -> Boolean, firstChip: Int) {
+        val header = app.yarn.ui.inbox.inboxHeaderColor()
+        Column(Modifier.fillMaxSize().background(header)) {
+            app.yarn.ui.inbox.InboxHeader(androidx.compose.ui.res.stringResource(app.yarn.R.string.app_name), {}, me = storeMe, onProfile = {})
+            androidx.compose.foundation.lazy.LazyRow(
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                state = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = firstChip),
+            ) { items(customChips.size) { i -> app.yarn.ui.inbox.GroupChip(customChips[i], selected = selected(customChips[i])) {} } }
+            Column(
+                Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .background(MaterialTheme.colorScheme.surface).padding(top = 10.dp),
+            ) { rows.forEach { ConversationRow(it, false, false, {}, {}) } }
+        }
+    }
+    private val videoUpdates get() = videoShop.take(2) + videoTravel.take(2)
+    @Test fun video09Otp() = shot(false, "video_09_tab_otp") { VideoTour(storeOtps, { it.group == InboxGroup.OTP }, 1) }
+    @Test fun video10Updates() = shot(false, "video_10_tab_updates") { VideoTour(videoUpdates, { it.group == InboxGroup.UPDATES }, 1) }
+    @Test fun video13Offers() = shot(false, "video_13_tab_offers") { VideoTour(videoOffers, { it.group == InboxGroup.OFFERS }, 2) }
+    @Test fun video11Bank() = shot(false, "video_11_tab_bank") { VideoTour(videoTxn, { it.custom?.id == "money" }, 5) }
+    @Test fun video12Editor() = shot(false, "video_12_tabs_editor") {
+        val builtIn = listOf("PERSONAL" to app.yarn.R.string.group_personal, "OTP" to app.yarn.R.string.group_otp, "UPDATES" to app.yarn.R.string.group_updates,
+            "OFFERS" to app.yarn.R.string.group_offers, "SPAM" to app.yarn.R.string.verdict_spam).map { (k, l) -> app.yarn.ui.inbox.BuiltInTab(k, l, true) }
+        DialogMock(app.yarn.R.string.tabs_title, app.yarn.R.string.done, app.yarn.R.string.tabs_make, storeInbox, storeMe) {
+            app.yarn.ui.inbox.TabsList(builtIn, listOf(moneyTab, familyTab), { _, _ -> }, {})
+        }
+    }
     @Test fun video14Chat() = shot(false, "video_14_chat") { StoreChat() }
     @Test fun video15Spam() = shot(false, "video_15_spam") { SpamMock(storeMe) }
     @Test fun video16Look() = shot(false, "video_16_look") { LookMock(true, app.yarn.ui.theme.Accent.VIOLET, app.yarn.ui.theme.Wallpaper.SUNSET) }
