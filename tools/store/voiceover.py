@@ -20,8 +20,10 @@ import video  # noqa: E402
 
 OUT = os.path.join(video.ROOT, "app", "build", "yarn-voiceover.wav")
 RATE = 24000
-# A warm male narrator, and a male Hindi voice for the Hindi line.
-VOICES = {"narrator": (os.environ.get("VOICE", "am_michael"), "en-us"), "hindi": ("hm_omega", "hi")}
+# An Indian woman narrates, in English and in Hindi: Kokoro's Hindi voice reads English with an Indian
+# accent, and British spelling-to-sound rules sit closer to Indian English than American ones.
+VOICE = os.environ.get("VOICE", "hf_alpha")
+VOICES = {"narrator": (VOICE, os.environ.get("LANG_EN", "en-gb")), "hindi": (VOICE, "hi")}
 SPEED = float(os.environ.get("SPEED", "1.0"))
 LEVEL = 0.09  # every line's loudness (RMS), so the narrator and the Hindi voice match
 GAP = 0.25  # at least this much quiet before the next line

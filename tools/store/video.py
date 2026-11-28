@@ -113,7 +113,7 @@ SCENES = [
     dict(img="video_20_private", beats=7, enter="fade", cap=("Private by design", "Runs on your phone. No ads, no tracking."),
          say="All on your phone. No ads. No tracking."),
     dict(img="video_21_hindi", beats=6, enter="fade", cap=("Speaks your language", "In English and Hindi"),
-         say=[(0.25, "In English,"), (1.3, "और हिंदी में भी।", "hindi")]),
+         say=[(0.15, "In English,"), (1.45, "और हिंदी में भी।", "hindi")]),
     dict(img="video_22_pro", beats=10, enter="fade", cap=("Free to use", "Yarn Pro free for 30 days, then ₹199 a year"),
          zoom=(1.0, 1.1, 616, 1250), say="Free to use. Pro is just a hundred and ninety-nine rupees a year."),
 ]
